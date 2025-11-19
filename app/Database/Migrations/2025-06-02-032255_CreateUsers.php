@@ -13,22 +13,22 @@ class CreateUsers extends Migration
                 'type' => 'CHAR',
                 'constraint' => 36,
             ],
+            'role_id' => [
+                'type' => 'CHAR',
+                'constraint' => 36,
+            ],
             'user_name' => [
                 'type' => 'VARCHAR',
-                'constraint' => '100'
+                'constraint' => 100
             ],
             'user_email' => [
                 'type' => 'VARCHAR',
-                'constraint' => '100',
+                'constraint' => 100,
                 'unique' => TRUE
             ],
             'password' => [
                 'type' => 'VARCHAR',
-                'constraint' => '255'
-            ],
-            'role_id' => [
-                'type' => 'CHAR',
-                'constraint' => 36,
+                'constraint' => 255
             ],
             'created_at' => [
                 'type'    => 'DATETIME',

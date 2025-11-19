@@ -4,30 +4,24 @@ namespace App\Database\Migrations;
 
 use CodeIgniter\Database\Migration;
 
-class CreateOrderItemsTable extends Migration
+class CreateVariantImages extends Migration
 {
     public function up()
     {
         $this->forge->addField([
-            'order_item_id' => [
+            'variant_image_id' => [
                 'type' => 'CHAR',
                 'constraint' => 36,
             ],
-            'order_id' => [
+            'variant_id' => [
                 'type' => 'CHAR',
                 'constraint' => 36,
+                'null' => false,
             ],
-            'product_id' => [
+            'product_image_id' => [
                 'type' => 'CHAR',
                 'constraint' => 36,
-            ],
-            'quantity' => [
-                'type' => 'INT',
-                'constraint' => 11
-            ],
-            'price' => [
-                'type' => 'DECIMAL',
-                'constraint' => '10,2'
+                'null' => false,
             ],
             'created_at' => [
                 'type' => 'DATETIME',
@@ -39,18 +33,23 @@ class CreateOrderItemsTable extends Migration
             ],
             'deleted_at' => [
                 'type' => 'DATETIME',
-                'null' => true
+                'null' => true,
             ],
         ]);
 
-        $this->forge->addPrimaryKey('order_item_id');
-        $this->forge->addForeignKey('order_id', 'orders', 'order_id', 'CASCADE', 'CASCADE');
-        $this->forge->addForeignKey('product_id', 'products', 'product_id', 'CASCADE', 'CASCADE');
-        $this->forge->createTable('order_items');
+        // Primary key
+        $this->forge->addKey('variant_image_id', true);
+
+        // Foreign keys
+        $this->forge->addForeignKey('variant_id', 'product_variants', 'variant_id', 'CASCADE', 'CASCADE');
+        $this->forge->addForeignKey('product_image_id', 'product_images', 'product_image_id', 'CASCADE', 'CASCADE');
+
+        // Create table
+        $this->forge->createTable('variant_images');
     }
 
     public function down()
     {
-        $this->forge->dropTable('order_items');
+        $this->forge->dropTable('variant_images');
     }
 }

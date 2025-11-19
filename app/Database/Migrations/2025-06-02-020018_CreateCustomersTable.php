@@ -38,19 +38,6 @@ class CreateCustomersTable extends Migration
                 'type' => 'ENUM',
                 'constraint' => ['male', 'female', 'other']
             ],
-            'customer_occupation'  => [
-                'type' => 'VARCHAR',
-                'constraint' => 50,
-                'null' => true
-            ],
-            'customer_eye_history' => [
-                'type' => 'JSON',
-                'null' => true
-            ], // Untuk riwayat mata (JSON)
-            'customer_preferences' => [
-                'type' => 'JSON',
-                'null' => true
-            ], // Preferensi produk (JSON)
             'created_at'  => [
                 'type' => 'DATETIME',
                 'null' => true

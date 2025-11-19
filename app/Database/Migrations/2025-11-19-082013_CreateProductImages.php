@@ -4,32 +4,45 @@ namespace App\Database\Migrations;
 
 use CodeIgniter\Database\Migration;
 
-class CreateReviews extends Migration
+class CreateProductImages extends Migration
 {
     public function up()
     {
         $this->forge->addField([
-            'review_id' => [
+            'product_image_id' => [
                 'type' => 'CHAR',
                 'constraint' => 36,
-            ],
-            'customer_id' => [
-                'type' => 'CHAR',
-                'constraint' => 36,
-                'null' => true,
             ],
             'product_id' => [
                 'type' => 'CHAR',
                 'constraint' => 36,
                 'null' => false,
             ],
-            'rating' => [
-                'type' => 'INT',
-                'constraint' => 11,
+            'url' => [
+                'type' => 'VARCHAR',
+                'constraint' => 1024,
                 'null' => false,
             ],
-            'comment' => [
-                'type' => 'TEXT',
+            'alt_text' => [
+                'type' => 'VARCHAR',
+                'constraint' => 255,
+                'null' => true,
+            ],
+            'sort_order' => [
+                'type' => 'INT',
+                'default' => 0,
+            ],
+            'is_primary' => [
+                'type' => 'BOOLEAN',
+                'default' => false,
+            ],
+            'mime_type' => [
+                'type' => 'VARCHAR',
+                'constraint' => 50,
+                'null' => true,
+            ],
+            'size_bytes' => [
+                'type' => 'INT',
                 'null' => true,
             ],
             'created_at' => [
@@ -47,18 +60,17 @@ class CreateReviews extends Migration
         ]);
 
         // Primary key
-        $this->forge->addKey('review_id', true);
+        $this->forge->addKey('product_image_id', true);
 
-        // Foreign keys
-        $this->forge->addForeignKey('customer_id', 'customers', 'customer_id', 'SET NULL', 'CASCADE');
+        // Optional foreign key ke tabel products
         $this->forge->addForeignKey('product_id', 'products', 'product_id', 'CASCADE', 'CASCADE');
 
         // Create table
-        $this->forge->createTable('reviews');
+        $this->forge->createTable('product_images');
     }
 
     public function down()
     {
-        $this->forge->dropTable('reviews');
+        $this->forge->dropTable('product_images');
     }
 }

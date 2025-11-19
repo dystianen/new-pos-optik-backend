@@ -4,30 +4,29 @@ namespace App\Database\Migrations;
 
 use CodeIgniter\Database\Migration;
 
-class CreateOrderItemsTable extends Migration
+class CreateOrderCoupons extends Migration
 {
     public function up()
     {
         $this->forge->addField([
-            'order_item_id' => [
+            'order_coupon_id' => [
                 'type' => 'CHAR',
                 'constraint' => 36,
             ],
             'order_id' => [
                 'type' => 'CHAR',
                 'constraint' => 36,
+                'null' => false,
             ],
-            'product_id' => [
+            'coupon_id' => [
                 'type' => 'CHAR',
                 'constraint' => 36,
+                'null' => false,
             ],
-            'quantity' => [
-                'type' => 'INT',
-                'constraint' => 11
-            ],
-            'price' => [
+            'discount_amount' => [
                 'type' => 'DECIMAL',
-                'constraint' => '10,2'
+                'constraint' => '10,2',
+                'null' => false,
             ],
             'created_at' => [
                 'type' => 'DATETIME',
@@ -39,18 +38,23 @@ class CreateOrderItemsTable extends Migration
             ],
             'deleted_at' => [
                 'type' => 'DATETIME',
-                'null' => true
+                'null' => true,
             ],
         ]);
 
-        $this->forge->addPrimaryKey('order_item_id');
+        // Primary key
+        $this->forge->addKey('id', true);
+
+        // Foreign keys
         $this->forge->addForeignKey('order_id', 'orders', 'order_id', 'CASCADE', 'CASCADE');
-        $this->forge->addForeignKey('product_id', 'products', 'product_id', 'CASCADE', 'CASCADE');
-        $this->forge->createTable('order_items');
+        $this->forge->addForeignKey('coupon_id', 'coupons', 'coupon_id', 'CASCADE', 'CASCADE');
+
+        // Create table
+        $this->forge->createTable('order_coupons');
     }
 
     public function down()
     {
-        $this->forge->dropTable('order_items');
+        $this->forge->dropTable('order_coupons');
     }
 }

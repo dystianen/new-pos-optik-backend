@@ -4,30 +4,24 @@ namespace App\Database\Migrations;
 
 use CodeIgniter\Database\Migration;
 
-class CreateOrderItemsTable extends Migration
+class CreateWishlists extends Migration
 {
     public function up()
     {
         $this->forge->addField([
-            'order_item_id' => [
+            'wishlist_id' => [
                 'type' => 'CHAR',
                 'constraint' => 36,
             ],
-            'order_id' => [
+            'customer_id' => [
                 'type' => 'CHAR',
                 'constraint' => 36,
+                'null' => false,
             ],
             'product_id' => [
                 'type' => 'CHAR',
                 'constraint' => 36,
-            ],
-            'quantity' => [
-                'type' => 'INT',
-                'constraint' => 11
-            ],
-            'price' => [
-                'type' => 'DECIMAL',
-                'constraint' => '10,2'
+                'null' => false,
             ],
             'created_at' => [
                 'type' => 'DATETIME',
@@ -39,18 +33,23 @@ class CreateOrderItemsTable extends Migration
             ],
             'deleted_at' => [
                 'type' => 'DATETIME',
-                'null' => true
+                'null' => true,
             ],
         ]);
 
-        $this->forge->addPrimaryKey('order_item_id');
-        $this->forge->addForeignKey('order_id', 'orders', 'order_id', 'CASCADE', 'CASCADE');
+        // Primary key
+        $this->forge->addKey('wishlist_id', true);
+
+        // Foreign keys
+        $this->forge->addForeignKey('customer_id', 'customers', 'customer_id', 'CASCADE', 'CASCADE');
         $this->forge->addForeignKey('product_id', 'products', 'product_id', 'CASCADE', 'CASCADE');
-        $this->forge->createTable('order_items');
+
+        // Create table
+        $this->forge->createTable('wishlists');
     }
 
     public function down()
     {
-        $this->forge->dropTable('order_items');
+        $this->forge->dropTable('wishlists');
     }
 }

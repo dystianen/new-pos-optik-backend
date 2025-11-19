@@ -4,10 +4,10 @@ namespace App\Models;
 
 use CodeIgniter\Model;
 
-class OrderItemModel extends Model
+class ShippingMethodModel extends Model
 {
-    protected $table            = 'order_items';
-    protected $primaryKey       = 'order_item_id';
+    protected $table            = 'shipping_methods';
+    protected $primaryKey       = 'shipping_method_id';
     protected $useAutoIncrement = false;
 
     protected $returnType       = 'array';
@@ -20,23 +20,25 @@ class OrderItemModel extends Model
     protected $deletedField     = 'deleted_at';
 
     protected $allowedFields = [
-        'order_item_id',
-        'order_id',
-        'product_id',
-        'quantity',
-        'price',
+        'shipping_method_id',
+        'name',
+        'provider',
+        'estimated_days',
+        'is_active',
     ];
 
     protected $validationRules = [
-        'quantity' => 'required|integer',
-        'price'    => 'required|decimal',
+        'name'           => 'required|max_length[100]',
+        'provider'       => 'permit_empty|max_length[50]',
+        'estimated_days' => 'permit_empty|max_length[20]',
+        'is_active'      => 'permit_empty|in_list[0,1]',
     ];
 
     protected $beforeInsert = ['generateUuid'];
 
     protected function generateUuid(array $data)
     {
-        $data['data']['order_item_id'] = service('uuid')->uuid4()->toString();
+        $data['data']['shipping_method_id'] = service('uuid')->uuid4()->toString();
         return $data;
     }
 }

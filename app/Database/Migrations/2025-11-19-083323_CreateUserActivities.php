@@ -4,36 +4,31 @@ namespace App\Database\Migrations;
 
 use CodeIgniter\Database\Migration;
 
-class CreateInventoryTransactions extends Migration
+class CreateUserActivities extends Migration
 {
     public function up()
     {
         $this->forge->addField([
-            'inventory_transaction_id' => [
+            'user_activity_id' => [
                 'type' => 'CHAR',
                 'constraint' => 36,
             ],
-            'user_id' => [
+            'customer_id' => [
                 'type' => 'CHAR',
                 'constraint' => 36,
+                'null' => true,
             ],
             'product_id' => [
                 'type' => 'CHAR',
                 'constraint' => 36,
+                'null' => true,
             ],
-            'transaction_type' => [
-                'type' => 'ENUM',
-                'constraint' => ['in', 'out'],
-            ],
-            'quantity' => [
-                'type' => 'INT',
-                'unsigned' => true,
-            ],
-            'transaction_date' => [
-                'type' => 'DATETIME',
+            'activity_type' => [
+                'type' => 'VARCHAR',
+                'constraint' => 50,
                 'null' => false,
             ],
-            'description' => [
+            'activity_details' => [
                 'type' => 'TEXT',
                 'null' => true,
             ],
@@ -47,21 +42,23 @@ class CreateInventoryTransactions extends Migration
             ],
             'deleted_at' => [
                 'type' => 'DATETIME',
-                'null' => true
+                'null' => true,
             ],
         ]);
 
-        $this->forge->addKey('inventory_transaction_id', true);
+        // Primary key
+        $this->forge->addKey('user_activity_id', true);
 
-        // Tambahkan foreign key
-        $this->forge->addForeignKey('product_id', 'products', 'product_id', 'CASCADE', 'CASCADE');
-        $this->forge->addForeignKey('user_id', 'users', 'user_id', 'CASCADE', 'CASCADE');
+        // Foreign keys
+        $this->forge->addForeignKey('customer_id', 'customers', 'customer_id', 'SET NULL', 'CASCADE');
+        $this->forge->addForeignKey('product_id', 'products', 'product_id', 'SET NULL', 'CASCADE');
 
-        $this->forge->createTable('inventory_transactions');
+        // Create table
+        $this->forge->createTable('user_activities');
     }
 
     public function down()
     {
-        $this->forge->dropTable('inventory_transactions');
+        $this->forge->dropTable('user_activities');
     }
 }

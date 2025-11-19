@@ -13,23 +13,23 @@ class CreateEyeExaminationsTable extends Migration
                 'type' => 'CHAR',
                 'constraint' => 36,
             ],
-            'customer_id'        => [
+            'customer_id' => [
                 'type' => 'CHAR',
                 'constraint' => 36,
             ],
-            'left_eye_sphere'    => [
+            'left_eye_sphere' => [
                 'type' => 'FLOAT',
                 'null' => true
             ],
-            'left_eye_cylinder'  => [
+            'left_eye_cylinder' => [
                 'type' => 'FLOAT',
                 'null' => true
             ],
-            'left_eye_axis'      => [
+            'left_eye_axis' => [
                 'type' => 'FLOAT',
                 'null' => true
             ],
-            'right_eye_sphere'   => [
+            'right_eye_sphere' => [
                 'type' => 'FLOAT',
                 'null' => true
             ],
@@ -37,28 +37,28 @@ class CreateEyeExaminationsTable extends Migration
                 'type' => 'FLOAT',
                 'null' => true
             ],
-            'right_eye_axis'     => [
+            'right_eye_axis' => [
                 'type' => 'FLOAT',
                 'null' => true
             ],
-            'symptoms'           => [
+            'symptoms' => [
                 'type' => 'TEXT',
                 'null' => true
             ], // Gejala mata
-            'diagnosis'          => [
+            'diagnosis' => [
                 'type' => 'VARCHAR',
                 'constraint' => 100,
                 'null' => true
             ], // e.g., "miopi", "astigmatisme"
             'created_at' => [
-                'type'    => 'DATETIME',
-                'null'    => true,
+                'type' => 'DATETIME',
+                'null' => true,
             ],
             'updated_at' => [
-                'type'    => 'DATETIME',
-                'null'    => true,
+                'type' => 'DATETIME',
+                'null' => true,
             ],
-            'deleted_at'  => [
+            'deleted_at' => [
                 'type' => 'DATETIME',
                 'null' => true
             ],

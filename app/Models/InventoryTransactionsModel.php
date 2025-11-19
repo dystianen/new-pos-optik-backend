@@ -4,23 +4,42 @@ namespace App\Models;
 
 use CodeIgniter\Model;
 
-class InventoryTransactionsModel extends Model
+class InventoryTransactionModel extends Model
 {
     protected $table            = 'inventory_transactions';
     protected $primaryKey       = 'inventory_transaction_id';
+    protected $useAutoIncrement = false;
+
     protected $returnType       = 'array';
     protected $useSoftDeletes   = true;
-    protected $protectFields    = true;
-    protected $allowedFields    = ['product_id', 'transaction_type', 'quantity', 'transaction_date', 'description', 'user_id', 'created_at', 'updated_at'];
 
-    protected bool $allowEmptyInserts = false;
+    protected $useTimestamps    = true;
+    protected $dateFormat       = 'datetime';
+    protected $createdField     = 'created_at';
+    protected $updatedField     = 'updated_at';
+    protected $deletedField     = 'deleted_at';
 
-    // Dates
-    protected $useTimestamps = true;
-    protected $dateFormat    = 'datetime';
-    protected $createdField  = 'created_at';
-    protected $updatedField  = 'updated_at';
-    protected $deletedField  = 'deleted_at';
+    protected $allowedFields = [
+        'inventory_transaction_id',
+        'product_id',
+        'transaction_type',
+        'quantity',
+        'transaction_date',
+        'description',
+        'user_id',
+        'created_at',
+        'updated_at',
+        'deleted_at',
+    ];
+
+    protected $validationRules = [
+        'product_id'        => 'required',
+        'transaction_type'  => 'required|in_list[in,out]',
+        'quantity'          => 'required|integer',
+        'transaction_date'  => 'required|valid_date',
+        'description'       => 'permit_empty',
+        'user_id'           => 'permit_empty',
+    ];
 
     protected $beforeInsert = ['generateUuid'];
 

@@ -4,10 +4,10 @@ namespace App\Models;
 
 use CodeIgniter\Model;
 
-class OrderItemModel extends Model
+class OrderItemLensModel extends Model
 {
-    protected $table            = 'order_items';
-    protected $primaryKey       = 'order_item_id';
+    protected $table            = 'order_item_lens';
+    protected $primaryKey       = 'order_item_lens_id';
     protected $useAutoIncrement = false;
 
     protected $returnType       = 'array';
@@ -20,23 +20,23 @@ class OrderItemModel extends Model
     protected $deletedField     = 'deleted_at';
 
     protected $allowedFields = [
+        'order_item_lens_id',
         'order_item_id',
-        'order_id',
-        'product_id',
-        'quantity',
-        'price',
+        'lens_type_id',
+        'price_addon',
     ];
 
     protected $validationRules = [
-        'quantity' => 'required|integer',
-        'price'    => 'required|decimal',
+        'order_item_id' => 'required',
+        'lens_type_id'  => 'required',
+        'price_addon'   => 'decimal',
     ];
 
     protected $beforeInsert = ['generateUuid'];
 
     protected function generateUuid(array $data)
     {
-        $data['data']['order_item_id'] = service('uuid')->uuid4()->toString();
+        $data['data']['order_item_lens_id'] = service('uuid')->uuid4()->toString();
         return $data;
     }
 }

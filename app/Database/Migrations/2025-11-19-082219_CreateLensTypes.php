@@ -4,23 +4,28 @@ namespace App\Database\Migrations;
 
 use CodeIgniter\Database\Migration;
 
-class CreateRolesTable extends Migration
+class CreateLensTypes extends Migration
 {
     public function up()
     {
         $this->forge->addField([
-            'role_id' => [
+            'lens_type_id' => [
                 'type' => 'CHAR',
                 'constraint' => 36,
             ],
-            'role_name' => [
+            'lens_type_name' => [
                 'type' => 'VARCHAR',
-                'constraint' => '100',
-                'unique' => TRUE
+                'constraint' => 50,
+                'null' => false,
             ],
-            'role_description' => [
+            'description' => [
                 'type' => 'TEXT',
-                'null' => TRUE
+                'null' => true,
+            ],
+            'price_addon' => [
+                'type' => 'DECIMAL',
+                'constraint' => '10,2',
+                'default' => 0.00,
             ],
             'created_at' => [
                 'type' => 'DATETIME',
@@ -32,16 +37,19 @@ class CreateRolesTable extends Migration
             ],
             'deleted_at' => [
                 'type' => 'DATETIME',
-                'null' => true
+                'null' => true,
             ],
         ]);
 
-        $this->forge->addKey('role_id', TRUE);
-        $this->forge->createTable('roles');
+        // Primary key
+        $this->forge->addKey('lens_type_id', true);
+
+        // Create table
+        $this->forge->createTable('lens_types');
     }
 
     public function down()
     {
-        $this->forge->dropTable('roles');
+        $this->forge->dropTable('lens_types');
     }
 }

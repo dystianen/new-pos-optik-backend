@@ -5,38 +5,28 @@ namespace App\Models;
 use CodeIgniter\Model;
 use Ramsey\Uuid\Uuid;
 
-class ProductCategoryModel extends Model
+class WishlistModel extends Model
 {
-    protected $table            = 'product_categories';
-    protected $primaryKey       = 'category_id';
+    protected $table = 'wishlists';
+    protected $primaryKey = 'wishlist_id';
     protected $useAutoIncrement = false;
-    protected $useSoftDeletes   = true;
 
     protected $allowedFields = [
-        'category_id',
-        'category_name',
-        'category_description',
+        'wishlist_id',
+        'customer_id',
+        'product_id',
         'created_at',
         'updated_at',
         'deleted_at',
     ];
 
-    // timestamps
     protected $useTimestamps = true;
     protected $createdField  = 'created_at';
     protected $updatedField  = 'updated_at';
     protected $deletedField  = 'deleted_at';
+    protected $useSoftDeletes = true;
 
-    // Validation
-    protected $validationRules = [
-        'category_name'        => 'required|max_length[50]',
-        'category_description' => 'permit_empty',
-    ];
-
-    protected $validationMessages = [];
-    protected $skipValidation     = false;
-
-    // UUID generator
+    // Auto-generate UUID
     protected $beforeInsert = ['generateUUID'];
 
     protected function generateUUID(array $data)

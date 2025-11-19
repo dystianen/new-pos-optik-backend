@@ -1,0 +1,44 @@
+<?php
+
+namespace App\Models;
+
+use CodeIgniter\Model;
+
+class ProductAttributeModel extends Model
+{
+    protected $table            = 'product_attributes';
+    protected $primaryKey       = 'attribute_id';
+    protected $useSoftDeletes   = true;
+
+    protected $useAutoIncrement = false;
+    protected $insertID         = '';
+
+    protected $useTimestamps    = true;
+    protected $dateFormat       = 'datetime';
+    protected $createdField     = 'created_at';
+    protected $updatedField     = 'updated_at';
+    protected $deletedField     = 'deleted_at';
+
+    protected $allowedFields = [
+        'attribute_id',
+        'attribute_name',
+        'attribute_type',
+    ];
+
+    protected $validationRules = [
+        'attribute_id'   => 'permit_empty|alpha_numeric_punct|min_length[1]|max_length[36]',
+        'attribute_name' => 'required|string|max_length[50]',
+        'attribute_type' => 'required|string|max_length[20]',
+    ];
+
+    protected $validationMessages = [];
+    protected $skipValidation     = false;
+
+    protected $beforeInsert = ['generateUuid'];
+
+    protected function generateUuid(array $data)
+    {
+        $data['data']['attribute_id'] = service('uuid')->uuid4()->toString();
+        return $data;
+    }
+}

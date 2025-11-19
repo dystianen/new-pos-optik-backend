@@ -4,30 +4,29 @@ namespace App\Database\Migrations;
 
 use CodeIgniter\Database\Migration;
 
-class CreateOrderItemsTable extends Migration
+class CreateOrderItemLens extends Migration
 {
     public function up()
     {
         $this->forge->addField([
+            'order_item_lens_id' => [
+                'type' => 'CHAR',
+                'constraint' => 36,
+            ],
             'order_item_id' => [
                 'type' => 'CHAR',
                 'constraint' => 36,
+                'null' => false,
             ],
-            'order_id' => [
+            'lens_type_id' => [
                 'type' => 'CHAR',
                 'constraint' => 36,
+                'null' => false,
             ],
-            'product_id' => [
-                'type' => 'CHAR',
-                'constraint' => 36,
-            ],
-            'quantity' => [
-                'type' => 'INT',
-                'constraint' => 11
-            ],
-            'price' => [
+            'price_addon' => [
                 'type' => 'DECIMAL',
-                'constraint' => '10,2'
+                'constraint' => '10,2',
+                'default' => 0.00,
             ],
             'created_at' => [
                 'type' => 'DATETIME',
@@ -39,18 +38,23 @@ class CreateOrderItemsTable extends Migration
             ],
             'deleted_at' => [
                 'type' => 'DATETIME',
-                'null' => true
+                'null' => true,
             ],
         ]);
 
-        $this->forge->addPrimaryKey('order_item_id');
-        $this->forge->addForeignKey('order_id', 'orders', 'order_id', 'CASCADE', 'CASCADE');
-        $this->forge->addForeignKey('product_id', 'products', 'product_id', 'CASCADE', 'CASCADE');
-        $this->forge->createTable('order_items');
+        // Primary key
+        $this->forge->addKey('order_item_lens_id', true);
+
+        // Foreign keys
+        $this->forge->addForeignKey('order_item_id', 'order_items', 'order_item_id', 'CASCADE', 'CASCADE');
+        $this->forge->addForeignKey('lens_type_id', 'lens_types', 'lens_type_id', 'CASCADE', 'CASCADE');
+
+        // Create table
+        $this->forge->createTable('order_item_lens');
     }
 
     public function down()
     {
-        $this->forge->dropTable('order_items');
+        $this->forge->dropTable('order_item_lens');
     }
 }

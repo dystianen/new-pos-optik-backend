@@ -4,16 +4,12 @@ namespace App\Database\Migrations;
 
 use CodeIgniter\Database\Migration;
 
-class CreateOrderItemsTable extends Migration
+class CreateProductVariants extends Migration
 {
     public function up()
     {
         $this->forge->addField([
-            'order_item_id' => [
-                'type' => 'CHAR',
-                'constraint' => 36,
-            ],
-            'order_id' => [
+            'variant_id' => [
                 'type' => 'CHAR',
                 'constraint' => 36,
             ],
@@ -21,13 +17,22 @@ class CreateOrderItemsTable extends Migration
                 'type' => 'CHAR',
                 'constraint' => 36,
             ],
-            'quantity' => [
-                'type' => 'INT',
-                'constraint' => 11
+            'variant_name' => [
+                'type' => 'VARCHAR',
+                'constraint' => 100,
             ],
             'price' => [
                 'type' => 'DECIMAL',
-                'constraint' => '10,2'
+                'constraint' => '10,2',
+            ],
+            'stock' => [
+                'type' => 'INT',
+                'constraint' => 11,
+            ],
+            'image_url' => [
+                'type' => 'VARCHAR',
+                'constraint' => 255,
+                'null' => true,
             ],
             'created_at' => [
                 'type' => 'DATETIME',
@@ -39,18 +44,22 @@ class CreateOrderItemsTable extends Migration
             ],
             'deleted_at' => [
                 'type' => 'DATETIME',
-                'null' => true
+                'null' => true,
             ],
         ]);
 
-        $this->forge->addPrimaryKey('order_item_id');
-        $this->forge->addForeignKey('order_id', 'orders', 'order_id', 'CASCADE', 'CASCADE');
+        // Menambahkan primary key
+        $this->forge->addKey('variant_id', true);
+
+        // Opsional: menambahkan foreign key ke tabel products
         $this->forge->addForeignKey('product_id', 'products', 'product_id', 'CASCADE', 'CASCADE');
-        $this->forge->createTable('order_items');
+
+        // Membuat tabel
+        $this->forge->createTable('product_variants');
     }
 
     public function down()
     {
-        $this->forge->dropTable('order_items');
+        $this->forge->dropTable('product_variants');
     }
 }

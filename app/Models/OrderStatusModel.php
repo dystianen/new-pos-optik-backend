@@ -4,10 +4,10 @@ namespace App\Models;
 
 use CodeIgniter\Model;
 
-class OrderItemModel extends Model
+class OrderStatusModel extends Model
 {
-    protected $table            = 'order_items';
-    protected $primaryKey       = 'order_item_id';
+    protected $table            = 'order_statuses';
+    protected $primaryKey       = 'status_id';
     protected $useAutoIncrement = false;
 
     protected $returnType       = 'array';
@@ -20,23 +20,22 @@ class OrderItemModel extends Model
     protected $deletedField     = 'deleted_at';
 
     protected $allowedFields = [
-        'order_item_id',
-        'order_id',
-        'product_id',
-        'quantity',
-        'price',
+        'status_id',
+        'status_code',
+        'status_name',
     ];
 
     protected $validationRules = [
-        'quantity' => 'required|integer',
-        'price'    => 'required|decimal',
+        'status_id'   => 'permit_empty|alpha_numeric_punct|min_length[1]|max_length[36]',
+        'status_code' => 'permit_empty|max_length[20]',
+        'status_name' => 'permit_empty|max_length[50]',
     ];
 
     protected $beforeInsert = ['generateUuid'];
 
     protected function generateUuid(array $data)
     {
-        $data['data']['order_item_id'] = service('uuid')->uuid4()->toString();
+        $data['data']['status_id'] = service('uuid')->uuid4()->toString();
         return $data;
     }
 }

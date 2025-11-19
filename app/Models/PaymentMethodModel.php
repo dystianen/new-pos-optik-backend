@@ -4,44 +4,41 @@ namespace App\Models;
 
 use CodeIgniter\Model;
 
-class ReviewModel extends Model
+class PaymentMethodModel extends Model
 {
-    protected $table            = 'reviews';
-    protected $primaryKey       = 'review_id';
+    protected $table            = 'payment_methods';
+    protected $primaryKey       = 'payment_method_id';
     protected $useAutoIncrement = false;
 
     protected $returnType       = 'array';
     protected $useSoftDeletes   = true;
-    protected $useTimestamps    = true;
 
+    protected $useTimestamps    = true;
     protected $dateFormat       = 'datetime';
     protected $createdField     = 'created_at';
     protected $updatedField     = 'updated_at';
     protected $deletedField     = 'deleted_at';
 
     protected $allowedFields = [
-        'review_id',
-        'customer_id',
-        'product_id',
-        'rating',
-        'comment',
+        'payment_method_id',
+        'method_name',
+        'method_type',
+        'is_active',
         'created_at',
         'updated_at',
-        'deleted_at',
     ];
 
     protected $validationRules = [
-        'customer_id' => 'required',
-        'product_id'  => 'required',
-        'rating'      => 'required|integer|greater_than_equal_to[1]|less_than_equal_to[5]',
-        'comment'     => 'permit_empty',
+        'method_name' => 'required|max_length[100]',
+        'method_type' => 'permit_empty|max_length[50]',
+        'is_active'   => 'permit_empty|in_list[0,1]',
     ];
 
     protected $beforeInsert = ['generateUuid'];
 
     protected function generateUuid(array $data)
     {
-        $data['data']['review_id'] = service('uuid')->uuid4()->toString();
+        $data['data']['payment_method_id'] = service('uuid')->uuid4()->toString();
         return $data;
     }
 }

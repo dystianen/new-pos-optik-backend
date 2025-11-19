@@ -5,38 +5,30 @@ namespace App\Models;
 use CodeIgniter\Model;
 use Ramsey\Uuid\Uuid;
 
-class ProductCategoryModel extends Model
+class UserActivityModel extends Model
 {
-    protected $table            = 'product_categories';
-    protected $primaryKey       = 'category_id';
+    protected $table = 'user_activities';
+    protected $primaryKey = 'user_activity_id';
     protected $useAutoIncrement = false;
-    protected $useSoftDeletes   = true;
 
     protected $allowedFields = [
-        'category_id',
-        'category_name',
-        'category_description',
+        'user_activity_id',
+        'customer_id',
+        'product_id',
+        'activity_type',
+        'activity_details',
         'created_at',
         'updated_at',
         'deleted_at',
     ];
 
-    // timestamps
     protected $useTimestamps = true;
     protected $createdField  = 'created_at';
     protected $updatedField  = 'updated_at';
     protected $deletedField  = 'deleted_at';
+    protected $useSoftDeletes = true;
 
-    // Validation
-    protected $validationRules = [
-        'category_name'        => 'required|max_length[50]',
-        'category_description' => 'permit_empty',
-    ];
-
-    protected $validationMessages = [];
-    protected $skipValidation     = false;
-
-    // UUID generator
+    // Generate UUID otomatis
     protected $beforeInsert = ['generateUUID'];
 
     protected function generateUUID(array $data)

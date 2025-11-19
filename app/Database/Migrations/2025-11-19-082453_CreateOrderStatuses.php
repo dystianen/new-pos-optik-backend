@@ -4,23 +4,24 @@ namespace App\Database\Migrations;
 
 use CodeIgniter\Database\Migration;
 
-class CreateRolesTable extends Migration
+class CreateOrderStatuses extends Migration
 {
     public function up()
     {
         $this->forge->addField([
-            'role_id' => [
+            'status_id' => [
                 'type' => 'CHAR',
                 'constraint' => 36,
             ],
-            'role_name' => [
-                'type' => 'VARCHAR',
-                'constraint' => '100',
-                'unique' => TRUE
+            'status_code' => [
+                'type'       => 'VARCHAR',
+                'constraint' => 20,
+                'null'       => false,
             ],
-            'role_description' => [
-                'type' => 'TEXT',
-                'null' => TRUE
+            'status_name' => [
+                'type'       => 'VARCHAR',
+                'constraint' => 50,
+                'null'       => false,
             ],
             'created_at' => [
                 'type' => 'DATETIME',
@@ -32,16 +33,19 @@ class CreateRolesTable extends Migration
             ],
             'deleted_at' => [
                 'type' => 'DATETIME',
-                'null' => true
+                'null' => true,
             ],
         ]);
 
-        $this->forge->addKey('role_id', TRUE);
-        $this->forge->createTable('roles');
+        // Primary key
+        $this->forge->addKey('status_id', true);
+
+        // Create table
+        $this->forge->createTable('order_statuses');
     }
 
     public function down()
     {
-        $this->forge->dropTable('roles');
+        $this->forge->dropTable('order_statuses');
     }
 }

@@ -9,21 +9,27 @@ class CreateProductCategoriesTable extends Migration
     public function up()
     {
         $this->forge->addField([
-            'category_id'          => [
+            'category_id' => [
                 'type' => 'CHAR',
                 'constraint' => 36,
             ],
-            'category_name'        => ['type' => 'VARCHAR', 'constraint' => 50],
-            'category_description' => ['type' => 'TEXT', 'null' => true],
-            'created_at'  => [
+            'category_name' => [
+                'type' => 'VARCHAR',
+                'constraint' => 50
+            ],
+            'category_description' => [
+                'type' => 'TEXT',
+                'null' => true
+            ],
+            'created_at' => [
                 'type' => 'DATETIME',
                 'null' => true
             ],
-            'updated_at'  => [
+            'updated_at' => [
                 'type' => 'DATETIME',
                 'null' => true
             ],
-            'deleted_at'  => [
+            'deleted_at' => [
                 'type' => 'DATETIME',
                 'null' => true
             ],

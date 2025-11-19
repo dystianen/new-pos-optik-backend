@@ -4,38 +4,41 @@ namespace App\Database\Migrations;
 
 use CodeIgniter\Database\Migration;
 
-class CreateInventoryTransactions extends Migration
+class CreateProductDiscounts extends Migration
 {
     public function up()
     {
         $this->forge->addField([
-            'inventory_transaction_id' => [
-                'type' => 'CHAR',
-                'constraint' => 36,
-            ],
-            'user_id' => [
+            'product_discount_id' => [
                 'type' => 'CHAR',
                 'constraint' => 36,
             ],
             'product_id' => [
                 'type' => 'CHAR',
                 'constraint' => 36,
-            ],
-            'transaction_type' => [
-                'type' => 'ENUM',
-                'constraint' => ['in', 'out'],
-            ],
-            'quantity' => [
-                'type' => 'INT',
-                'unsigned' => true,
-            ],
-            'transaction_date' => [
-                'type' => 'DATETIME',
                 'null' => false,
             ],
-            'description' => [
-                'type' => 'TEXT',
+            'discount_type' => [
+                'type' => 'VARCHAR',
+                'constraint' => 20,
+                'null' => false,
+            ],
+            'discount_value' => [
+                'type' => 'DECIMAL',
+                'constraint' => '10,2',
+                'null' => false,
+            ],
+            'start_date' => [
+                'type' => 'DATETIME',
                 'null' => true,
+            ],
+            'end_date' => [
+                'type' => 'DATETIME',
+                'null' => true,
+            ],
+            'is_active' => [
+                'type' => 'BOOLEAN',
+                'default' => true,
             ],
             'created_at' => [
                 'type' => 'DATETIME',
@@ -47,21 +50,22 @@ class CreateInventoryTransactions extends Migration
             ],
             'deleted_at' => [
                 'type' => 'DATETIME',
-                'null' => true
+                'null' => true,
             ],
         ]);
 
-        $this->forge->addKey('inventory_transaction_id', true);
+        // Primary key
+        $this->forge->addKey('product_discount_id', true);
 
-        // Tambahkan foreign key
+        // Foreign key
         $this->forge->addForeignKey('product_id', 'products', 'product_id', 'CASCADE', 'CASCADE');
-        $this->forge->addForeignKey('user_id', 'users', 'user_id', 'CASCADE', 'CASCADE');
 
-        $this->forge->createTable('inventory_transactions');
+        // Create table
+        $this->forge->createTable('product_discounts');
     }
 
     public function down()
     {
-        $this->forge->dropTable('inventory_transactions');
+        $this->forge->dropTable('product_discounts');
     }
 }

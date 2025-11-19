@@ -4,33 +4,39 @@ namespace App\Database\Migrations;
 
 use CodeIgniter\Database\Migration;
 
-class CreateReviews extends Migration
+class CreateCartItems extends Migration
 {
     public function up()
     {
         $this->forge->addField([
-            'review_id' => [
+            'cart_item_id' => [
                 'type' => 'CHAR',
                 'constraint' => 36,
             ],
-            'customer_id' => [
+            'cart_id' => [
                 'type' => 'CHAR',
                 'constraint' => 36,
-                'null' => true,
+                'null' => false,
             ],
             'product_id' => [
                 'type' => 'CHAR',
                 'constraint' => 36,
-                'null' => false,
+                'null' => true,
             ],
-            'rating' => [
+            'variant_id' => [
+                'type' => 'CHAR',
+                'constraint' => 36,
+                'null' => true,
+            ],
+            'quantity' => [
                 'type' => 'INT',
                 'constraint' => 11,
-                'null' => false,
+                'default' => 1,
             ],
-            'comment' => [
-                'type' => 'TEXT',
-                'null' => true,
+            'price' => [
+                'type' => 'DECIMAL',
+                'constraint' => '10,2',
+                'null' => false,
             ],
             'created_at' => [
                 'type' => 'DATETIME',
@@ -47,18 +53,19 @@ class CreateReviews extends Migration
         ]);
 
         // Primary key
-        $this->forge->addKey('review_id', true);
+        $this->forge->addKey('cart_item_id', true);
 
         // Foreign keys
-        $this->forge->addForeignKey('customer_id', 'customers', 'customer_id', 'SET NULL', 'CASCADE');
-        $this->forge->addForeignKey('product_id', 'products', 'product_id', 'CASCADE', 'CASCADE');
+        $this->forge->addForeignKey('cart_id', 'carts', 'cart_id', 'CASCADE', 'CASCADE');
+        $this->forge->addForeignKey('product_id', 'products', 'product_id', 'SET NULL', 'CASCADE');
+        $this->forge->addForeignKey('variant_id', 'product_variants', 'variant_id', 'SET NULL', 'CASCADE');
 
         // Create table
-        $this->forge->createTable('reviews');
+        $this->forge->createTable('cart_items');
     }
 
     public function down()
     {
-        $this->forge->dropTable('reviews');
+        $this->forge->dropTable('cart_items');
     }
 }

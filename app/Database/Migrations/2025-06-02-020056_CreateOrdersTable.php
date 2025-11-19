@@ -10,44 +10,36 @@ class CreateOrdersTable extends Migration
     public function up()
     {
         $this->forge->addField([
-            'order_id'            => [
+            'order_id' => [
                 'type' => 'CHAR',
                 'constraint' => 36,
             ],
-            'customer_id'   => [
+            'customer_id' => [
                 'type' => 'CHAR',
                 'constraint' => 36,
             ],
-            'order_date'    => [
-                'type' => 'TIMESTAMP',
-                'default' => new RawSql('CURRENT_TIMESTAMP'),
+            'status_id' => [
+                'type' => 'CHAR',
+                'constraint' => 36,
             ],
-            'grand_total'   => [
-                'type' => 'DECIMAL',
-                'constraint' => '10,2',
-                'null' => true
-            ],
-            'total_price'   => [
-                'type' => 'DECIMAL',
-                'constraint' => '10,2'
-            ],
-            'proof_of_payment' => [
-                'type' => 'VARCHAR',
-                'constraint' => 255,
-                'null' => true,
-            ],
-            'address' => [
-                'type' => 'TEXT',
-                'null' => true,
+            'shipping_method_id' => [
+                'type' => 'CHAR',
+                'constraint' => 36,
             ],
             'shipping_costs' => [
                 'type' => 'DECIMAL',
                 'constraint' => '10,2',
                 'null' => true
             ],
-            'status' => [
-                'type' => 'ENUM',
-                'constraint' => ['cart', 'pending', 'waiting_confirmation', 'paid', 'shipped', 'done', 'cancelled']
+            'coupon_discount' => [
+                'type' => 'DECIMAL',
+                'constraint' => '10,2',
+                'null' => true
+            ],
+            'grand_total' => [
+                'type' => 'VARCHAR',
+                'constraint' => 255,
+                'null' => true,
             ],
             'created_at' => [
                 'type'    => 'DATETIME',

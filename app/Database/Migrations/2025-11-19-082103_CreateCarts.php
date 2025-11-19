@@ -4,12 +4,12 @@ namespace App\Database\Migrations;
 
 use CodeIgniter\Database\Migration;
 
-class CreateReviews extends Migration
+class CreateCarts extends Migration
 {
     public function up()
     {
         $this->forge->addField([
-            'review_id' => [
+            'cart_id' => [
                 'type' => 'CHAR',
                 'constraint' => 36,
             ],
@@ -18,19 +18,10 @@ class CreateReviews extends Migration
                 'constraint' => 36,
                 'null' => true,
             ],
-            'product_id' => [
-                'type' => 'CHAR',
-                'constraint' => 36,
-                'null' => false,
-            ],
-            'rating' => [
-                'type' => 'INT',
-                'constraint' => 11,
-                'null' => false,
-            ],
-            'comment' => [
-                'type' => 'TEXT',
-                'null' => true,
+            'status' => [
+                'type' => 'ENUM',
+                'constraint' => ['active', 'abandoned', 'saved'],
+                'default' => 'active',
             ],
             'created_at' => [
                 'type' => 'DATETIME',
@@ -47,18 +38,15 @@ class CreateReviews extends Migration
         ]);
 
         // Primary key
-        $this->forge->addKey('review_id', true);
-
-        // Foreign keys
+        $this->forge->addKey('cart_id', true);
         $this->forge->addForeignKey('customer_id', 'customers', 'customer_id', 'SET NULL', 'CASCADE');
-        $this->forge->addForeignKey('product_id', 'products', 'product_id', 'CASCADE', 'CASCADE');
 
         // Create table
-        $this->forge->createTable('reviews');
+        $this->forge->createTable('carts');
     }
 
     public function down()
     {
-        $this->forge->dropTable('reviews');
+        $this->forge->dropTable('carts');
     }
 }

@@ -4,33 +4,29 @@ namespace App\Database\Migrations;
 
 use CodeIgniter\Database\Migration;
 
-class CreateReviews extends Migration
+class CreateShippingRates extends Migration
 {
     public function up()
     {
         $this->forge->addField([
-            'review_id' => [
+            'rate_id' => [
                 'type' => 'CHAR',
                 'constraint' => 36,
             ],
-            'customer_id' => [
-                'type' => 'CHAR',
-                'constraint' => 36,
-                'null' => true,
-            ],
-            'product_id' => [
+            'shipping_method_id' => [
                 'type' => 'CHAR',
                 'constraint' => 36,
                 'null' => false,
             ],
-            'rating' => [
-                'type' => 'INT',
-                'constraint' => 11,
+            'destination' => [
+                'type' => 'VARCHAR',
+                'constraint' => 200,
                 'null' => false,
             ],
-            'comment' => [
-                'type' => 'TEXT',
-                'null' => true,
+            'cost' => [
+                'type' => 'DECIMAL',
+                'constraint' => '10,2',
+                'null' => false,
             ],
             'created_at' => [
                 'type' => 'DATETIME',
@@ -47,18 +43,17 @@ class CreateReviews extends Migration
         ]);
 
         // Primary key
-        $this->forge->addKey('review_id', true);
+        $this->forge->addKey('rate_id', true);
 
-        // Foreign keys
-        $this->forge->addForeignKey('customer_id', 'customers', 'customer_id', 'SET NULL', 'CASCADE');
-        $this->forge->addForeignKey('product_id', 'products', 'product_id', 'CASCADE', 'CASCADE');
+        // Foreign key ke shipping_methods
+        $this->forge->addForeignKey('shipping_method_id', 'shipping_methods', 'shipping_method_id', 'CASCADE', 'CASCADE');
 
         // Create table
-        $this->forge->createTable('reviews');
+        $this->forge->createTable('shipping_rates');
     }
 
     public function down()
     {
-        $this->forge->dropTable('reviews');
+        $this->forge->dropTable('shipping_rates');
     }
 }
