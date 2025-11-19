@@ -48,7 +48,7 @@
                 <td><?= $order['customer_name'] ?></td>
                 <td><?= $order['customer_email'] ?></td>
                 <td><?= $order['customer_phone'] ?></td>
-                <td><?= date('d/m/Y H:i', strtotime($order['order_date'])) ?></td>
+                <td><?= date('d/m/Y H:i', strtotime($order['created_at'])) ?></td>
                 <td><?= number_format($order['total_price'], 0, ',', '.') ?></td>
                 <td>
                   <?php if (!empty($order['proof_of_payment'])): ?>

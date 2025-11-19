@@ -4,20 +4,19 @@ namespace App\Controllers;
 
 use App\Controllers\BaseController;
 use App\Models\CustomerModel;
-use App\Models\InventoryTransactionsModel;
+use App\Models\InventoryTransactionModel;
 use App\Models\OrderModel;
 use App\Models\ProductModel;
-use DateTime;
 
 class DashboardController extends BaseController
 {
-    protected $customerModel, $productModel, $inventoryTransactionsModel, $ordersModel;
+    protected $customerModel, $productModel, $InventoryTransactionModel, $ordersModel;
 
     public function __construct()
     {
         $this->customerModel = new CustomerModel();
         $this->productModel = new ProductModel();
-        $this->inventoryTransactionsModel = new InventoryTransactionsModel();
+        $this->InventoryTransactionModel = new InventoryTransactionModel();
         $this->ordersModel = new OrderModel();
     }
 
@@ -27,19 +26,22 @@ class DashboardController extends BaseController
         $totalCustomers = $this->customerModel->countAllResults();
 
         // Total Selling dari Inventory Transactions (unit)
-        $totalSellingUnits = $this->inventoryTransactionsModel
+        $totalSellingUnits = $this->InventoryTransactionModel
             ->selectSum('quantity')
             ->where('transaction_type', 'out')
             ->first()['quantity'] ?? 0;
 
         // Total Selling dari Orders (rupiah)
         $totalSellingRupiah = $this->ordersModel
-            ->selectSum('total_price')
-            ->whereIn('status', ['paid', 'shipped'])
-            ->first()['total_price'] ?? 0;
+            ->selectSum('o.grand_total')
+            ->from('orders o')
+            ->join('order_statuses os', 'o.status_id = os.status_id')
+            ->whereIn('os.status_name', ['paid', 'shipped'])
+            ->first()['grand_total'] ?? 0;
+
 
         // Monthly Sales (Units)
-        $monthlySalesUnits = $this->inventoryTransactionsModel
+        $monthlySalesUnits = $this->InventoryTransactionModel
             ->select("MONTH(created_at) AS month, SUM(quantity) AS total")
             ->where('transaction_type', 'out')
             ->where('YEAR(created_at)', date('Y'))
@@ -49,9 +51,11 @@ class DashboardController extends BaseController
 
         // Monthly Sales (Rupiah)
         $monthlySalesRupiah = $this->ordersModel
-            ->select("MONTH(order_date) AS month, SUM(total_price) AS total")
-            ->whereIn('status', ['paid', 'shipped'])
-            ->where('YEAR(order_date)', date('Y'))
+            ->select("MONTH(o.created_at) AS month, SUM(o.grand_total) AS total")
+            ->from('orders o')
+            ->join('order_statuses os', 'o.status_id = os.status_id')
+            ->whereIn('os.status_name', ['paid', 'shipped'])
+            ->where('YEAR(o.created_at)', date('Y'))
             ->groupBy('month')
             ->orderBy('month', 'ASC')
             ->findAll();
@@ -76,18 +80,18 @@ class DashboardController extends BaseController
         }
 
         // Total Barang Masuk dan Keluar
-        $totalIn = $this->inventoryTransactionsModel
+        $totalIn = $this->InventoryTransactionModel
             ->selectSum('quantity')
             ->where('transaction_type', 'in')
             ->first()['quantity'] ?? 0;
 
-        $totalOut = $this->inventoryTransactionsModel
+        $totalOut = $this->InventoryTransactionModel
             ->selectSum('quantity')
             ->where('transaction_type', 'out')
             ->first()['quantity'] ?? 0;
 
         // Chart Barang Masuk / Keluar per bulan (6 bulan terakhir)
-        $monthlyInOutRaw = $this->inventoryTransactionsModel
+        $monthlyInOutRaw = $this->InventoryTransactionModel
             ->select("MONTH(transaction_date) AS month, 
               SUM(CASE WHEN transaction_type = 'in' THEN quantity ELSE 0 END) AS total_in, 
               SUM(CASE WHEN transaction_type = 'out' THEN quantity ELSE 0 END) AS total_out")

@@ -83,7 +83,7 @@
 
     <div class="collapse navbar-collapse w-auto" id="sidenav-collapse-main">
       <ul class="navbar-nav">
-        <?php $roleId = session('role_id'); ?>
+        <?php $roleName = session('role_name'); ?>
 
         <!-- Menu untuk semua role -->
         <li class="nav-item">
@@ -96,7 +96,7 @@
         </li>
 
         <!-- Admin (1) dan Cashier (3) -->
-        <?php if (in_array($roleId, [1, 3])) : ?>
+        <?php if (in_array($roleName, ['admin', 'cashier'])) : ?>
           <li class="nav-item">
             <a class="nav-link <?= $currentURI === 'orders' ? 'active' : '' ?>" href="/orders">
               <div class="me-2 d-flex align-items-center justify-content-center">
@@ -108,7 +108,7 @@
         <?php endif; ?>
 
         <!-- Admin (1) dan Optometrist (2) -->
-        <?php if (in_array($roleId, [1, 2])) : ?>
+        <?php if (in_array($roleName, ['admin', 'optometrist'])) : ?>
           <li class="nav-item">
             <a class="nav-link <?= $currentURI === 'eye-examinations' ? 'active' : '' ?>" href="/eye-examinations">
               <div class="me-2 d-flex align-items-center justify-content-center">
@@ -120,7 +120,7 @@
         <?php endif; ?>
 
         <!-- Admin (1) dan Inventory (4) -->
-        <?php if (in_array($roleId, [1, 4])) : ?>
+        <?php if (in_array($roleName, ['admin', 'inventory'])) : ?>
           <li class="nav-item">
             <a class="nav-link <?= $currentURI === 'inventory' ? 'active' : '' ?>" href="/inventory">
               <div class="me-2 d-flex align-items-center justify-content-center">
@@ -150,7 +150,7 @@
         <?php endif; ?>
 
         <!-- Admin (1) -->
-        <?php if (in_array($roleId, [1])) : ?>
+        <?php if (in_array($roleName, ['admin'])) : ?>
           <li class="nav-item">
             <a class="nav-link <?= $currentURI === 'customers' ? 'active' : '' ?>" href="/customers">
               <div class="me-2 d-flex align-items-center justify-content-center">

@@ -41,7 +41,7 @@
         <input
           type="text"
           class="form-control"
-          value="<?= isset($order) ? date('d/m/Y H:i', strtotime(esc($order['order_date']))) : '' ?>"
+          value="<?= isset($order) ? date('d/m/Y H:i', strtotime(esc($order['created_at']))) : '' ?>"
           disabled>
       </div>
 

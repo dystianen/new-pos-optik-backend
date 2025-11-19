@@ -3,16 +3,16 @@
 namespace App\Controllers;
 
 use App\Controllers\BaseController;
-use App\Models\InventoryTransactionsModel;
+use App\Models\InventoryTransactionModel;
 use App\Models\ProductModel;
 
 class InventoryTransactionsController extends BaseController
 {
-    protected $inventoryTransactionsModel, $productModel;
+    protected $InventoryTransactionModel, $productModel;
 
     public function __construct()
     {
-        $this->inventoryTransactionsModel = new InventoryTransactionsModel();
+        $this->InventoryTransactionModel = new InventoryTransactionModel();
         $this->productModel = new ProductModel();
     }
 
@@ -23,7 +23,7 @@ class InventoryTransactionsController extends BaseController
         $totalLimit = 10;
         $offset = ($currentPage - 1) * $totalLimit;
 
-        $builder = $this->inventoryTransactionsModel
+        $builder = $this->InventoryTransactionModel
             ->join('products p1', 'inventory_transactions.product_id = p1.product_id')
             ->join('product_categories p2', 'p1.category_id = p2.category_id')
             ->orderBy('transaction_date', 'DESC');
@@ -64,7 +64,7 @@ class InventoryTransactionsController extends BaseController
         $data['products'] = $this->productModel->findAll();
 
         if ($id) {
-            $transaction = $this->inventoryTransactionsModel->find($id);
+            $transaction = $this->InventoryTransactionModel->find($id);
             if (!$transaction) {
                 return redirect()->to('/inventory')->with('failed', 'Transaction not found.');
             }
@@ -116,7 +116,7 @@ class InventoryTransactionsController extends BaseController
         try {
             if ($id) {
                 // Get old transaction
-                $oldTransaction = $this->inventoryTransactionsModel->find($id);
+                $oldTransaction = $this->InventoryTransactionModel->find($id);
 
                 if (!$oldTransaction) {
                     $this->db->transRollback();
@@ -146,7 +146,7 @@ class InventoryTransactionsController extends BaseController
                 }
 
                 $this->productModel->update($productId, ['product_stock' => $currentStock]);
-                $this->inventoryTransactionsModel->update($id, $data);
+                $this->InventoryTransactionModel->update($id, $data);
                 $message = 'Transaction updated successfully!';
             } else {
                 // INSERT baru
@@ -161,7 +161,7 @@ class InventoryTransactionsController extends BaseController
                 }
 
                 $this->productModel->update($productId, ['product_stock' => $currentStock]);
-                $this->inventoryTransactionsModel->insert($data);
+                $this->InventoryTransactionModel->insert($data);
                 $message = 'Transaction created successfully!';
             }
 
@@ -176,7 +176,7 @@ class InventoryTransactionsController extends BaseController
 
     public function delete($id)
     {
-        $this->inventoryTransactionsModel->delete($id);
+        $this->InventoryTransactionModel->delete($id);
         return redirect()->to('/inventory')->with('success', 'Inventory transaction deleted successfully.');
     }
 }

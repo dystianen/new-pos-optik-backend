@@ -52,7 +52,6 @@ class CartController extends BaseController
         if (!$order) {
             $orderData = [
                 'customer_id' => $customerId,
-                'order_date' => date('Y-m-d H:i:s'),
                 'grand_total' => 0,
                 'total_price' => 0,
                 'shipping_costs' => $shipping_cost,

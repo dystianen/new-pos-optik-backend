@@ -4,6 +4,7 @@ namespace App\Controllers;
 
 use App\Controllers\BaseController;
 use App\Models\CustomerModel;
+use App\Models\RoleModel;
 use App\Models\UserModel;
 use CodeIgniter\API\ResponseTrait;
 use CodeIgniter\HTTP\ResponseInterface;
@@ -12,12 +13,13 @@ use Firebase\JWT\JWT;
 class AuthController extends BaseController
 {
     use ResponseTrait;
-    protected $customerModel, $userModel;
+    protected $customerModel, $userModel, $roleModel;
 
     public function __construct()
     {
         $this->customerModel = new CustomerModel();
         $this->userModel = new UserModel();
+        $this->roleModel = new RoleModel();
         helper(['form', 'url']); // load form & URL helper
     }
 
@@ -33,6 +35,7 @@ class AuthController extends BaseController
         $password = $this->request->getVar('password');
 
         $data = $this->userModel->where('user_email', $email)->first();
+        $role = $this->roleModel->where('role_id', $data['role_id'])->first();
 
         if ($data) {
             $pass = $data['password'];
@@ -42,7 +45,7 @@ class AuthController extends BaseController
                     'id' => $data['user_id'],
                     'full_name' => $data['user_name'],
                     'email' => $data['user_email'],
-                    'role_id' => $data['role_id'],
+                    'role_name' => $role['role_name'],
                     'isLoggedIn' => TRUE
                 ];
 

@@ -3,7 +3,7 @@
 namespace App\Controllers;
 
 use App\Controllers\BaseController;
-use App\Models\InventoryTransactionsModel;
+use App\Models\InventoryTransactionModel;
 use App\Models\OrderItemModel;
 use App\Models\OrderModel;
 use App\Models\ProductModel;
@@ -12,13 +12,13 @@ use CodeIgniter\API\ResponseTrait;
 class OrderController extends BaseController
 {
     use ResponseTrait;
-    protected $orderModel, $orderItemModel, $inventoryTransactionsModel, $productModel;
+    protected $orderModel, $orderItemModel, $InventoryTransactionModel, $productModel;
 
     public function __construct()
     {
         $this->orderModel = new OrderModel();
         $this->orderItemModel = new OrderItemModel();
-        $this->inventoryTransactionsModel = new InventoryTransactionsModel();
+        $this->InventoryTransactionModel = new InventoryTransactionModel();
         $this->productModel = new ProductModel();
     }
 
@@ -34,7 +34,7 @@ class OrderController extends BaseController
         $orders = $this->orderModel
             ->where('customer_id', $customerId)
             ->whereNotIn('status', ['cart'])
-            ->orderBy('order_date', 'DESC')
+            ->orderBy('created_at', 'DESC')
             ->findAll();
 
         if (!$orders) {
@@ -132,7 +132,7 @@ class OrderController extends BaseController
             $this->orderModel->update($order['order_id'], [
                 'address' => $shippingAddress,
                 'proof_of_payment' => null,
-                'order_date' => date('Y-m-d H:i:s'),
+                'created_at' => date('Y-m-d H:i:s'),
                 'status' => 'pending',
                 'shipping_costs' => $shippingCost,
                 'grand_total' => $finalTotal,
@@ -141,7 +141,7 @@ class OrderController extends BaseController
 
             // Proses inventory dan pengurangan stok
             foreach ($orderDetails as $item) {
-                $this->inventoryTransactionsModel->insert([
+                $this->InventoryTransactionModel->insert([
                     'user_id' => 5,
                     'product_id' => $item['product_id'],
                     'quantity' => $item['quantity'],
@@ -248,7 +248,7 @@ class OrderController extends BaseController
 
         $builder = $this->orderModel
             ->join('customers', 'customers.customer_id = orders.customer_id')
-            ->orderBy('order_date', 'DESC');
+            ->orderBy('orders.created_at', 'DESC');
 
         if (!empty($search)) {
             $builder->groupStart()
@@ -326,7 +326,7 @@ class OrderController extends BaseController
         // Ambil order terakhir (atau bisa disesuaikan)
         $order = $this->orderModel
             ->where('customer_id', $customerId)
-            ->orderBy('order_date', 'DESC')
+            ->orderBy('created_at', 'DESC')
             ->first();
 
         if (!$order) {
