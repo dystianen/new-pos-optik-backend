@@ -10,10 +10,8 @@ class CreateRolesTable extends Migration
     {
         $this->forge->addField([
             'role_id' => [
-                'type' => 'INT',
-                'constraint' => 11,
-                'unsigned' => TRUE,
-                'auto_increment' => TRUE
+                'type' => 'CHAR',
+                'constraint' => 36,
             ],
             'role_name' => [
                 'type' => 'VARCHAR',

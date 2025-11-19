@@ -10,10 +10,8 @@ class CreateCustomersTable extends Migration
     {
         $this->forge->addField([
             'customer_id'          => [
-                'type'           => 'INT',
-                'constraint'     => 11,
-                'unsigned'       => true,
-                'auto_increment' => true,
+                'type' => 'CHAR',
+                'constraint' => 36,
             ],
             'customer_name'        => [
                 'type' => 'VARCHAR',

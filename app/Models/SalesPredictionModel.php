@@ -11,6 +11,14 @@ class SalesPredictionModel extends Model
     protected $allowedFields    = ['product_id', 'prediction_date', 'predicted_quantity', 'confidence_score'];
     protected $useTimestamps    = true;
 
+    protected $beforeInsert = ['generateUuid'];
+
+    protected function generateUuid(array $data)
+    {
+        $data['data']['sales_prediction_id'] = service('uuid')->uuid4()->toString();
+        return $data;
+    }
+
     // Relasi ke product
     public function product()
     {

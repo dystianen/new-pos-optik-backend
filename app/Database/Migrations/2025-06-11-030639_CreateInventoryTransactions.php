@@ -10,14 +10,12 @@ class CreateInventoryTransactions extends Migration
     {
         $this->forge->addField([
             'inventory_transaction_id' => [
-                'type' => 'INT',
-                'constraint' => 11,
-                'unsigned' => TRUE,
-                'auto_increment' => TRUE
+                'type' => 'CHAR',
+                'constraint' => 36,
             ],
             'product_id' => [
-                'type'           => 'INT',
-                'unsigned'       => true,
+                'type' => 'CHAR',
+                'constraint' => 36,
             ],
             'transaction_type' => [
                 'type'       => 'ENUM',
@@ -36,8 +34,8 @@ class CreateInventoryTransactions extends Migration
                 'null' => true,
             ],
             'user_id' => [
-                'type'           => 'INT',
-                'unsigned'       => true,
+                'type' => 'CHAR',
+                'constraint' => 36,
             ],
             'created_at' => [
                 'type'    => 'DATETIME',

@@ -10,10 +10,8 @@ class CreateUsers extends Migration
     {
         $this->forge->addField([
             'user_id' => [
-                'type' => 'INT',
-                'constraint' => 11,
-                'unsigned' => TRUE,
-                'auto_increment' => TRUE
+                'type' => 'CHAR',
+                'constraint' => 36,
             ],
             'user_name' => [
                 'type' => 'VARCHAR',
@@ -29,9 +27,8 @@ class CreateUsers extends Migration
                 'constraint' => '255'
             ],
             'role_id' => [
-                'type' => 'INT',
-                'constraint' => 11,
-                'unsigned' => TRUE
+                'type' => 'CHAR',
+                'constraint' => 36,
             ],
             'created_at' => [
                 'type'    => 'DATETIME',
@@ -56,6 +53,7 @@ class CreateUsers extends Migration
 
     public function down()
     {
+        $this->db->query('ALTER TABLE users DROP FOREIGN KEY fk_users_roles');
         $this->forge->dropTable('users');
     }
 }

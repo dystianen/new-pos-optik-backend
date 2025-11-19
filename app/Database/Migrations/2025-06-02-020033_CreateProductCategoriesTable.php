@@ -10,10 +10,8 @@ class CreateProductCategoriesTable extends Migration
     {
         $this->forge->addField([
             'category_id'          => [
-                'type'           => 'INT',
-                'constraint'     => 11,
-                'unsigned'       => true,
-                'auto_increment' => true,
+                'type' => 'CHAR',
+                'constraint' => 36,
             ],
             'category_name'        => ['type' => 'VARCHAR', 'constraint' => 50],
             'category_description' => ['type' => 'TEXT', 'null' => true],

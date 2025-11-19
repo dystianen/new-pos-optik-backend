@@ -3,11 +3,14 @@
 namespace App\Database\Seeds;
 
 use CodeIgniter\Database\Seeder;
+use App\Models\ProductCategoryModel;
 
 class ProductCategorySeeder extends Seeder
 {
     public function run()
     {
+        $categoryModel = new ProductCategoryModel();
+
         $data = [
             [
                 'category_name' => 'Frame Kacamata',
@@ -27,6 +30,8 @@ class ProductCategorySeeder extends Seeder
             ]
         ];
 
-        $this->db->table('product_categories')->insertBatch($data);
+        foreach ($data as $row) {
+            $categoryModel->insert($row);
+        }
     }
 }

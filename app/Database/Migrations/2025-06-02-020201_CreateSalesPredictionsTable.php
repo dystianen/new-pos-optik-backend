@@ -9,14 +9,15 @@ class CreateSalesPredictionsTable extends Migration
     public function up()
     {
         $this->forge->addField([
-            'sales_prediction_id'                 => [
-                'type'           => 'INT',
-                'constraint'     => 11,
-                'unsigned'       => true,
-                'auto_increment' => true,
+            'sales_prediction_id' => [
+                'type' => 'CHAR',
+                'constraint' => 36,
             ],
-            'product_id'        => ['type' => 'INT', 'constraint' => 11, 'unsigned' => true],
-            'prediction_date'   => ['type' => 'DATE'],
+            'product_id' => [
+                'type' => 'CHAR',
+                'constraint' => 36,
+            ],
+            'prediction_date' => ['type' => 'DATE'],
             'predicted_quantity' => ['type' => 'FLOAT'], // Hasil prediksi ML
             'confidence_score'  => ['type' => 'FLOAT'], // Akurasi prediksi (0-1)
             'created_at' => [

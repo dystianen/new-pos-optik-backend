@@ -2,12 +2,15 @@
 
 namespace App\Database\Seeds;
 
+use App\Models\RoleModel;
 use CodeIgniter\Database\Seeder;
 
 class RoleSeeder extends Seeder
 {
     public function run()
     {
+        $roleModel = new RoleModel();
+
         $data = [
             [
                 'role_name'        => 'admin',
@@ -31,6 +34,8 @@ class RoleSeeder extends Seeder
             ]
         ];
 
-        $this->db->table('roles')->insertBatch($data);
+        foreach ($data as $row) {
+            $roleModel->insert($row);
+        }
     }
 }

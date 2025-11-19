@@ -8,7 +8,6 @@ class InventoryTransactionsModel extends Model
 {
     protected $table            = 'inventory_transactions';
     protected $primaryKey       = 'inventory_transaction_id';
-    protected $useAutoIncrement = true;
     protected $returnType       = 'array';
     protected $useSoftDeletes   = true;
     protected $protectFields    = true;
@@ -23,20 +22,11 @@ class InventoryTransactionsModel extends Model
     protected $updatedField  = 'updated_at';
     protected $deletedField  = 'deleted_at';
 
-    // Validation
-    protected $validationRules      = [];
-    protected $validationMessages   = [];
-    protected $skipValidation       = false;
-    protected $cleanValidationRules = true;
+    protected $beforeInsert = ['generateUuid'];
 
-    // Callbacks
-    protected $allowCallbacks = true;
-    protected $beforeInsert   = [];
-    protected $afterInsert    = [];
-    protected $beforeUpdate   = [];
-    protected $afterUpdate    = [];
-    protected $beforeFind     = [];
-    protected $afterFind      = [];
-    protected $beforeDelete   = [];
-    protected $afterDelete    = [];
+    protected function generateUuid(array $data)
+    {
+        $data['data']['inventory_transaction_id'] = service('uuid')->uuid4()->toString();
+        return $data;
+    }
 }

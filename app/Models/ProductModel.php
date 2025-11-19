@@ -27,6 +27,14 @@ class ProductModel extends Model
         'product_image_url'
     ];
 
+    protected $beforeInsert = ['generateUuid'];
+
+    protected function generateUuid(array $data)
+    {
+        $data['data']['product_id'] = service('uuid')->uuid4()->toString();
+        return $data;
+    }
+
     // Dates
     protected $useTimestamps = true;
     protected $dateFormat    = 'datetime';

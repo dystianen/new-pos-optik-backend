@@ -2,18 +2,32 @@
 
 namespace App\Database\Seeds;
 
+use App\Models\ProductModel;
 use CodeIgniter\Database\Seeder;
 
 class ProductSeeder extends Seeder
 {
     public function run()
     {
+        $productModel = new ProductModel();
+
+        // Ambil semua category_id dari database
+        $categories = $this->db->table('product_categories')->select('category_id')->get()->getResultArray();
+
+        if (!empty($categories)) {
+            // Buat mapping category berdasarkan urutan
+            $frame     = $categories[0]['category_id'] ?? null;
+            $lensa     = $categories[1]['category_id'] ?? null;
+            $softlens  = $categories[2]['category_id'] ?? null;
+            $aksesoris = $categories[3]['category_id'] ?? null;
+        }
+
         $data = [
             [
-                'product_id'    => 1,
-                'category_id'   => 3,
+                // product_id otomatis dibuat oleh beforeInsert
+                'category_id'   => $softlens,
                 'product_name'  => 'SoftLens Natural Look',
-                'product_price' => 150000.00,
+                'product_price' => 150000,
                 'product_stock' => 50,
                 'product_brand' => 'OptiClear',
                 'product_image_url' => '/uploads/products/1749105020_0cd8fea486d980dd21a7.jpg',
@@ -27,96 +41,66 @@ class ProductSeeder extends Seeder
                 'uv_protection' => 'Yes',
                 'color'         => 'Brown',
                 'coating'       => 'Anti-dryness',
-                'created_at'    => '2025-06-05 06:30:20',
-                'updated_at'    => '2025-06-05 06:30:20',
             ],
             [
-                'product_id'    => 2,
-                'category_id'   => 1,
+                'category_id'   => $frame,
                 'product_name'  => 'Frame Kacamata Classic',
-                'product_price' => 350000.00,
+                'product_price' => 350000,
                 'product_stock' => 15,
                 'product_brand' => 'RayBan',
                 'product_image_url' => '/uploads/products/1749107117_8bf942cedb69bf1969fa.jpg',
                 'model'         => 'Classic RB001',
                 'duration'      => 'Daily',
                 'material'      => 'Metal',
-                'base_curve'    => '',
-                'diameter'      => '',
-                'power_range'   => '',
-                'water_content' => '',
                 'uv_protection' => 'No',
-                'color'         => 'Black',
-                'coating'       => 'Anti-Rust',
-                'created_at'    => '2025-06-05 06:58:38',
-                'updated_at'    => '2025-06-05 07:05:17',
+                'color'   => 'Black',
+                'coating' => 'Anti-Rust',
             ],
             [
-                'product_id'    => 3,
-                'category_id'   => 1,
+                'category_id'   => $frame,
                 'product_name'  => 'Frame Kacamata Trendy',
-                'product_price' => 420000.00,
+                'product_price' => 420000,
                 'product_stock' => 10,
                 'product_brand' => 'Oakley',
                 'product_image_url' => '/uploads/products/1749107080_b75632094defdc1a38d9.jpg',
                 'model'         => 'TRNDY2025',
-                'duration'      => 'Daily',
                 'material'      => 'Plastic',
-                'base_curve'    => '',
-                'diameter'      => '',
-                'power_range'   => '',
-                'water_content' => '',
                 'uv_protection' => 'No',
-                'color'         => 'Clear',
-                'coating'       => 'Scratch Resistant',
-                'created_at'    => '2025-06-05 07:00:38',
-                'updated_at'    => '2025-06-05 07:17:23',
+                'color'   => 'Clear',
+                'coating' => 'Scratch Resistant',
             ],
             [
-                'product_id'    => 4,
-                'category_id'   => 2,
+                'category_id'   => $lensa,
                 'product_name'  => 'Lensa Anti Radiasi',
-                'product_price' => 500000.00,
+                'product_price' => 500000,
                 'product_stock' => 25,
                 'product_brand' => 'Essilor',
                 'product_image_url' => '/uploads/products/1749106940_2cc036dad924f15c3105.jpg',
                 'model'         => 'AR-Blue',
-                'duration'      => 'Daily',
                 'material'      => 'Polycarbonate',
-                'base_curve'    => '',
-                'diameter'      => '',
                 'power_range'   => '-2.00 to +2.00',
-                'water_content' => '',
                 'uv_protection' => 'Yes',
-                'color'         => 'Clear',
-                'coating'       => 'Anti-Reflective',
-                'created_at'    => '2025-06-05 07:02:20',
-                'updated_at'    => '2025-06-05 07:02:20',
+                'color'   => 'Clear',
+                'coating' => 'Anti-Reflective',
             ],
             [
-                'product_id'    => 5,
-                'category_id'   => 2,
+                'category_id'   => $lensa,
                 'product_name'  => 'Lensa Progresif',
-                'product_price' => 800000.00,
+                'product_price' => 800000,
                 'product_stock' => 12,
                 'product_brand' => 'Zeiss',
                 'product_image_url' => '/uploads/products/1749107278_afb9a0acacf5f81438b6.jpg',
                 'model'         => 'SmartLife',
-                'duration'      => 'Daily',
                 'material'      => 'Glass',
-                'base_curve'    => '',
-                'diameter'      => '',
                 'power_range'   => '-1.50 to +3.50',
-                'water_content' => '',
                 'uv_protection' => 'Yes',
-                'color'         => 'Clear',
-                'coating'       => 'Blue Cut',
-                'created_at'    => '2025-06-05 07:10:00',
-                'updated_at'    => '2025-06-05 07:10:00',
+                'color'   => 'Clear',
+                'coating' => 'Blue Cut',
             ],
         ];
 
-        // Insert ke database
-        $this->db->table('products')->insertBatch($data);
+        foreach ($data as $row) {
+            $productModel->insert($row);
+        }
     }
 }

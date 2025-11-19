@@ -2,6 +2,7 @@
 
 namespace App\Database\Seeds;
 
+use App\Models\CustomerModel;
 use CodeIgniter\Database\Seeder;
 use Faker\Factory;
 
@@ -9,6 +10,7 @@ class CustomerSeeder extends Seeder
 {
     public function run()
     {
+        $customerModel = new CustomerModel();
         $faker = Factory::create('id_ID');
 
         $eyeConditions = [
@@ -18,7 +20,6 @@ class CustomerSeeder extends Seeder
             'astigmatisme'
         ];
 
-        $customers = [];
         for ($i = 0; $i < 20; $i++) {
             $eyeHistory = [
                 'left_eye'  => [
@@ -35,7 +36,7 @@ class CustomerSeeder extends Seeder
                 'condition'    => $faker->randomElement($eyeConditions)
             ];
 
-            $customers[] = [
+            $data = [
                 'customer_name'         => $faker->name,
                 'customer_email'        => $faker->unique()->email,
                 'customer_password'     => password_hash('123', PASSWORD_DEFAULT),
@@ -52,8 +53,8 @@ class CustomerSeeder extends Seeder
                 'created_at'   => date('Y-m-d H:i:s'),
                 'updated_at'   => date('Y-m-d H:i:s')
             ];
-        }
 
-        $this->db->table('customers')->insertBatch($customers);
+            $customerModel->insert($data);
+        }
     }
 }

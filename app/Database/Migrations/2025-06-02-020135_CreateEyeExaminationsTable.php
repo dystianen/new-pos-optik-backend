@@ -10,15 +10,12 @@ class CreateEyeExaminationsTable extends Migration
     {
         $this->forge->addField([
             'eye_examination_id' => [
-                'type'           => 'INT',
-                'constraint'     => 11,
-                'unsigned'       => true,
-                'auto_increment' => true,
+                'type' => 'CHAR',
+                'constraint' => 36,
             ],
             'customer_id'        => [
-                'type' => 'INT',
-                'constraint' => 11,
-                'unsigned' => true
+                'type' => 'CHAR',
+                'constraint' => 36,
             ],
             'left_eye_sphere'    => [
                 'type' => 'FLOAT',

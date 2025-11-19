@@ -31,7 +31,7 @@ $routes->group('api', ['filter' => 'cors'], function ($routes) {
     $routes->get('/', 'ProductController::apiProduct');
     $routes->get('new-eyewear', 'ProductController::apiListNewEyewear');
     $routes->get('recommendations', 'ProductController::apiProductRecommendations');
-    $routes->get('(:num)', 'ProductController::apiProductDetail/$1');
+    $routes->get('(:any)', 'ProductController::apiProductDetail/$1');
     $routes->get('category', 'ProductCategoryController::apiListProductCategory');
   });
 
@@ -40,7 +40,7 @@ $routes->group('api', ['filter' => 'cors'], function ($routes) {
     $routes->post('add-to-cart', 'CartController::addToCart');
     $routes->get('', 'CartController::getCart');
     $routes->get('total-cart', 'CartController::getTotalCart');
-    $routes->delete('delete/(:num)', 'CartController::deleteCartItem/$1');
+    $routes->delete('delete/(:any)', 'CartController::deleteCartItem/$1');
   });
 
   // ORDER
@@ -60,54 +60,54 @@ $routes->group('products', ['filter' => 'authGuard'], function ($routes) {
   $routes->get('/', 'ProductController::webIndex');
   $routes->get('form', 'ProductController::form');
   $routes->post('save', 'ProductController::save');
-  $routes->post('delete/(:num)', 'ProductController::webDelete/$1');
+  $routes->post('delete/(:any)', 'ProductController::webDelete/$1');
 });
 
 $routes->group('product-category', ['filter' => 'authGuard'], function ($routes) {
   $routes->get('/', 'ProductCategoryController::webIndex');
   $routes->get('form', 'ProductCategoryController::form');
   $routes->post('save', 'ProductCategoryController::save');
-  $routes->post('delete/(:num)', 'ProductCategoryController::webDelete/$1');
+  $routes->post('delete/(:any)', 'ProductCategoryController::webDelete/$1');
 });
 
 $routes->group('inventory', ['filter' => 'authGuard'], function ($routes) {
   $routes->get('', 'InventoryTransactionsController::webIndex');
   $routes->get('form', 'InventoryTransactionsController::form');
   $routes->post('save', 'InventoryTransactionsController::save');
-  $routes->post('delete/(:num)', 'InventoryTransactionsController::delete/$1');
+  $routes->post('delete/(:any)', 'InventoryTransactionsController::delete/$1');
 });
 
 $routes->group('customers', ['filter' => 'authGuard'], function ($routes) {
   $routes->get('', 'CustomerController::index');
   $routes->get('form', 'CustomerController::form');
   $routes->post('save', 'CustomerController::save');
-  $routes->post('delete/(:num)', 'CustomerController::delete/$1');
+  $routes->post('delete/(:any)', 'CustomerController::delete/$1');
 });
 
 $routes->group('eye-examinations', ['filter' => 'authGuard'], function ($routes) {
   $routes->get('', 'EyeExaminationController::index');
   $routes->get('form', 'EyeExaminationController::form');
   $routes->post('save', 'EyeExaminationController::save');
-  $routes->post('delete/(:num)', 'EyeExaminationController::delete/$1');
+  $routes->post('delete/(:any)', 'EyeExaminationController::delete/$1');
 });
 
 $routes->group('users', ['filter' => 'authGuard'], function ($routes) {
   $routes->get('', 'UserController::index');
   $routes->get('form', 'UserController::form');
   $routes->post('save', 'UserController::save');
-  $routes->post('delete/(:num)', 'UserController::delete/$1');
+  $routes->post('delete/(:any)', 'UserController::delete/$1');
 });
 
 $routes->group('orders', ['filter' => 'authGuard'], function ($routes) {
   $routes->get('', 'OrderController::index');
   $routes->get('form', 'OrderController::form');
   $routes->post('save', 'OrderController::save');
-  $routes->post('delete/(:num)', 'OrderController::delete/$1');
+  $routes->post('delete/(:any)', 'OrderController::delete/$1');
 });
 
 $routes->group('roles', ['filter' => 'authGuard'], function ($routes) {
   $routes->get('', 'RoleController::index');
   $routes->get('form', 'RoleController::form');
   $routes->post('save', 'RoleController::save');
-  $routes->post('delete/(:num)', 'RoleController::delete/$1');
+  $routes->post('delete/(:any)', 'RoleController::delete/$1');
 });

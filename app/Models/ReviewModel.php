@@ -17,6 +17,14 @@ class ReviewModel extends Model
     protected $updatedField  = 'updated_at';
     protected $deletedField  = 'deleted_at';
 
+    protected $beforeInsert = ['generateUuid'];
+
+    protected function generateUuid(array $data)
+    {
+        $data['data']['review_id'] = service('uuid')->uuid4()->toString();
+        return $data;
+    }
+
     // Relasi ke product
     public function product()
     {

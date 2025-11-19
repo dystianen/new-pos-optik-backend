@@ -24,4 +24,12 @@ class EyeExaminationModel extends Model
     protected $createdField  = 'created_at';
     protected $updatedField  = 'updated_at';
     protected $deletedField  = 'deleted_at';
+
+    protected $beforeInsert = ['generateUuid'];
+
+    protected function generateUuid(array $data)
+    {
+        $data['data']['eye_examination_id'] = service('uuid')->uuid4()->toString();
+        return $data;
+    }
 }

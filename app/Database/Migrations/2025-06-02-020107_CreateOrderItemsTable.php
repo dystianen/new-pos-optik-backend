@@ -10,13 +10,17 @@ class CreateOrderItemsTable extends Migration
     {
         $this->forge->addField([
             'order_item_id'           => [
-                'type'           => 'INT',
-                'constraint'     => 11,
-                'unsigned'       => true,
-                'auto_increment' => true,
+                'type' => 'CHAR',
+                'constraint' => 36,
             ],
-            'order_id'     => ['type' => 'INT', 'constraint' => 11, 'unsigned' => true],
-            'product_id'    => ['type' => 'INT', 'constraint' => 11, 'unsigned' => true],
+            'order_id'     => [
+                'type' => 'CHAR',
+                'constraint' => 36,
+            ],
+            'product_id'    => [
+                'type' => 'CHAR',
+                'constraint' => 36,
+            ],
             'quantity'      => ['type' => 'INT', 'constraint' => 11],
             'price'         => ['type' => 'DECIMAL', 'constraint' => '10,2'],
             'created_at' => [

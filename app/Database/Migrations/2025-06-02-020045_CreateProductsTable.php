@@ -10,12 +10,13 @@ class CreateProductsTable extends Migration
     {
         $this->forge->addField([
             'product_id'           => [
-                'type'           => 'INT',
-                'constraint'     => 11,
-                'unsigned'       => true,
-                'auto_increment' => true,
+                'type' => 'CHAR',
+                'constraint' => 36,
             ],
-            'category_id'           => ['type' => 'INT', 'constraint' => 11, 'unsigned' => true],
+            'category_id'           => [
+                'type' => 'CHAR',
+                'constraint' => 36,
+            ],
             'product_name'          => ['type' => 'VARCHAR', 'constraint' => 100],
             'product_price'         => ['type' => 'DECIMAL', 'constraint' => '10,2'],
             'product_stock'         => ['type' => 'INT', 'constraint' => 11, 'default' => 0],

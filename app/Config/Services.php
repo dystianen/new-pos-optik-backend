@@ -29,4 +29,9 @@ class Services extends BaseService
      *     return new \CodeIgniter\Example();
      * }
      */
+
+    public static function uuid()
+    {
+        return new \Ramsey\Uuid\UuidFactory();
+    }
 }

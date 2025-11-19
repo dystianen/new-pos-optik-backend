@@ -11,15 +11,12 @@ class CreateOrdersTable extends Migration
     {
         $this->forge->addField([
             'order_id'            => [
-                'type'           => 'INT',
-                'constraint'     => 11,
-                'unsigned'       => true,
-                'auto_increment' => true,
+                'type' => 'CHAR',
+                'constraint' => 36,
             ],
             'customer_id'   => [
-                'type' => 'INT',
-                'constraint' => 11,
-                'unsigned' => true
+                'type' => 'CHAR',
+                'constraint' => 36,
             ],
             'order_date'    => [
                 'type' => 'TIMESTAMP',
