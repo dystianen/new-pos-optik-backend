@@ -80,30 +80,67 @@
         <!-- DYNAMIC ATTRIBUTES -->
         <div class="col-12 mt-4">
           <h5>Product Attributes</h5>
-          <p class="text-muted">Fill attribute values. To use an attribute as variant option, toggle "Use as variant".</p>
-          <div class="row">
+          <p class="text-muted">Isi attribute dan pilih mana yang ingin dijadikan varian.</p>
+
+          <div class="row g-4"> <!-- g-4 = jarak antar kolom dan baris -->
 
             <?php foreach ($attributes as $attr): ?>
+
               <?php
-              $val = $productAttributeValues[$attr['attribute_id']] ?? '';
-              // store previous choice whether this attribute is used as variant
-              $isVariant = in_array($attr['attribute_id'], $variantAttributes ?? []) ? 'checked' : '';
+              // value pav (untuk edit)
+              $existingValue = $pav_values[$attr['attribute_id']]['value'] ?? '';
+
+              // apakah attribute ini digunakan sebagai variant
+              $isVariant = in_array($attr['attribute_id'], $selected_attributes ?? []) ? 'checked' : '';
+
+              // selected values (checkbox)
+              $selectedValues = $selected_attribute_values[$attr['attribute_id']] ?? [];
               ?>
 
-              <div class="col-12 col-md-6 mb-3">
-                <label class="form-label"><?php echo esc($attr['attribute_name']) ?></label>
-                <div class="input-group">
-                  <input type="text" class="form-control"
-                    name="attributes[<?= $attr['attribute_id'] ?>]"
-                    placeholder="Enter <?= strtolower($attr['attribute_name']) ?> (comma separated for multiple)"
-                    value="<?= esc($val) ?>">
-                  <div class="input-group-text">
-                    <label class="mb-0">
-                      <input type="checkbox" name="variant_attributes[]" value="<?= $attr['attribute_id'] ?>" <?= $isVariant ?>> Use as variant
-                    </label>
+              <div class="col-12 col-md-6"> <!-- 2 kolom di desktop, 1 kolom di HP -->
+                <div class="p-3 border rounded-3 h-100">
+
+                  <!-- NAMA ATTRIBUTE + USE AS VARIANT -->
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <label class="fw-bold mb-1"><?= esc($attr['attribute_name']) ?></label>
+
+                    <div class="form-check form-switch">
+                      <input
+                        class="form-check-input"
+                        type="checkbox"
+                        name="variant_attributes[]"
+                        value="<?= $attr['attribute_id'] ?>"
+                        <?= $isVariant ?>>
+                      <label class="form-check-label">Variant</label>
+                    </div>
                   </div>
+
+                  <!-- INPUT TEXT -->
+                  <input
+                    type="text"
+                    class="form-control mb-3"
+                    name="attributes[<?= $attr['attribute_id'] ?>]"
+                    placeholder="Enter <?= strtolower($attr['attribute_name']) ?>"
+                    value="<?= esc($existingValue) ?>">
+
+                  <!-- CHECKBOX ATTRIBUTE VALUES -->
+                  <?php if (!empty($attr['values'])): ?>
+                    <div class="mt-2">
+                      <?php foreach ($attr['values'] as $val): ?>
+                        <div class="form-check form-check-inline mb-2">
+                          <input
+                            class="form-check-input"
+                            type="checkbox"
+                            name="attribute_values[<?= $attr['attribute_id'] ?>][]"
+                            value="<?= esc($val['value']) ?>"
+                            <?= in_array($val['value'], $selectedValues) ? 'checked' : '' ?>>
+                          <label class="form-check-label"><?= esc($val['value']) ?></label>
+                        </div>
+                      <?php endforeach; ?>
+                    </div>
+                  <?php endif; ?>
+
                 </div>
-                <small class="text-muted">For example: Red,Blue,Black</small>
               </div>
 
             <?php endforeach; ?>
@@ -160,9 +197,6 @@
     // REHYDRATE VARIANTS FROM PHP
     const existingVariants = <?= isset($variants) ? json_encode($variants) : '[]' ?>;
     const pavValues = <?= isset($pav_values) ? json_encode($pav_values) : '[]' ?>;
-    console.log({
-      existingVariants
-    })
 
     function getVariantAttributes() {
       const checked = Array.from(document.querySelectorAll('input[name="variant_attributes[]"]:checked'));
@@ -283,8 +317,8 @@
           </td>
 
           <td>
-            <img src="/uploads/products/${v.variant_image.url}" width="50" height="50">
-            <input type="file" name="variants[${idx}][image]" accept=".jpg,.jpeg,.png" class="form-control form-control-sm mt-1">
+          <input type="file" name="variants[${idx}][image]" accept=".jpg,.jpeg,.png" class="form-control form-control-sm mb-1">
+          <img src="/uploads/products/${v.variant_image.url}" width="50">
           </td>
 
           <td>
@@ -299,6 +333,12 @@
         tr.appendChild(hidden);
 
         variantTableBody.appendChild(tr);
+      });
+
+      document.querySelectorAll('.remove-variant').forEach(btn => {
+        btn.addEventListener('click', function() {
+          this.closest('tr').remove();
+        });
       });
     }
 

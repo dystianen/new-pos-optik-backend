@@ -284,11 +284,11 @@ class ProductController extends BaseController
 
         $id = $this->request->getVar('id');
 
-        // --- DATA STATIC ---
+        // --- STATIC DATA ---
         $data['categories'] = $this->categoryModel->findAll();
         $data['attributes'] = $this->attributeModel->findAll();
 
-        // Jika tidak ada ID → berarti create product
+        // CREATE PRODUCT
         if (!$id) {
             return view('products/v_form', $data);
         }
@@ -307,7 +307,7 @@ class ProductController extends BaseController
         // ------------------------------------------------------------------
         $images = $this->productImageModel
             ->where('product_id', $id)
-            ->where('is_primary', 1) // hanya gambar produk utama
+            ->where('is_primary', 1)
             ->where('deleted_at', null)
             ->orderBy('sort_order', 'ASC')
             ->findAll();
@@ -322,8 +322,7 @@ class ProductController extends BaseController
             ->where('deleted_at', null)
             ->findAll();
 
-        // Format array agar mudah digunakan di form:
-        // $data['pav_values'][attribute_id] = value
+        // Format: pav_values[attribute_id] = [pav_id, value]
         $pavValues = [];
         foreach ($pav as $row) {
             $pavValues[$row['attribute_id']] = [
@@ -334,6 +333,18 @@ class ProductController extends BaseController
         $data['pav_values'] = $pavValues;
 
         // ------------------------------------------------------------------
+        // (NEW) — SELECTED ATTRIBUTE IDs
+        // ------------------------------------------------------------------
+        $selectedAttributes = array_unique(array_column($pav, 'attribute_id'));
+        $data['selected_attributes'] = $selectedAttributes;
+
+        // ------------------------------------------------------------------
+        // (NEW) — SELECTED ATTRIBUTE VALUES
+        // ------------------------------------------------------------------
+        $selectedAttributeValues = array_column($pav, 'value');
+        $data['selected_attribute_values'] = $selectedAttributeValues;
+
+        // ------------------------------------------------------------------
         // 4. PRODUCT VARIANTS
         // ------------------------------------------------------------------
         $variants = $this->variantModel
@@ -341,11 +352,10 @@ class ProductController extends BaseController
             ->where('deleted_at', null)
             ->findAll();
 
-        // Ambil mapping pv_value
         foreach ($variants as &$v) {
             $variantId = $v['variant_id'];
 
-            // mapping PAV
+            // Mapping ke PAV
             $pvValues = $this->pvValueModel
                 ->where('variant_id', $variantId)
                 ->where('deleted_at', null)
@@ -353,9 +363,7 @@ class ProductController extends BaseController
 
             $v['pav_mapping'] = array_column($pvValues, 'pav_id');
 
-            // ===============================
-            // GET VARIANT IMAGE
-            // ===============================
+            // Variant Image
             $variantImage = $this->variantImageModel
                 ->select('product_images.*')
                 ->join('product_images', 'product_images.product_image_id = product_variant_images.product_image_id')
@@ -368,13 +376,8 @@ class ProductController extends BaseController
 
         $data['variants'] = $variants;
 
-        // dd($data);
-        // ------------------------------------------------------------------
-        // DONE → RETURN VIEW
-        // ------------------------------------------------------------------
         return view('products/v_form', $data);
     }
-
 
     public function save()
     {
