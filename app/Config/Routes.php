@@ -70,6 +70,13 @@ $routes->group('product-category', ['filter' => 'authGuard'], function ($routes)
   $routes->post('delete/(:any)', 'ProductCategoryController::webDelete/$1');
 });
 
+$routes->group('product-attribute', ['filter' => 'authGuard'], function ($routes) {
+  $routes->get('/', 'ProductAttributeController::webIndex');
+  $routes->get('form', 'ProductAttributeController::form');
+  $routes->post('save', 'ProductAttributeController::save');
+  $routes->post('delete/(:any)', 'ProductAttributeController::webDelete/$1');
+});
+
 $routes->group('inventory', ['filter' => 'authGuard'], function ($routes) {
   $routes->get('', 'InventoryTransactionsController::webIndex');
   $routes->get('form', 'InventoryTransactionsController::form');
