@@ -318,7 +318,7 @@
 
           <td>
           <input type="file" name="variants[${idx}][image]" accept=".jpg,.jpeg,.png" class="form-control form-control-sm mb-1">
-          <img src="/uploads/products/${v.variant_image.url}" width="50">
+          <img src="/uploads/products/${v.variant_image.url}" width="30">
           </td>
 
           <td>
