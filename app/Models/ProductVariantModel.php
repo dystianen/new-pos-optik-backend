@@ -25,7 +25,6 @@ class ProductVariantModel extends Model
         'variant_name',
         'price',
         'stock',
-        'image_url',
     ];
 
     protected $validationRules = [
@@ -34,7 +33,6 @@ class ProductVariantModel extends Model
         'variant_name'  => 'required|string|max_length[100]',
         'price'         => 'required|decimal',
         'stock'         => 'required|integer',
-        'image_url'     => 'permit_empty|string|max_length[255]',
     ];
 
     protected $validationMessages = [];

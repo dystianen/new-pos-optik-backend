@@ -29,11 +29,6 @@ class CreateProductVariants extends Migration
                 'type' => 'INT',
                 'constraint' => 11,
             ],
-            'image_url' => [
-                'type' => 'VARCHAR',
-                'constraint' => 255,
-                'null' => true,
-            ],
             'created_at' => [
                 'type' => 'DATETIME',
                 'null' => true,
