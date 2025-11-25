@@ -34,7 +34,6 @@
             <th>Brand</th>
             <th>Price</th>
             <th>Stock</th>
-            <th>Image URL</th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -54,9 +53,6 @@
                 <td><?= $product['product_brand'] ?></td>
                 <td><?= $product['product_price'] ?></td>
                 <td><?= $product['product_stock'] ?></td>
-                <td>
-                  <img src="<?= base_url() . esc($product['product_image_url']) ?>" alt="image" width="70" height="70" style="border-radius: 15px">
-                </td>
                 <td>
                   <a href="<?= base_url('/products/form?id=' . $product['product_id']) ?>" class="btn btn-sm btn-warning">Edit</a>
                   <form action="<?= base_url('/products/delete/' . $product['product_id']) ?>" method="post" style="display:inline-block;">

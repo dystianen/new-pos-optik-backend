@@ -3,19 +3,37 @@
 namespace App\Controllers;
 
 use App\Models\CustomerModel;
+use App\Models\ProductAttributeModel;
+use App\Models\ProductAttributeValueModel;
 use App\Models\ProductCategoryModel;
+use App\Models\ProductImageModel;
 use App\Models\ProductModel;
+use App\Models\ProductVariantImageModel;
+use App\Models\ProductVariantModel;
+use App\Models\ProductVariantValueModel;
 use CodeIgniter\HTTP\ResponseInterface;
 
 class ProductController extends BaseController
 {
-    protected $productModel, $categoryModel, $customerModel;
+    protected $productModel;
+    protected $productImageModel;
+    protected $attributeModel;
+    protected $pavModel;
+    protected $variantModel;
+    protected $pvValueModel;
+    protected $categoryModel;
+    protected $variantImageModel;
 
     public function __construct()
     {
         $this->productModel = new ProductModel();
+        $this->productImageModel = new ProductImageModel();
         $this->categoryModel = new ProductCategoryModel();
-        $this->customerModel = new CustomerModel();
+        $this->attributeModel = new ProductAttributeModel();
+        $this->pavModel = new ProductAttributeValueModel();
+        $this->variantModel = new ProductVariantModel();
+        $this->variantImageModel = new ProductVariantImageModel();
+        $this->pvValueModel = new ProductVariantValueModel();
     }
 
     // =======================
@@ -46,7 +64,6 @@ class ProductController extends BaseController
 
         return $this->response->setJSON($response);
     }
-
 
     // GET /api/product/recommendations
     public function apiProductRecommendations()
@@ -145,8 +162,6 @@ class ProductController extends BaseController
         return $this->response->setJSON($response);
     }
 
-
-
     // GET /api/products/{id}
     public function apiProductDetail($id)
     {
@@ -221,6 +236,8 @@ class ProductController extends BaseController
     // GET /products
     public function webIndex()
     {
+        $attributes = $this->attributeModel->findAll();
+
         $currentPage = $this->request->getVar('page') ? (int)$this->request->getVar('page') : 1;
         $totalLimit = 10;
         $offset = ($currentPage - 1) * $totalLimit;
@@ -248,6 +265,7 @@ class ProductController extends BaseController
         $totalPages = ceil($totalRows / $totalLimit);
 
         $data = [
+            "attributes" => $attributes,
             "products" => $products,
             "pager" => [
                 "totalPages" => $totalPages,
@@ -262,76 +280,327 @@ class ProductController extends BaseController
 
     public function form()
     {
-
         $data = [];
-        $id = $this->request->getVar('id');
-        $categories = $this->categoryModel->findAll();
-        $data['categories'] = $categories;
 
-        if ($id) {
-            $product = $this->productModel->find($id);
-            if (!$product) {
-                return redirect()->to('/product-category')->with('failed', 'Transaction not found.');
-            }
-            $data['product'] = $product;
+        $id = $this->request->getVar('id');
+
+        // --- DATA STATIC ---
+        $data['categories'] = $this->categoryModel->findAll();
+        $data['attributes'] = $this->attributeModel->findAll();
+
+        // Jika tidak ada ID → berarti create product
+        if (!$id) {
+            return view('products/v_form', $data);
         }
 
+        // ------------------------------------------------------------------
+        // 1. PRODUCT
+        // ------------------------------------------------------------------
+        $product = $this->productModel->find($id);
+        if (!$product) {
+            return redirect()->to('/products')->with('failed', 'Product not found.');
+        }
+        $data['product'] = $product;
+
+        // ------------------------------------------------------------------
+        // 2. PRODUCT IMAGES
+        // ------------------------------------------------------------------
+        $images = $this->productImageModel
+            ->where('product_id', $id)
+            ->where('is_primary', 1) // hanya gambar produk utama
+            ->where('deleted_at', null)
+            ->orderBy('sort_order', 'ASC')
+            ->findAll();
+
+        $data['product_images'] = $images;
+
+        // ------------------------------------------------------------------
+        // 3. PRODUCT ATTRIBUTE VALUES (PAV)
+        // ------------------------------------------------------------------
+        $pav = $this->pavModel
+            ->where('product_id', $id)
+            ->where('deleted_at', null)
+            ->findAll();
+
+        // Format array agar mudah digunakan di form:
+        // $data['pav_values'][attribute_id] = value
+        $pavValues = [];
+        foreach ($pav as $row) {
+            $pavValues[$row['attribute_id']] = [
+                'pav_id' => $row['pav_id'],
+                'value'  => $row['value'],
+            ];
+        }
+        $data['pav_values'] = $pavValues;
+
+        // ------------------------------------------------------------------
+        // 4. PRODUCT VARIANTS
+        // ------------------------------------------------------------------
+        $variants = $this->variantModel
+            ->where('product_id', $id)
+            ->where('deleted_at', null)
+            ->findAll();
+
+        // Ambil mapping pv_value
+        foreach ($variants as &$v) {
+            $variantId = $v['variant_id'];
+
+            // mapping PAV
+            $pvValues = $this->pvValueModel
+                ->where('variant_id', $variantId)
+                ->where('deleted_at', null)
+                ->findAll();
+
+            $v['pav_mapping'] = array_column($pvValues, 'pav_id');
+
+            // ===============================
+            // GET VARIANT IMAGE
+            // ===============================
+            $variantImage = $this->variantImageModel
+                ->select('product_images.*')
+                ->join('product_images', 'product_images.product_image_id = product_variant_images.product_image_id')
+                ->where('product_variant_images.variant_id', $variantId)
+                ->where('product_images.deleted_at', null)
+                ->first();
+
+            $v['variant_image'] = $variantImage;
+        }
+
+        $data['variants'] = $variants;
+
+        // dd($data);
+        // ------------------------------------------------------------------
+        // DONE → RETURN VIEW
+        // ------------------------------------------------------------------
         return view('products/v_form', $data);
     }
 
+
     public function save()
     {
-        $id = $this->request->getVar('id');
+        $db = \Config\Database::connect();
+        $request = $this->request;
 
+        $post = $request->getPost();
+        $id   = $post['id'] ?? null;
+
+        // ---------------------------------------------------------
+        // VALIDATION
+        // ---------------------------------------------------------
         $rules = [
-            'category_id' => 'required',
-            'product_name' => 'required',
-            'product_price' => 'required',
-            'product_stock' => 'required',
-            'product_brand' => 'required',
-            'model' => 'required',
+            'product_name'  => 'required|min_length[3]',
+            'product_price' => 'required|numeric',
+            'product_stock' => 'required|integer',
+            'category_id'   => 'required',
         ];
 
         if (!$this->validate($rules)) {
             return redirect()->back()->withInput()->with('failed', 'Please check your input.');
-        };
+        }
 
-        $data = [
-            'category_id'    => $this->request->getPost('category_id'),
-            'product_name'   => $this->request->getPost('product_name'),
-            'product_price'  => $this->request->getPost('product_price'),
-            'product_stock'  => $this->request->getPost('product_stock'),
-            'product_brand'  => $this->request->getPost('product_brand'),
-            'model'          => $this->request->getPost('model'),
-            'duration'       => $this->request->getPost('duration'),
-            'material'       => $this->request->getPost('material'),
-            'base_curve'     => $this->request->getPost('base_curve'),
-            'diameter'       => $this->request->getPost('diameter'),
-            'power_range'    => $this->request->getPost('power_range'),
-            'water_content'  => $this->request->getPost('water_content'),
-            'water_content'  => $this->request->getPost('water_content'),
-            'uv_protection'  => $this->request->getPost('uv_protection'),
-            'color'          => $this->request->getPost('color'),
-            'coating'        => $this->request->getPost('coating'),
+        // ---------------------------------------------------------
+        // PRODUCT DATA
+        // ---------------------------------------------------------
+        $productData = [
+            'category_id'   => $post['category_id'],
+            'product_name'  => $post['product_name'],
+            'product_price' => $post['product_price'],
+            'product_stock' => $post['product_stock'],
+            'product_brand' => $post['product_brand'] ?? null,
         ];
 
-        $file = $this->request->getFile('product_image_url');
-        if ($file && $file->isValid() && !$file->hasMoved()) {
-            $newName = $file->getRandomName();
-            $file->move(ROOTPATH . 'public/uploads/products', $newName);
-            $data['product_image_url'] = '/uploads/products/' . $newName;
+        try {
+
+            $db->transStart();
+
+            // ---------------------------------------------------------
+            // INSERT / UPDATE PRODUCT
+            // ---------------------------------------------------------
+            if ($id) {
+                $this->productModel->update($id, $productData);
+                $productId = $id;
+            } else {
+                $this->productModel->insert($productData);
+                $productId = $this->productModel->getInsertID();
+            }
+
+            // ---------------------------------------------------------
+            // UPLOAD PRODUCT IMAGES (MULTIPLE)
+            // ---------------------------------------------------------
+            $images = $request->getFiles();
+
+            if (!empty($images['images'])) {
+                foreach ($images['images'] as $img) {
+
+                    if ($img->isValid() && !$img->hasMoved()) {
+
+                        $newName = $img->getRandomName();
+
+                        // move to public/uploads/products/
+                        $img->move(FCPATH . 'uploads/products', $newName);
+
+                        $this->productImageModel->insert([
+                            'product_id' => $productId,
+                            'url'        => $newName,
+                            'alt_text'   => $post['product_name'],
+                            'mime_type'  => $img->getClientMimeType(),
+                            'size_bytes' => $img->getSize(),
+                            'is_primary' => 1
+                        ]);
+                    }
+                }
+            }
+
+            // ---------------------------------------------------------
+            // PRODUCT ATTRIBUTE VALUES
+            // ---------------------------------------------------------
+            if (!empty($post['attributes'])) {
+
+                foreach ($post['attributes'] as $attrId => $value) {
+
+                    $exists = $this->pavModel
+                        ->where(['product_id' => $productId, 'attribute_id' => $attrId])
+                        ->first();
+
+                    if ($exists) {
+                        $this->pavModel->update($exists['pav_id'], ['value' => $value]);
+                    } else {
+                        $this->pavModel->insert([
+                            'product_id'   => $productId,
+                            'attribute_id' => $attrId,
+                            'value'        => $value
+                        ]);
+                    }
+                }
+            }
+
+            // ---------------------------------------------------------
+            // VARIANTS — SMART UPDATE
+            // ---------------------------------------------------------
+            $existing = $this->variantModel->where('product_id', $productId)->findAll();
+            $existingIds = array_column($existing, 'variant_id');
+
+            $receivedIds = [];
+
+            if (!empty($post['variants'])) {
+
+                foreach ($post['variants'] as $index => $v) {
+
+                    $variantId = $v['variant_id'] ?? null;
+                    $variantName = $v['label'] ?? 'Variant';
+                    $price = $v['price'] ?? null;
+                    $stock = $v['stock'] ?? null;
+
+                    // UPDATE
+                    if ($variantId) {
+
+                        $this->variantModel->update($variantId, [
+                            'variant_name' => $variantName,
+                            'price'        => $price,
+                            'stock'        => $stock
+                        ]);
+
+                        $receivedIds[] = $variantId;
+                    }
+                    // INSERT
+                    else {
+                        $this->variantModel->insert([
+                            'product_id'   => $productId,
+                            'variant_name' => $variantName,
+                            'price'        => $price,
+                            'stock'        => $stock
+                        ]);
+
+                        $variantId = $this->variantModel->getInsertID();
+                        $receivedIds[] = $variantId;
+                    }
+
+                    // ---------------------------------------------------------
+                    // VARIANT IMAGE (via getFile)
+                    // ---------------------------------------------------------
+                    $file = $request->getFile("variants.$index.image");
+
+                    if ($file && $file->isValid() && !$file->hasMoved()) {
+
+                        $newName = $file->getRandomName();
+                        $file->move(FCPATH . 'uploads/products', $newName);
+
+                        $this->productImageModel->insert([
+                            'product_id' => $productId,
+                            'url'        => $newName,
+                            'alt_text'   => $variantName,
+                            'mime_type'  => $file->getClientMimeType(),
+                            'size_bytes' => $file->getSize(),
+                            'is_primary' => 0
+                        ]);
+
+                        $productImageId = $this->productImageModel->getInsertID();
+
+                        $this->variantImageModel->insert([
+                            'variant_id'       => $variantId,
+                            'product_image_id' => $productImageId
+                        ]);
+                    }
+
+                    // ---------------------------------------------------------
+                    // VARIANT → ATTRIBUTE MAPPING
+                    // ---------------------------------------------------------
+                    if (!empty($v['mapping'])) {
+
+                        $mapping = json_decode($v['mapping'], true);
+
+                        $this->pvValueModel->where('variant_id', $variantId)->delete();
+
+                        foreach ($mapping as $map) {
+
+                            $pav = $this->pavModel->where([
+                                'product_id'   => $productId,
+                                'attribute_id' => $map['attribute_id'],
+                                'value'        => $map['value']
+                            ])->first();
+
+                            if (!$pav) {
+                                $this->pavModel->insert([
+                                    'product_id'   => $productId,
+                                    'attribute_id' => $map['attribute_id'],
+                                    'value'        => $map['value']
+                                ]);
+
+                                $pavId = $this->pavModel->getInsertID();
+                            } else {
+                                $pavId = $pav['pav_id'];
+                            }
+
+                            $this->pvValueModel->insert([
+                                'variant_id' => $variantId,
+                                'pav_id'     => $pavId
+                            ]);
+                        }
+                    }
+                }
+            }
+
+            // ---------------------------------------------------------
+            // DELETE REMOVED VARIANTS
+            // ---------------------------------------------------------
+            foreach ($existingIds as $old) {
+                if (!in_array($old, $receivedIds)) {
+                    $this->pvValueModel->where('variant_id', $old)->delete();
+                    $this->variantImageModel->where('variant_id', $old)->delete();
+                    $this->variantModel->delete($old);
+                }
+            }
+
+            $db->transComplete();
+            session()->setFlashdata('success', 'Product saved successfully.');
+        } catch (\Throwable $e) {
+            $db->transRollback();
+            session()->setFlashdata('error', $e->getMessage());
         }
 
-        if ($id) {
-            $this->productModel->update($id, $data);
-            $message = 'Product updated successfully!';
-        } else {
-            $this->productModel->insert($data);
-            $message = 'Product created successfully!';
-        }
-
-        return redirect()->to('/products')->with('success', $message);
+        return redirect()->to('/products');
     }
+
 
     public function webDelete($id)
     {
