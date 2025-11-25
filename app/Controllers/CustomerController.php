@@ -50,28 +50,9 @@ class CustomerController extends BaseController
                 return redirect()->to('/customers')->with('failed', 'Customer not found');
             }
 
-            $preferences = [];
-            if (!empty($customer['customer_preferences'])) {
-                $preferences = json_decode($customer['customer_preferences'], true);
-            }
-
-            $eyeHistory = [];
-            if (!empty($customer['customer_eye_history'])) {
-                $eyeHistory = json_decode($customer['customer_eye_history'], true);
-            }
-
-            $flattenedEyeHistory = [
-                'left_axis' => $eyeHistory['left_eye']['axis'] ?? '',
-                'left_sphere' => $eyeHistory['left_eye']['sphere'] ?? '',
-                'left_cylinder' => $eyeHistory['left_eye']['cylinder'] ?? '',
-                'right_axis' => $eyeHistory['right_eye']['axis'] ?? '',
-                'right_sphere' => $eyeHistory['right_eye']['sphere'] ?? '',
-                'right_cylinder' => $eyeHistory['right_eye']['cylinder'] ?? '',
-                'condition' => $eyeHistory['condition'] ?? '',
-                'last_checkup' => $eyeHistory['last_checkup'] ?? ''
+            $data = [
+                'customer' => $customer
             ];
-
-            $data['customer'] = array_merge($customer, $preferences, $flattenedEyeHistory);
         }
 
         return view('customers/v_form', $data);
@@ -80,80 +61,50 @@ class CustomerController extends BaseController
     public function save()
     {
         $request = $this->request;
-
         $id = $request->getVar('id');
+        $rules = $this->customerModel->validationRules;
+
+        if ($id) {
+            $rules['customer_password'] = 'permit_empty|max_length[255]';
+        } else {
+            $rules['customer_password'] = 'required|max_length[255]';
+        }
+
+        // VALIDASI
+        if (!$this->validate($rules)) {
+            return redirect()->back()
+                ->withInput()
+                ->with('failed', implode('<br>', $this->validator->getErrors()));
+        }
 
         $customerData = [
-            'customer_name'       => $request->getVar('customer_name'),
-            'customer_email'      => $request->getVar('customer_email'),
-            'customer_phone'      => $request->getVar('customer_phone'),
-            'customer_dob'        => $request->getVar('customer_dob'),
-            'customer_gender'     => $request->getVar('customer_gender'),
-            'customer_occupation' => $request->getVar('customer_occupation'),
+            'customer_name'   => $request->getVar('customer_name'),
+            'customer_email'  => $request->getVar('customer_email'),
+            'customer_phone'  => $request->getVar('customer_phone'),
+            'customer_dob'    => $request->getVar('customer_dob'),
+            'customer_gender' => strtolower($request->getVar('customer_gender')),
         ];
 
-        // Jika password diisi (saat create atau edit dan ingin update password)
         $password = $request->getVar('customer_password');
         if (!empty($password)) {
             $customerData['customer_password'] = password_hash($password, PASSWORD_DEFAULT);
         }
 
-        // Preferences dalam bentuk JSON
-        $preferences = [
-            'color'       => $request->getVar('color'),
-            'material'    => $request->getVar('material'),
-            'frame_style' => $request->getVar('frame_style'),
-        ];
-        $customerData['customer_preferences'] = json_encode($preferences);
-
-        // Eye history dalam bentuk JSON
-        $eyeHistory = [
-            'condition'     => $request->getVar('condition'),
-            'last_checkup'  => $request->getVar('last_checkup'),
-            'left_eye' => [
-                'axis'     => $request->getVar('left_axis'),
-                'sphere'   => $request->getVar('left_sphere'),
-                'cylinder' => $request->getVar('left_cylinder'),
-            ],
-            'right_eye' => [
-                'axis'     => $request->getVar('right_axis'),
-                'sphere'   => $request->getVar('right_sphere'),
-                'cylinder' => $request->getVar('right_cylinder'),
-            ],
-        ];
-        $customerData['customer_eye_history'] = json_encode($eyeHistory);
-
-        $model = new CustomerModel();
-
-        if ($id) {
-            // Update
-            $model->update($id, $customerData);
-            return redirect()->to('/customers')->with('success', 'Customer updated successfully.');
-        } else {
-            // Create
-            $model->insert($customerData);
-            return redirect()->to('/customers')->with('success', 'Customer created successfully.');
+        try {
+            if ($id) {
+                if (!$this->customerModel->update($id, $customerData)) {
+                    return redirect()->back()->with('failed', 'Gagal mengupdate customer.');
+                }
+                return redirect()->to('/customers')->with('success', 'Customer updated successfully.');
+            } else {
+                if (!$this->customerModel->insert($customerData)) {
+                    return redirect()->back()->with('failed', 'Gagal membuat customer baru.');
+                }
+                return redirect()->to('/customers')->with('success', 'Customer created successfully.');
+            }
+        } catch (\Exception $e) {
+            return redirect()->back()->with('failed', $e->getMessage());
         }
-    }
-
-    public function update($id)
-    {
-        $model = new CustomerModel();
-
-        $data = $this->request->getVar([
-            'customer_name',
-            'customer_email',
-            'customer_password',
-            'customer_phone',
-            'customer_dob',
-            'customer_gender',
-            'customer_occupation',
-            'customer_eye_history',
-            'customer_preferences'
-        ]);
-
-        $model->update($id, $data);
-        return redirect()->to('/customer/edit/' . $id)->with('success', 'Customer updated successfully.');
     }
 
     public function delete($id)

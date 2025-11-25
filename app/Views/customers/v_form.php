@@ -45,93 +45,10 @@
         <div class="col-md-6 mb-3">
           <label for="customer_gender">Gender</label>
           <select class="form-control" name="customer_gender" id="customer_gender">
-            <option value="Male" <?= isset($customer) && $customer['customer_gender'] == 'Male' ? 'selected' : '' ?>>Male</option>
-            <option value="Female" <?= isset($customer) && $customer['customer_gender'] == 'Female' ? 'selected' : '' ?>>Female</option>
-            <option value="Other" <?= isset($customer) && $customer['customer_gender'] == 'Other' ? 'selected' : '' ?>>Other</option>
+            <option value="male" <?= isset($customer) && $customer['customer_gender'] == 'male' ? 'selected' : '' ?>>Male</option>
+            <option value="female" <?= isset($customer) && $customer['customer_gender'] == 'female' ? 'selected' : '' ?>>Female</option>
+            <option value="other" <?= isset($customer) && $customer['customer_gender'] == 'other' ? 'selected' : '' ?>>Other</option>
           </select>
-        </div>
-
-        <div class="col-md-6 mb-3">
-          <label for="customer_occupation">Occupation</label>
-          <input type="text" class="form-control" name="customer_occupation" id="customer_occupation" placeholder="e.g., Researcher"
-            value="<?= isset($customer) ? $customer['customer_occupation'] : '' ?>">
-        </div>
-
-        <hr style="border: 1px solid grey" class="my-2" />
-        <div class="mb-3 text-center">
-          <label for="customer_preferences">Preferences</label>
-        </div>
-
-        <div class="col-md-6 mb-3">
-          <label for="color">Color Preferences</label>
-          <input type="text" class="form-control" name="color" id="color" placeholder="e.g., Hijau Neon"
-            value="<?= isset($customer) ? $customer['color'] : '' ?>">
-        </div>
-
-        <div class="col-md-6 mb-3">
-          <label for="material">Material Preferences</label>
-          <input type="text" class="form-control" name="material" id="material" placeholder="e.g., Titanium"
-            value="<?= isset($customer) ? $customer['material'] : '' ?>">
-        </div>
-
-        <div class="col-md-6 mb-3">
-          <label for="frame_style">Frame Style</label>
-          <input type="text" class="form-control" name="frame_style" id="frame_style" placeholder="e.g., Half-rim"
-            value="<?= isset($customer) ? $customer['frame_style'] : '' ?>">
-        </div>
-
-        <hr style="border: 1px solid grey" class="my-2" />
-        <div class="mb-3 text-center">
-          <label for="customer_preferences">Eye History</label>
-        </div>
-
-        <div class="col-md-6 mb-3">
-          <label for="condition">Condition</label>
-          <input class="form-control" name="condition" id="condition" placeholder="e.g., Hipermetropi" value="<?= isset($customer) ? $customer['condition'] : '' ?>" />
-        </div>
-
-        <div class="col-md-6 mb-3">
-          <label for="last_checkup">Last Checkup</label>
-          <input type="date" class="form-control" name="last_checkup" id="last_checkup"
-            value="<?= isset($customer) ? $customer['last_checkup'] : '' ?>">
-        </div>
-
-        <label class="font-weight-bolder mt-3">Left Eye</label>
-        <div class="col-md-4 mb-3">
-          <label for="left_axis">Axis</label>
-          <input type="number" class="form-control" name="left_axis" id="left_axis" placeholder="e.g., 0"
-            value="<?= isset($customer) ? $customer['left_axis'] : '' ?>">
-        </div>
-
-        <div class="col-md-4 mb-3">
-          <label for="left_sphere">Sphere</label>
-          <input type="number" class="form-control" name="left_sphere" id="left_sphere" placeholder="e.g., 0"
-            value="<?= isset($customer) ? $customer['left_sphere'] : '' ?>">
-        </div>
-
-        <div class="col-md-4 mb-3">
-          <label for="left_cylinder">Cylinder</label>
-          <input type="number" class="form-control" name="left_cylinder" id="left_cylinder" placeholder="e.g., 0"
-            value="<?= isset($customer) ? $customer['left_cylinder'] : '' ?>">
-        </div>
-
-        <label for="customer_preferences" class="font-weight-bolder mt-3">Right Eye</label>
-        <div class="col-md-4 mb-3">
-          <label for="right_axis">Axis</label>
-          <input type="number" class="form-control" name="right_axis" id="right_axis" placeholder="e.g., 0"
-            value="<?= isset($customer) ? $customer['right_axis'] : '' ?>">
-        </div>
-
-        <div class="col-md-4 mb-3">
-          <label for="right_sphere">Sphere</label>
-          <input type="number" class="form-control" name="right_sphere" id="right_sphere" placeholder="e.g., 0"
-            value="<?= isset($customer) ? $customer['right_sphere'] : '' ?>">
-        </div>
-
-        <div class="col-md-4 mb-3">
-          <label for="right_cylinder">Cylinder</label>
-          <input type="number" class="form-control" name="right_cylinder" id="right_cylinder" placeholder="e.g., 0"
-            value="<?= isset($customer) ? $customer['right_cylinder'] : '' ?>">
         </div>
 
         <div class="col-12 mt-4">

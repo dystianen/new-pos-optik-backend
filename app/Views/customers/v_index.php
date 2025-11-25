@@ -17,7 +17,7 @@
             <th>Phone</th>
             <th>Date of Birth</th>
             <th>Gender</th>
-            <th>Occupation</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -36,7 +36,13 @@
                 <td><?= $customer['customer_phone'] ?></td>
                 <td><?= date('d/m/Y', strtotime($customer['customer_dob'])) ?></td>
                 <td><?= $customer['customer_gender'] ?></td>
-                <td><?= $customer['customer_occupation'] ?></td>
+                <td>
+                  <a href="<?= base_url('/customers/form?id=' . $customer['customer_id']) ?>" class="btn btn-sm btn-warning">Edit</a>
+                  <form action="<?= base_url('/customers/delete/' . $customer['customer_id']) ?>" method="post" style="display:inline-block;">
+                    <?= csrf_field() ?>
+                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?')">Delete</button>
+                  </form>
+                </td>
               </tr>
             <?php endforeach; ?>
           <?php endif; ?>
