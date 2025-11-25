@@ -547,6 +547,7 @@ class ProductController extends BaseController
                         ]);
                     }
 
+
                     // ---------------------------------------------------------
                     // VARIANT → ATTRIBUTE MAPPING
                     // ---------------------------------------------------------
@@ -605,7 +606,6 @@ class ProductController extends BaseController
 
         return redirect()->to('/products');
     }
-
 
     public function webDelete($id)
     {
