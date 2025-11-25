@@ -23,6 +23,7 @@ class ProductController extends BaseController
     protected $pvValueModel;
     protected $categoryModel;
     protected $variantImageModel;
+    protected $customerModel;
 
     public function __construct()
     {
@@ -34,6 +35,7 @@ class ProductController extends BaseController
         $this->variantModel = new ProductVariantModel();
         $this->variantImageModel = new ProductVariantImageModel();
         $this->pvValueModel = new ProductVariantValueModel();
+        $this->customerModel = new CustomerModel();
     }
 
     // =======================
