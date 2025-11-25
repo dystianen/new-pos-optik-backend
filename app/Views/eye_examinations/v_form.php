@@ -11,7 +11,7 @@
       <input type="hidden" name="id" value="<?= isset($eyeExamination) ? $eyeExamination['eye_examination_id'] : '' ?>">
 
       <div class="row">
-        <div class="col-12 col-md-6 mb-3">
+        <div class="col-12 mb-3">
           <label for="customer_id" class="form-label">Customer</label>
           <select class="form-control" name="customer_id" required>
             <option value="" disabled <?= !isset($eyeExamination) ? 'selected' : '' ?>>Select category</option>
