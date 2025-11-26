@@ -53,7 +53,8 @@ class CreateUsers extends Migration
 
     public function down()
     {
-        $this->db->query('ALTER TABLE users DROP FOREIGN KEY fk_users_roles');
-        $this->forge->dropTable('users');
+        $this->db->query('SET FOREIGN_KEY_CHECKS = 0');
+        $this->forge->dropTable('users', true);
+        $this->db->query('SET FOREIGN_KEY_CHECKS = 1');
     }
 }
