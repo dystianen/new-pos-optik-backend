@@ -91,7 +91,7 @@
         <!-- DYNAMIC ATTRIBUTES -->
         <div class="col-12 mt-4">
           <h5>Product Attributes</h5>
-          <p class="text-muted">Isi attribute dan pilih mana yang ingin dijadikan varian.</p>
+          <p class="text-muted">Fill in the attributes and select which one you want to make a variant.</p>
 
           <div class="row g-4"> <!-- g-4 = jarak antar kolom dan baris -->
 
