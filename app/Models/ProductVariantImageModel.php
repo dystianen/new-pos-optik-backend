@@ -23,6 +23,9 @@ class ProductVariantImageModel extends Model
         'pv_image_id',
         'variant_id',
         'product_image_id',
+        'created_at',
+        'updated_at',
+        'deleted_at'
     ];
 
     protected $validationRules = [

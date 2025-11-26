@@ -25,14 +25,17 @@ class ProductVariantModel extends Model
         'variant_name',
         'price',
         'stock',
+        'created_at',
+        'updated_at',
+        'deleted_at'
     ];
 
     protected $validationRules = [
         'variant_id'    => 'permit_empty|alpha_numeric_punct|min_length[1]|max_length[36]',
         'product_id'    => 'required|alpha_numeric_punct|min_length[1]|max_length[36]',
         'variant_name'  => 'required|string|max_length[100]',
-        'price'         => 'required|decimal',
-        'stock'         => 'required|integer',
+        'price'         => 'decimal',
+        'stock'         => 'integer',
     ];
 
     protected $validationMessages = [];

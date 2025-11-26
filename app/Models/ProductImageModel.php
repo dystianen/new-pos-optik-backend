@@ -28,6 +28,9 @@ class ProductImageModel extends Model
         'is_primary',
         'mime_type',
         'size_bytes',
+        'created_at',
+        'updated_at',
+        'deleted_at'
     ];
 
     protected $validationRules = [

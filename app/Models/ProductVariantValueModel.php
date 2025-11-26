@@ -23,6 +23,9 @@ class ProductVariantValueModel extends Model
         'pv_value_id',
         'variant_id',
         'pav_id',
+        'created_at',
+        'updated_at',
+        'deleted_at'
     ];
 
     protected $validationRules = [

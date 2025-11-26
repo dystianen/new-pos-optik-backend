@@ -68,15 +68,26 @@
               <label>Current Images:</label>
               <div class="d-flex flex-wrap">
                 <?php foreach ($product_images as $img): ?>
-                  <div class="me-2 mb-2 text-center">
-                    <img src="<?= base_url('uploads/products/' . $img['url']) ?>" width="80" class="rounded border"><br>
+                  <div class="me-2 mb-2 position-relative image-container" style="width: 150px;">
+                    <img src="<?= base_url('uploads/products/' . $img['url']) ?>" class="rounded border w-100 h-100" style="object-fit: cover;">
+
+                    <!-- Overlay dengan button delete di tengah -->
+                    <div class="image-overlay position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center">
+                      <button
+                        type="button"
+                        class="btn btn-danger btn-sm delete-image-btn"
+                        data-image-id="<?= $img['product_image_id'] ?>"
+                        data-product-id="<?= $product['product_id'] ?>"
+                        title="Delete Image">
+                        <i class="fas fa-trash"></i>
+                      </button>
+                    </div>
                   </div>
                 <?php endforeach; ?>
               </div>
             </div>
           <?php endif; ?>
         </div>
-
         <!-- DYNAMIC ATTRIBUTES -->
         <div class="col-12 mt-4">
           <h5>Product Attributes</h5>
@@ -183,11 +194,113 @@
   </div>
 </div>
 
+<!-- CSS -->
+<style>
+  .image-container {
+    overflow: hidden;
+  }
+
+  .image-overlay {
+    background-color: rgba(0, 0, 0, 0);
+    transition: background-color 0.3s ease;
+    opacity: 0;
+    border-radius: 0.25rem;
+  }
+
+  .image-container:hover .image-overlay {
+    background-color: rgba(0, 0, 0, 0.6);
+    opacity: 1;
+  }
+
+  .delete-image-btn {
+    padding: 8px 12px;
+    font-size: 16px;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transform: scale(0.8);
+    transition: transform 0.2s ease;
+  }
+
+  .image-container:hover .delete-image-btn {
+    transform: scale(1);
+  }
+
+  .delete-image-btn:hover {
+    background-color: #c82333 !important;
+    transform: scale(1.1) !important;
+  }
+</style>
+
+
 <?= $this->endSection() ?>
 
 <?= $this->section('scripts') ?>
 <script>
-  // Simple JS to manage variant generation & UI. Uses vanilla JS so it works without additional libs.
+  document.addEventListener('DOMContentLoaded', function() {
+    const deleteButtons = document.querySelectorAll('.delete-image-btn');
+
+    deleteButtons.forEach(button => {
+      button.addEventListener('click', function(e) {
+        e.preventDefault();
+
+        const imageId = this.dataset.imageId;
+        const productId = this.dataset.productId;
+        const imageContainer = this.closest('.image-container');
+
+        if (!confirm('Are you sure you want to delete this image?')) {
+          return;
+        }
+
+        // Disable button & show loading
+        this.disabled = true;
+        this.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+
+        // AJAX Request
+        fetch('<?= base_url('products/delete-image') ?>', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({
+              image_id: imageId,
+              product_id: productId
+            })
+          })
+          .then(response => response.json())
+          .then(data => {
+            if (data.success) {
+              // Fade out animation
+              imageContainer.style.transition = 'opacity 0.3s, transform 0.3s';
+              imageContainer.style.opacity = '0';
+              imageContainer.style.transform = 'scale(0.8)';
+
+              setTimeout(() => {
+                imageContainer.remove();
+              }, 300);
+
+              // Show success message (optional)
+              // alert(data.message || 'Image deleted successfully');
+            } else {
+              alert(data.message || 'Failed to delete image');
+              this.disabled = false;
+              this.innerHTML = '<i class="bi bi-trash"></i>';
+            }
+          })
+          .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while deleting the image');
+            this.disabled = false;
+            this.innerHTML = '<i class="bi bi-trash"></i>';
+          });
+      });
+    });
+  });
+
   (function() {
     const form = document.getElementById('productForm');
     const variantSection = document.getElementById('variantSection');
@@ -198,9 +311,11 @@
     const existingVariants = <?= isset($variants) ? json_encode($variants) : '[]' ?>;
     const pavValues = <?= isset($pav_values) ? json_encode($pav_values) : '[]' ?>;
 
+    // TRACK NEXT INDEX untuk variant baru
+    let nextVariantIndex = existingVariants.length;
+
     function getVariantAttributes() {
       const checked = Array.from(document.querySelectorAll('input[name="variant_attributes[]"]:checked'));
-      // For each attribute id, read the corresponding attributes[...] input and split by comma
       return checked.map(cb => {
         const attrId = cb.value;
         const input = document.querySelector('input[name="attributes[' + attrId + ']"]');
@@ -235,7 +350,8 @@
       const attrs = getVariantAttributes();
       if (!attrs.length) {
         variantSection.style.display = 'none';
-        variantTableBody.innerHTML = '';
+        // JANGAN HAPUS EXISTING VARIANTS
+        // variantTableBody.innerHTML = '';
         return;
       }
 
@@ -249,11 +365,34 @@
 
       const combos = generateCombinations(attrs);
       variantSection.style.display = combos.length ? 'block' : 'none';
-      variantTableBody.innerHTML = '';
 
-      combos.forEach((combo, idx) => {
+      // JANGAN HAPUS SEMUA, hanya hapus yang baru (tanpa variant_id)
+      // variantTableBody.innerHTML = '';
+
+      // Hapus hanya variant yang tidak punya variant_id (variant baru yang belum disave)
+      const rowsToRemove = Array.from(variantTableBody.querySelectorAll('tr')).filter(tr => {
+        return !tr.querySelector('input[name*="[variant_id]"]');
+      });
+      rowsToRemove.forEach(row => row.remove());
+
+      // Reset index untuk variant baru
+      nextVariantIndex = variantTableBody.querySelectorAll('tr').length;
+
+      combos.forEach((combo) => {
         const variantLabel = combo.map(c => c.value).join(' - ');
-        const sku = 'VAR-' + idx + '-' + Math.random().toString(36).slice(2, 7).toUpperCase();
+
+        // CEK apakah variant ini sudah ada (by label atau mapping)
+        const exists = Array.from(variantTableBody.querySelectorAll('tr')).some(tr => {
+          const label = tr.querySelector('input[name*="[label]"]');
+          return label && label.value === variantLabel;
+        });
+
+        if (exists) {
+          console.log('Variant already exists:', variantLabel);
+          return; // Skip jika sudah ada
+        }
+
+        const idx = nextVariantIndex++;
 
         const tr = document.createElement('tr');
         tr.innerHTML = `
@@ -270,7 +409,7 @@
         </td>
       `;
 
-        // store attribute mapping to reconstruct on backend
+        // store attribute mapping
         const hidden = document.createElement('input');
         hidden.type = 'hidden';
         hidden.name = `variants[${idx}][mapping]`;
@@ -284,19 +423,21 @@
       });
 
       // add remove handlers
-      Array.from(document.querySelectorAll('.remove-variant')).forEach(btn => {
-        btn.addEventListener('click', function() {
-          this.closest('tr').remove();
-        });
-      });
+      attachRemoveHandlers();
     }
 
     function renderExistingVariants() {
-      variantTableBody.innerHTML = '';
+      // JANGAN HAPUS SEMUA - hanya render yang belum ada
+      // variantTableBody.innerHTML = '';
 
       existingVariants.forEach((v, idx) => {
-        const tr = document.createElement('tr');
+        // Cek apakah variant ini sudah di-render
+        const alreadyRendered = variantTableBody.querySelector(`input[name="variants[${idx}][variant_id]"][value="${v.variant_id}"]`);
+        if (alreadyRendered) {
+          return; // Skip jika sudah di-render
+        }
 
+        const tr = document.createElement('tr');
         const mappingJson = JSON.stringify(v.pav_mapping || []);
 
         tr.innerHTML = `
@@ -317,8 +458,8 @@
           </td>
 
           <td>
-          <input type="file" name="variants[${idx}][image]" accept=".jpg,.jpeg,.png" class="form-control form-control-sm mb-1">
-          <img src="/uploads/products/${v.variant_image.url}" width="30">
+            <input type="file" name="variants[${idx}][image]" accept=".jpg,.jpeg,.png" class="form-control form-control-sm mb-1">
+            ${v.variant_image ? `<img src="/uploads/products/${v.variant_image.url}" width="30">` : ''}
           </td>
 
           <td>
@@ -335,11 +476,19 @@
         variantTableBody.appendChild(tr);
       });
 
+      attachRemoveHandlers();
+      nextVariantIndex = existingVariants.length;
+    }
+
+    function attachRemoveHandlers() {
       document.querySelectorAll('.remove-variant').forEach(btn => {
-        btn.addEventListener('click', function() {
-          this.closest('tr').remove();
-        });
+        btn.removeEventListener('click', handleRemove); // Hindari double binding
+        btn.addEventListener('click', handleRemove);
       });
+    }
+
+    function handleRemove(e) {
+      e.target.closest('tr').remove();
     }
 
     function escapeHtml(unsafe) {
@@ -357,15 +506,23 @@
     // events
     document.addEventListener('change', function(e) {
       if (e.target.matches('input[name^="attributes["]') || e.target.matches('input[name="variant_attributes[]"]')) {
-        // small debounce
         clearTimeout(window._variantTimer);
         window._variantTimer = setTimeout(renderVariants, 300);
       }
     });
 
-    rebuildBtn.addEventListener('click', renderVariants);
+    rebuildBtn.addEventListener('click', function() {
+      // Hapus semua variant baru (tanpa variant_id)
+      const rowsToRemove = Array.from(variantTableBody.querySelectorAll('tr')).filter(tr => {
+        return !tr.querySelector('input[name*="[variant_id]"]');
+      });
+      rowsToRemove.forEach(row => row.remove());
 
-    // initial render if editing product with variants
+      // Render ulang dari kombinasi
+      renderVariants();
+    });
+
+    // initial render
     window.addEventListener('load', function() {
       if (existingVariants.length > 0) {
         renderExistingVariants();

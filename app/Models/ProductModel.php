@@ -28,6 +28,9 @@ class ProductModel extends Model
         'product_stock',
         'product_brand',
         'description',
+        'created_at',
+        'updated_at',
+        'deleted_at'
     ];
 
     protected $validationRules = [
