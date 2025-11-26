@@ -88,67 +88,106 @@
             </div>
           <?php endif; ?>
         </div>
+
         <!-- DYNAMIC ATTRIBUTES -->
         <div class="col-12 mt-4">
           <h5>Product Attributes</h5>
           <p class="text-muted">Fill in the attributes and select which one you want to make a variant.</p>
 
-          <div class="row g-4"> <!-- g-4 = jarak antar kolom dan baris -->
+          <div class="row g-4">
+
+            <?php
+            // Daftar attribute yang boleh jadi variant
+            $variantAllowed = [
+              'Color',
+              'Lens Type',
+              'Frame Size (Width)',
+              'Bridge Size',
+              'Temple Length',
+            ];
+            ?>
 
             <?php foreach ($attributes as $attr): ?>
 
               <?php
-              // value pav (untuk edit)
+              $attrName = $attr['attribute_name'];
+
+              // value untuk edit
               $existingValue = $pav_values[$attr['attribute_id']]['value'] ?? '';
 
-              // apakah attribute ini digunakan sebagai variant
+              // apakah attribute ini dipilih sebagai variant
               $isVariant = in_array($attr['attribute_id'], $selected_attributes ?? []) ? 'checked' : '';
 
-              // selected values (checkbox)
+              // selected checkbox value
               $selectedValues = $selected_attribute_values[$attr['attribute_id']] ?? [];
+
+              // cek apakah attribute boleh jadi variant
+              $allowed = in_array($attrName, $variantAllowed);
               ?>
 
-              <div class="col-12 col-md-6"> <!-- 2 kolom di desktop, 1 kolom di HP -->
+              <div class="col-12 col-md-6">
                 <div class="p-3 border rounded-3 h-100">
 
-                  <!-- NAMA ATTRIBUTE + USE AS VARIANT -->
+                  <!-- NAMA ATTRIBUTE + TOGGLE VARIANT -->
                   <div class="d-flex justify-content-between align-items-center mb-2">
-                    <label class="fw-bold mb-1"><?= esc($attr['attribute_name']) ?></label>
+                    <label class="fw-bold mb-1"><?= esc($attrName) ?></label>
 
-                    <div class="form-check form-switch">
-                      <input
-                        class="form-check-input"
-                        type="checkbox"
-                        name="variant_attributes[]"
-                        value="<?= $attr['attribute_id'] ?>"
-                        <?= $isVariant ?>>
-                      <label class="form-check-label">Variant</label>
-                    </div>
+                    <?php if ($allowed): ?>
+                      <div class="form-check form-switch">
+                        <input
+                          class="form-check-input"
+                          type="checkbox"
+                          name="variant_attributes[]"
+                          value="<?= $attr['attribute_id'] ?>"
+                          <?= $isVariant ?>>
+                        <label class="form-check-label">Variant</label>
+                      </div>
+                    <?php endif; ?>
+
                   </div>
 
-                  <!-- INPUT TEXT -->
-                  <input
-                    type="text"
-                    class="form-control mb-3"
-                    name="attributes[<?= $attr['attribute_id'] ?>]"
-                    placeholder="Enter <?= strtolower($attr['attribute_name']) ?>"
-                    value="<?= esc($existingValue) ?>">
+                  <!-- JIKA TIPE TEXT -->
+                  <?php if ($attr['attribute_type'] === 'text'): ?>
 
-                  <!-- CHECKBOX ATTRIBUTE VALUES -->
-                  <?php if (!empty($attr['values'])): ?>
-                    <div class="mt-2">
-                      <?php foreach ($attr['values'] as $val): ?>
-                        <div class="form-check form-check-inline mb-2">
-                          <input
-                            class="form-check-input"
-                            type="checkbox"
-                            name="attribute_values[<?= $attr['attribute_id'] ?>][]"
-                            value="<?= esc($val['value']) ?>"
-                            <?= in_array($val['value'], $selectedValues) ? 'checked' : '' ?>>
-                          <label class="form-check-label"><?= esc($val['value']) ?></label>
-                        </div>
-                      <?php endforeach; ?>
-                    </div>
+                    <input
+                      type="text"
+                      class="form-control"
+                      name="attributes[<?= $attr['attribute_id'] ?>]"
+                      placeholder="Enter <?= strtolower($attrName) ?>"
+                      value="<?= esc($existingValue) ?>">
+
+                  <?php endif; ?>
+
+                  <!-- JIKA TIPE SELECT: checkbox list -->
+                  <?php if ($attr['attribute_type'] === 'select'): ?>
+
+                    <input
+                      type="text"
+                      class="form-control mb-2"
+                      name="attributes[<?= $attr['attribute_id'] ?>]"
+                      placeholder="Enter <?= strtolower($attrName) ?> (comma separated)"
+                      value="<?= esc($existingValue) ?>">
+
+                    <?php if (!empty($attr['values'])): ?>
+                      <div class="mt-2">
+
+                        <?php foreach ($attr['values'] as $val): ?>
+                          <div class="form-check form-check-inline mb-2">
+                            <input
+                              class="form-check-input"
+                              type="checkbox"
+                              name="attribute_values[<?= $attr['attribute_id'] ?>][]"
+                              value="<?= esc($val['value']) ?>"
+                              <?= in_array($val['value'], $selectedValues) ? 'checked' : '' ?>>
+                            <label class="form-check-label">
+                              <?= esc($val['value']) ?>
+                            </label>
+                          </div>
+                        <?php endforeach; ?>
+
+                      </div>
+                    <?php endif; ?>
+
                   <?php endif; ?>
 
                 </div>
@@ -158,6 +197,7 @@
 
           </div>
         </div>
+
 
         <!-- VARIANT SECTION -->
         <div class="col-12 mt-3" id="variantSection" style="display: none;">

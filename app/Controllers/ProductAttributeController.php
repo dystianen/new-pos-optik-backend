@@ -3,15 +3,18 @@
 namespace App\Controllers;
 
 use App\Controllers\BaseController;
+use App\Models\ProductAttributeMasterValueModel;
 use App\Models\ProductAttributeModel;
 
 class ProductAttributeController extends BaseController
 {
     protected $attributeModel;
+    protected $attributeMasterValueModel;
 
     public function __construct()
     {
         $this->attributeModel = new ProductAttributeModel();
+        $this->attributeMasterValueModel = new ProductAttributeMasterValueModel();
     }
 
     public function apiListProductCategory()
@@ -46,15 +49,23 @@ class ProductAttributeController extends BaseController
 
     public function form()
     {
-
         $id = $this->request->getVar('id');
         $data = [];
+
         if ($id) {
             $attribute = $this->attributeModel->find($id);
+
             if (!$attribute) {
-                return redirect()->to('/product-attribute')->with('failed', 'Product attribute not found.');
+                return redirect()->to('/product-attribute')->with('failed', 'Attribute not found.');
             }
+
+            // Ambil master values
+            $options = $this->attributeMasterValueModel
+                ->where('attribute_id', $id)
+                ->findAll();
+
             $data['attribute'] = $attribute;
+            $data['options'] = $options; // ← tambahan
         }
 
         return view('product_attribute/v_form', $data);
@@ -69,9 +80,7 @@ class ProductAttributeController extends BaseController
             $errors = $this->validator->getErrors();
             $errorMessage = implode('<br>', $errors);
 
-            return redirect()->back()
-                ->withInput()
-                ->with('failed', $errorMessage);
+            return redirect()->back()->withInput()->with('failed', $errorMessage);
         }
 
         $data = [
@@ -80,19 +89,87 @@ class ProductAttributeController extends BaseController
         ];
 
         if ($id) {
-            if (!$this->attributeModel->update($id, $data)) {
-                return redirect()->back()->with('failed', 'Failed to update attribute.');
+
+            $this->attributeModel->update($id, $data);
+
+            if ($data['attribute_type'] === 'dropdown') {
+
+                $valueIds = $this->request->getPost('value_ids'); // array id lama / kosong
+                $values   = $this->request->getPost('values');    // array value
+
+                $existing = $this->attributeMasterValueModel
+                    ->where('attribute_id', $id)
+                    ->findAll();
+
+                // Ambil ID yang masih dipakai
+                $stillUsedIds = [];
+
+                foreach ($values as $index => $val) {
+                    if (trim($val) === '') continue;
+
+                    $valueId = $valueIds[$index];
+
+                    if ($valueId) {
+                        // UPDATE data lama
+                        $this->attributeMasterValueModel->update($valueId, [
+                            'value' => $val
+                        ]);
+
+                        $stillUsedIds[] = $valueId;
+                    } else {
+                        // INSERT baru
+                        $newId = $this->attributeMasterValueModel->insert([
+                            'attribute_id' => $id,
+                            'value' => $val,
+                        ]);
+
+                        $stillUsedIds[] = $newId;
+                    }
+                }
+
+                // DELETE yang tidak dipakai
+                if (!empty($existing)) {
+                    $existingIds = array_column($existing, 'attribute_master_id');
+
+                    $toDelete = array_diff($existingIds, $stillUsedIds);
+
+                    if (!empty($toDelete)) {
+                        $this->attributeMasterValueModel
+                            ->whereIn('attribute_master_id', $toDelete)
+                            ->delete();
+                    }
+                }
             }
-            $message = 'Attribute updated successfully!';
-        } else {
-            if (!$this->attributeModel->insert($data)) {
-                return redirect()->back()->with('failed', 'Failed to create attribute.');
-            }
-            $message = 'Attribute created successfully!';
+
+            return redirect()->to('/product-attribute')->with('success', 'Attribute updated successfully!');
         }
 
-        return redirect()->to('/product-attribute')->with('success', $message);
+
+        $this->attributeModel->insert([
+            'attribute_name' => $data['attribute_name'],
+            'attribute_type' => $data['attribute_type'],
+        ]);
+        $attributeId = $this->attributeModel->getInsertID();
+
+        // insert dropdown values
+        if ($data['attribute_type'] === 'dropdown') {
+            $values = $this->request->getPost('values');
+
+            if (!empty($values)) {
+                foreach ($values as $val) {
+                    if (trim($val) === '') continue;
+
+                    $this->attributeMasterValueModel->insert([
+                        'attribute_id' => $attributeId,
+                        'value' => $val,
+                    ]);
+                }
+            }
+        }
+
+        return redirect()->to('/product-attribute')->with('success', 'Attribute created successfully!');
     }
+
 
 
     // DELETE

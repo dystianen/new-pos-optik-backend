@@ -41,4 +41,13 @@ class ProductAttributeModel extends Model
         $data['data']['attribute_id'] = service('uuid')->uuid4()->toString();
         return $data;
     }
+
+    public function getWithValues($id)
+    {
+        return $this->select('product_attributes.*')
+            ->select('attribute_master_values.attribute_master_id AS option_id, attribute_master_values.value AS option_value')
+            ->join('attribute_master_values', 'attribute_master_values.attribute_id = product_attributes.attribute_id', 'left')
+            ->where('product_attributes.attribute_id', $id)
+            ->findAll();
+    }
 }
