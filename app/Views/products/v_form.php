@@ -250,56 +250,89 @@
         const imageId = this.dataset.imageId;
         const productId = this.dataset.productId;
         const imageContainer = this.closest('.image-container');
+        const btn = this;
 
-        if (!confirm('Are you sure you want to delete this image?')) {
-          return;
-        }
+        // SweetAlert Konfirmasi
+        Swal.fire({
+          title: 'Hapus Gambar?',
+          text: 'Gambar yang dihapus tidak dapat dikembalikan.',
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonText: 'Ya, hapus',
+          cancelButtonText: 'Batal',
+          confirmButtonColor: '#d33',
+          cancelButtonColor: '#3085d6'
+        }).then((result) => {
+          if (!result.isConfirmed) return;
 
-        // Disable button & show loading
-        this.disabled = true;
-        this.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+          // Button loading
+          btn.disabled = true;
+          btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
 
-        // AJAX Request
-        fetch('<?= base_url('products/delete-image') ?>', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-Requested-With': 'XMLHttpRequest'
-            },
-            body: JSON.stringify({
-              image_id: imageId,
-              product_id: productId
+          // AJAX Request
+          fetch('<?= base_url('products/delete-image') ?>', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+              },
+              body: JSON.stringify({
+                image_id: imageId,
+                product_id: productId
+              })
             })
-          })
-          .then(response => response.json())
-          .then(data => {
-            if (data.success) {
-              // Fade out animation
-              imageContainer.style.transition = 'opacity 0.3s, transform 0.3s';
-              imageContainer.style.opacity = '0';
-              imageContainer.style.transform = 'scale(0.8)';
+            .then(response => response.json())
+            .then(data => {
 
-              setTimeout(() => {
-                imageContainer.remove();
-              }, 300);
+              if (data.success) {
 
-              // Show success message (optional)
-              // alert(data.message || 'Image deleted successfully');
-            } else {
-              alert(data.message || 'Failed to delete image');
-              this.disabled = false;
-              this.innerHTML = '<i class="bi bi-trash"></i>';
-            }
-          })
-          .catch(error => {
-            console.error('Error:', error);
-            alert('An error occurred while deleting the image');
-            this.disabled = false;
-            this.innerHTML = '<i class="bi bi-trash"></i>';
-          });
+                // Animasi fade-out
+                imageContainer.style.transition = 'opacity 0.3s, transform 0.3s';
+                imageContainer.style.opacity = '0';
+                imageContainer.style.transform = 'scale(0.8)';
+
+                setTimeout(() => {
+                  imageContainer.remove();
+
+                  // SweetAlert success
+                  Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil!',
+                    text: data.message || 'Gambar berhasil dihapus.',
+                    timer: 1500,
+                    showConfirmButton: false
+                  });
+                }, 300);
+
+              } else {
+                Swal.fire({
+                  icon: 'error',
+                  title: 'Gagal!',
+                  text: data.message || 'Tidak dapat menghapus gambar.'
+                });
+
+                // Reset button
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-trash"></i>';
+              }
+            })
+            .catch(error => {
+              console.error('Error:', error);
+
+              Swal.fire({
+                icon: 'error',
+                title: 'Error!',
+                text: 'Terjadi kesalahan saat menghapus gambar.'
+              });
+
+              btn.disabled = false;
+              btn.innerHTML = '<i class="bi bi-trash"></i>';
+            });
+        });
       });
     });
   });
+
 
   (function() {
     const form = document.getElementById('productForm');
