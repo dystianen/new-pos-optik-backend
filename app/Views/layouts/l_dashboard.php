@@ -130,6 +130,16 @@
               <span class="nav-link-text ms-1">Inventory</span>
             </a>
           </li>
+          <li class="nav-item">
+            <a class="nav-link <?= $currentURI === 'in-store-sales' ? 'active' : '' ?>" href="/in-store-sales">
+              <div class="me-2 d-flex align-items-center justify-content-center">
+                <i class="fa-solid fa-store"></i>
+              </div>
+              <span class="nav-link-text ms-1">In-store Sales</span>
+            </a>
+          </li>
+
+          <hr class="horizontal dark">
 
           <li class="nav-item">
             <a class="nav-link <?= $currentURI === 'products' ? 'active' : '' ?>" href="/products">
@@ -139,9 +149,6 @@
               <span class="nav-link-text ms-1">Products</span>
             </a>
           </li>
-
-          <hr class="horizontal dark">
-
           <li class="nav-item">
             <a class="nav-link <?= $currentURI === 'product-category' ? 'active' : '' ?>" href="/product-category">
               <div class="me-2 d-flex align-items-center justify-content-center">
@@ -153,7 +160,7 @@
           <li class="nav-item">
             <a class="nav-link <?= $currentURI === 'product-attribute' ? 'active' : '' ?>" href="/product-attribute">
               <div class="me-2 d-flex align-items-center justify-content-center">
-                <i class="fas fa-filter"></i>
+                <i class="fa-solid fa-bacteria"></i>
               </div>
               <span class="nav-link-text ms-1">Product Attribute</span>
             </a>

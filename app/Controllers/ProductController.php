@@ -2,6 +2,7 @@
 
 namespace App\Controllers;
 
+use App\Libraries\R2Storage;
 use App\Models\CustomerModel;
 use App\Models\ProductAttributeModel;
 use App\Models\ProductAttributeValueModel;
@@ -24,6 +25,7 @@ class ProductController extends BaseController
     protected $categoryModel;
     protected $variantImageModel;
     protected $customerModel;
+    protected $r2;
 
     public function __construct()
     {
@@ -36,6 +38,7 @@ class ProductController extends BaseController
         $this->variantImageModel = new ProductVariantImageModel();
         $this->pvValueModel = new ProductVariantValueModel();
         $this->customerModel = new CustomerModel();
+        $this->r2 = new R2Storage();
     }
 
     // =======================
@@ -464,7 +467,7 @@ class ProductController extends BaseController
                                         'variant_id' => $variantId,
                                         'product_image_id' => $oldProductImage['product_image_id'],
                                         'filename' => $oldProductImage['url'],
-                                        'full_path' => FCPATH . 'uploads/products/' . $oldProductImage['url']
+                                        'full_path' => $oldProductImage['url']
                                     ];
 
                                     log_message('debug', 'Added to delete queue: ' . $oldProductImage['url']);
@@ -487,11 +490,9 @@ class ProductController extends BaseController
                     log_message('debug', 'Deleting image: ' . json_encode($img));
 
                     // Hapus file fisik
-                    if (isset($img['full_path']) && file_exists($img['full_path'])) {
-                        $deleted = unlink($img['full_path']);
-                        log_message('debug', 'File deleted: ' . $img['full_path'] . ' - ' . ($deleted ? 'SUCCESS' : 'FAILED'));
-                    } else {
-                        log_message('debug', 'File NOT FOUND: ' . ($img['full_path'] ?? 'path not set'));
+                    if (!empty($img['filename'])) {
+                        $this->r2->deleteFile($img['filename']);
+                        log_message('debug', 'Deleted R2 object: ' . $img['filename']);
                     }
 
                     // Hapus record
@@ -528,16 +529,27 @@ class ProductController extends BaseController
                 foreach ($images['images'] as $img) {
                     if ($img->isValid() && !$img->hasMoved()) {
                         $newName = $img->getRandomName();
-                        $img->move(FCPATH . 'uploads/products', $newName);
+                        $tempPath = $img->getTempName();
 
-                        $this->productImageModel->insert([
-                            'product_id' => $productId,
-                            'url'        => $newName,
-                            'alt_text'   => $post['product_name'],
-                            'mime_type'  => $img->getClientMimeType(),
-                            'size_bytes' => $img->getSize(),
-                            'is_primary' => 1
-                        ]);
+                        $objectKey = $newName;
+
+                        // Unggah file ke R2
+                        $objectUrl = $this->r2->uploadFile($tempPath, $objectKey);
+
+                        if ($objectUrl) {
+                            log_message('debug', 'objectUrl: ' . $objectUrl);
+
+                            $this->productImageModel->insert([
+                                'product_id' => $productId,
+                                'url'        => $objectUrl,
+                                'alt_text'   => $post['product_name'],
+                                'mime_type'  => $img->getClientMimeType(),
+                                'size_bytes' => $img->getSize(),
+                                'is_primary' => 1
+                            ]);
+                        } else {
+                            log_message('error', 'Gagal mengunggah file ke R2: ' . $newName);
+                        }
                     }
                 }
             }
@@ -612,26 +624,30 @@ class ProductController extends BaseController
                         $file = $request->getFile("variants.$index.image");
 
                         if ($file && $file->isValid() && !$file->hasMoved()) {
+                            $tempPath = $file->getTempName();
                             $newName = $file->getRandomName();
-                            $file->move(FCPATH . 'uploads/products', $newName);
 
-                            $this->productImageModel->insert([
-                                'product_id' => $productId,
-                                'url'        => $newName,
-                                'alt_text'   => $variantName,
-                                'mime_type'  => $file->getClientMimeType(),
-                                'size_bytes' => $file->getSize(),
-                                'is_primary' => 0
-                            ]);
+                            $objectUrl = $this->r2->uploadFile($tempPath, $newName);
 
-                            $productImageId = $this->productImageModel->getInsertID();
+                            if ($objectUrl) {
+                                $this->productImageModel->insert([
+                                    'product_id' => $productId,
+                                    'url'        => $objectUrl,
+                                    'alt_text'   => $variantName,
+                                    'mime_type'  => $file->getClientMimeType(),
+                                    'size_bytes' => $file->getSize(),
+                                    'is_primary' => 0
+                                ]);
 
-                            $this->variantImageModel->insert([
-                                'variant_id'       => $variantId,
-                                'product_image_id' => $productImageId
-                            ]);
+                                $productImageId = $this->productImageModel->getInsertID();
 
-                            log_message('debug', 'Uploaded new image for variant ' . $variantId . ': ' . $newName);
+                                $this->variantImageModel->insert([
+                                    'variant_id'       => $variantId,
+                                    'product_image_id' => $productImageId
+                                ]);
+
+                                log_message('debug', 'Uploaded variant image to R2: ' . $newName);
+                            }
                         }
 
                         // VARIANT → ATTRIBUTE MAPPING
@@ -681,6 +697,16 @@ class ProductController extends BaseController
             foreach ($existingIds as $old) {
                 if (!in_array($old, $receivedIds)) {
                     $this->pvValueModel->where('variant_id', $old)->delete();
+
+                    if ($oldVariantImage) {
+                        $img = $this->productImageModel->find($oldVariantImage['product_image_id']);
+
+                        if ($img && !empty($img['url'])) {
+                            $filename = basename($img['url']); // hanya ambil nama object R2
+                            $this->r2->deleteFile($filename);
+                            log_message('debug', "Deleted R2 object for variant: $filename");
+                        }
+                    }
                     $this->variantImageModel->where('variant_id', $old)->delete();
                     $this->variantModel->delete($old);
                     log_message('debug', 'Deleted variant: ' . $old);
@@ -710,7 +736,6 @@ class ProductController extends BaseController
 
     public function deleteImage()
     {
-        // Hanya terima AJAX request
         if (!$this->request->isAJAX()) {
             return $this->response->setJSON([
                 'success' => false,
@@ -722,8 +747,6 @@ class ProductController extends BaseController
         $imageId = $json['image_id'] ?? null;
         $productId = $json['product_id'] ?? null;
 
-        log_message('debug', 'Delete image request - Image ID: ' . $imageId . ', Product ID: ' . $productId);
-
         if (!$imageId || !$productId) {
             return $this->response->setJSON([
                 'success' => false,
@@ -732,7 +755,7 @@ class ProductController extends BaseController
         }
 
         try {
-            // Cari image
+            // 🔍 Ambil data image
             $image = $this->productImageModel
                 ->where('product_image_id', $imageId)
                 ->where('product_id', $productId)
@@ -745,7 +768,7 @@ class ProductController extends BaseController
                 ])->setStatusCode(404);
             }
 
-            // Cek apakah image sedang dipakai variant
+            // 🔍 Cek apakah dipakai variant
             $variantImage = $this->variantImageModel
                 ->where('product_image_id', $imageId)
                 ->first();
@@ -757,27 +780,25 @@ class ProductController extends BaseController
                 ])->setStatusCode(400);
             }
 
-            // Hapus file fisik
-            $filePath = FCPATH . 'uploads/products/' . $image['url'];
+            $r2Key = $image['url'];
 
-            if (file_exists($filePath)) {
-                $deleted = unlink($filePath);
-                log_message('debug', 'File deletion: ' . ($deleted ? 'SUCCESS' : 'FAILED') . ' - ' . $filePath);
-            } else {
-                log_message('warning', 'File not found: ' . $filePath);
+            try {
+                $this->r2->deleteFile($r2Key);
+                log_message('info', 'R2 deletion success: ' . $r2Key);
+            } catch (\Throwable $e) {
+                log_message('error', 'R2 deletion FAILED: ' . $e->getMessage());
             }
 
-            // Hapus record dari database
-            $this->productImageModel->delete($imageId);
-
-            log_message('info', 'Image deleted successfully - ID: ' . $imageId);
+            // 🗑 3. Hapus record DB
+            $this->productImageModel
+                ->where('product_image_id', $imageId)
+                ->delete();
 
             return $this->response->setJSON([
                 'success' => true,
                 'message' => 'Image deleted successfully'
             ]);
         } catch (\Throwable $e) {
-            log_message('error', 'Delete image error: ' . $e->getMessage());
 
             return $this->response->setJSON([
                 'success' => false,
@@ -785,6 +806,7 @@ class ProductController extends BaseController
             ])->setStatusCode(500);
         }
     }
+
 
     public function webDelete($id)
     {

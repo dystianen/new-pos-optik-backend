@@ -69,7 +69,7 @@
               <div class="d-flex flex-wrap">
                 <?php foreach ($product_images as $img): ?>
                   <div class="me-2 mb-2 position-relative image-container" style="width: 150px;">
-                    <img src="<?= base_url('uploads/products/' . $img['url']) ?>" class="rounded border w-100 h-100" style="object-fit: cover;">
+                    <img src="<?= esc($img['url']) ?>" class="rounded border w-100 h-100" style="object-fit: contain;" alt="<?= esc($img['alt_text']) ?>">
 
                     <!-- Overlay dengan button delete di tengah -->
                     <div class="image-overlay position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center">
