@@ -99,11 +99,19 @@
         <!-- Admin (1) dan Cashier (3) -->
         <?php if (in_array($roleName, ['admin', 'cashier'])) : ?>
           <li class="nav-item">
-            <a class="nav-link <?= $currentURI === 'orders' ? 'active' : '' ?>" href="/orders">
+            <a class="nav-link <?= $currentURI === 'in-store-sales' ? 'active' : '' ?>" href="/in-store-sales">
               <div class="me-2 d-flex align-items-center justify-content-center">
-                <i class="fas fa-money-check-alt"></i>
+                <i class="fa-solid fa-store"></i>
               </div>
-              <span class="nav-link-text ms-1">Orders</span>
+              <span class="nav-link-text ms-1">In-store Sales</span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link <?= $currentURI === 'online-sales' ? 'active' : '' ?>" href="online-sales">
+              <div class="me-2 d-flex align-items-center justify-content-center">
+                <i class="fa-solid fa-bag-shopping"></i>
+              </div>
+              <span class="nav-link-text ms-1">Online Sales</span>
             </a>
           </li>
         <?php endif; ?>
@@ -120,6 +128,8 @@
           </li>
         <?php endif; ?>
 
+        <hr class="horizontal dark">
+
         <!-- Admin (1) dan Inventory (4) -->
         <?php if (in_array($roleName, ['admin', 'inventory'])) : ?>
           <li class="nav-item">
@@ -130,16 +140,6 @@
               <span class="nav-link-text ms-1">Inventory</span>
             </a>
           </li>
-          <li class="nav-item">
-            <a class="nav-link <?= $currentURI === 'in-store-sales' ? 'active' : '' ?>" href="/in-store-sales">
-              <div class="me-2 d-flex align-items-center justify-content-center">
-                <i class="fa-solid fa-store"></i>
-              </div>
-              <span class="nav-link-text ms-1">In-store Sales</span>
-            </a>
-          </li>
-
-          <hr class="horizontal dark">
 
           <li class="nav-item">
             <a class="nav-link <?= $currentURI === 'products' ? 'active' : '' ?>" href="/products">

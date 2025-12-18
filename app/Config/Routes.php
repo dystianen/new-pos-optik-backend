@@ -35,6 +35,11 @@ $routes->group('api', ['filter' => 'cors'], function ($routes) {
     $routes->get('category', 'ProductCategoryController::apiListProductCategory');
   });
 
+  // PRODUCT VARIANTS
+  $routes->group('variants', function ($routes) {
+    $routes->get('', 'ProductVariantController::getByProductId');
+  });
+
   // CART
   $routes->group('cart', ['filter' => 'authApi'], function ($routes) {
     $routes->post('add-to-cart', 'CartController::addToCart');
@@ -106,7 +111,14 @@ $routes->group('users', ['filter' => 'authGuard'], function ($routes) {
   $routes->post('delete/(:any)', 'UserController::delete/$1');
 });
 
-$routes->group('orders', ['filter' => 'authGuard'], function ($routes) {
+$routes->group('in-store-sales', ['filter' => 'authGuard'], function ($routes) {
+  $routes->get('', 'OrderController::index');
+  $routes->get('form', 'OrderController::form');
+  $routes->post('save', 'OrderController::save');
+  $routes->post('delete/(:any)', 'OrderController::delete/$1');
+});
+
+$routes->group('online-sales', ['filter' => 'authGuard'], function ($routes) {
   $routes->get('', 'OrderController::index');
   $routes->get('form', 'OrderController::form');
   $routes->post('save', 'OrderController::save');

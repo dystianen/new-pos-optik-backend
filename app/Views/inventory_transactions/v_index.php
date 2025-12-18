@@ -29,12 +29,10 @@
           <tr>
             <th>No</th>
             <th>Category</th>
-            <th>Name</th>
+            <th>Product</th>
+            <th>Variant</th>
             <th>Description</th>
-            <th>Price</th>
             <th>Quantity</th>
-            <th>Transaction Date</th>
-            <th>Image URL</th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -57,13 +55,9 @@
                   <?php endif; ?>
                 </td>
                 <td><?= esc($inventory_transaction['product_name']) ?></td>
+                <td><?= esc($inventory_transaction['variant_name']) ?></td>
                 <td><?= esc($inventory_transaction['description']) ?></td>
-                <td><?= number_format($inventory_transaction['product_price'], 0, ',', '.') ?></td>
                 <td><?= esc($inventory_transaction['quantity']) ?></td>
-                <td><?= date('d/m/Y H:i', strtotime($inventory_transaction['transaction_date'])) ?></td>
-                <td>
-                  <img src="<?= base_url() . esc($inventory_transaction['product_image_url']) ?>" alt="image" width="70" height="70" style="border-radius: 15px">
-                </td>
                 <td>
                   <a href="<?= base_url('/inventory/form?id=' . $inventory_transaction['inventory_transaction_id']) ?>" class="btn btn-sm btn-warning">Edit</a>
                   <form action="<?= base_url('/inventory/delete/' . $inventory_transaction['inventory_transaction_id']) ?>" method="post" style="display:inline-block;">

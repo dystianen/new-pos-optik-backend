@@ -22,6 +22,7 @@ class InventoryTransactionModel extends Model
     protected $allowedFields = [
         'inventory_transaction_id',
         'product_id',
+        'variant_id',
         'transaction_type',
         'quantity',
         'transaction_date',

@@ -5,57 +5,74 @@ namespace App\Controllers;
 use App\Controllers\BaseController;
 use App\Models\InventoryTransactionModel;
 use App\Models\ProductModel;
+use App\Models\ProductVariantModel;
 
 class InventoryTransactionsController extends BaseController
 {
-    protected $InventoryTransactionModel, $productModel;
+    protected $InventoryTransactionModel, $productModel, $productVariantModel;
 
     public function __construct()
     {
         $this->InventoryTransactionModel = new InventoryTransactionModel();
         $this->productModel = new ProductModel();
+        $this->productVariantModel = new ProductVariantModel();
     }
 
     public function webIndex()
     {
-        $currentPage = $this->request->getVar('page') ? (int)$this->request->getVar('page') : 1;
-        $search = $this->request->getVar('search'); // Ambil keyword dari input
+        $currentPage = $this->request->getVar('page')
+            ? (int) $this->request->getVar('page')
+            : 1;
+
+        $search = $this->request->getVar('search');
         $totalLimit = 10;
         $offset = ($currentPage - 1) * $totalLimit;
 
         $builder = $this->InventoryTransactionModel
+            ->select('
+            inventory_transactions.*,
+            p1.product_name,
+            p1.product_stock,
+            v1.variant_id,
+            v1.variant_name,
+            v1.stock AS variant_stock,
+            p2.category_name
+        ')
             ->join('products p1', 'inventory_transactions.product_id = p1.product_id')
-            ->join('product_categories p2', 'p1.category_id = p2.category_id')
-            ->orderBy('transaction_date', 'DESC');
+            ->join('product_variants v1', 'inventory_transactions.variant_id = v1.variant_id', 'left')
+            ->join('product_categories p2', 'p1.category_id = p2.category_id', 'left')
+            ->orderBy('inventory_transactions.transaction_date', 'DESC');
 
         if (!empty($search)) {
             $builder->groupStart()
                 ->like('p1.product_name', $search)
+                ->orLike('v1.variant_name', $search)
                 ->orLike('p2.category_name', $search)
                 ->orLike('inventory_transactions.transaction_type', $search)
                 ->groupEnd();
         }
 
-        // Clone builder for count
+        // clone builder untuk total data
         $countBuilder = clone $builder;
 
         $transactions = $builder->findAll($totalLimit, $offset);
-        $totalRows = $countBuilder->countAllResults(false); // avoid re-joining
+        $totalRows    = $countBuilder->countAllResults(false);
 
-        $totalPages = ceil($totalRows / $totalLimit);
+        $totalPages = (int) ceil($totalRows / $totalLimit);
 
         $data = [
-            "inventory_transactions" => $transactions,
-            "pager" => [
-                "totalPages" => $totalPages,
-                "currentPage" => $currentPage,
-                "limit" => $totalLimit,
+            'inventory_transactions' => $transactions,
+            'pager' => [
+                'totalPages'  => $totalPages,
+                'currentPage' => $currentPage,
+                'limit'       => $totalLimit,
             ],
-            "search" => $search, // kirim ke view supaya input tetap muncul
+            'search' => $search,
         ];
 
         return view('inventory_transactions/v_index', $data);
     }
+
 
 
     public function form()
@@ -74,106 +91,155 @@ class InventoryTransactionsController extends BaseController
         return view('inventory_transactions/v_form', $data);
     }
 
+    private function updateVariantStock($variantId, string $type, int $qty)
+    {
+        $variant = $this->productVariantModel->find($variantId);
+
+        if (!$variant || !is_array($variant)) {
+            throw new \Exception('Variant not found or invalid data');
+        }
+
+        if (!isset($variant['stock'])) {
+            throw new \Exception('Stock key not found in variant. Keys: ' . implode(', ', array_keys($variant)));
+        }
+
+        $stock = (int) $variant['stock'];
+
+        if ($type === 'in') {
+            $stock += $qty;
+        } else {
+            if ($stock < $qty) {
+                throw new \Exception('Insufficient variant stock.');
+            }
+            $stock -= $qty;
+        }
+
+        $this->productVariantModel->update($variantId, [
+            'stock' => $stock
+        ]);
+    }
+
+    private function adjustVariantStock($variantId, int $adjustment)
+    {
+        $variant = $this->productVariantModel->find($variantId);
+
+        if (!$variant || !is_array($variant)) {
+            throw new \Exception('Variant not found or invalid data');
+        }
+
+        if (!isset($variant['stock'])) {
+            throw new \Exception('Stock key not found in variant. Keys: ' . implode(', ', array_keys($variant)));
+        }
+
+        $newStock = (int) $variant['stock'] + $adjustment;
+
+        if ($newStock < 0) {
+            throw new \Exception('Insufficient variant stock after adjustment.');
+        }
+
+        $this->productVariantModel->update($variantId, [
+            'stock' => $newStock
+        ]);
+    }
+
+    private function recalcProductStock($productId)
+    {
+        $query = $this->productVariantModel
+            ->select('SUM(stock) as total_stock')
+            ->where('product_id', $productId)
+            ->get();
+
+        $result = $query->getRowArray();
+
+        $total = 0;
+        if ($result && isset($result['total_stock'])) {
+            $total = (int) $result['total_stock'];
+        }
+
+        $this->productModel->update($productId, [
+            'product_stock' => $total
+        ]);
+    }
+
     public function save()
     {
         $id = $this->request->getVar('id');
         $session = session();
 
-        $rules = [
-            'product_id' => 'required|integer',
-            'transaction_type' => 'required|in_list[in,out]',
-            'quantity' => 'required|integer',
-            'description' => 'permit_empty|string'
-        ];
+        $productId = $this->request->getVar('product_id');
+        $variantId = $this->request->getVar('variant_id');
+        $type      = $this->request->getVar('transaction_type');
+        $qty       = (int) $this->request->getVar('quantity');
 
-        if (!$this->validate($rules)) {
-            return redirect()->back()->withInput()->with('failed', 'Please check your input.');
+        $variant = $this->productVariantModel->find($variantId);
+
+        if (!$variant) {
+            return redirect()->back()->with('failed', 'Variant not found.');
         }
-
-        $productId = (int) $this->request->getVar('product_id');
-        $transactionType = $this->request->getVar('transaction_type');
-        $quantity = (int) $this->request->getVar('quantity');
-
-        $product = $this->productModel->find($productId);
-        if (!$product) {
-            return redirect()->back()->withInput()->with('failed', 'Product not found.');
-        }
-
-        $currentStock = (int) $product['product_stock'];
 
         $data = [
             'product_id' => $productId,
-            'transaction_type' => $transactionType,
-            'quantity' => $quantity,
+            'variant_id' => $variantId,
+            'transaction_type' => $type,
+            'quantity' => $qty,
             'description' => $this->request->getVar('description'),
             'user_id' => $session->get('id'),
-            'transaction_date' => date('Y-m-d H:i'),
+            'transaction_date' => date('Y-m-d H:i:s'),
         ];
 
-        // Jalankan transaksi DB agar rollback jika error
         $this->db->transBegin();
 
         try {
+
+            /** =========================
+             * UPDATE TRANSACTION
+             * ========================= */
             if ($id) {
-                // Get old transaction
-                $oldTransaction = $this->InventoryTransactionModel->find($id);
-
-                if (!$oldTransaction) {
-                    $this->db->transRollback();
-                    return redirect()->back()->withInput()->with('failed', 'Old transaction not found.');
+                // 1️⃣ Ambil transaksi lama
+                $old = $this->InventoryTransactionModel->find($id);
+                if (!$old) {
+                    throw new \Exception('Old transaction not found');
                 }
 
-                $oldQty = (int) $oldTransaction['quantity'];
-                $oldType = $oldTransaction['transaction_type'];
+                // 2️⃣ Hitung selisih qty
+                $oldQty = (int) $old['quantity'];
+                $qtyDiff = $qty - $oldQty;
 
-                // Hitung rollback stok lama
-                if ($oldType === 'in') {
-                    $currentStock -= $oldQty;
-                } else {
-                    $currentStock += $oldQty;
-                }
-
-                // Hitung apply stok baru
-                if ($transactionType === 'in') {
-                    $currentStock += $quantity;
-                } else {
-                    $currentStock -= $quantity;
-                }
-
-                if ($currentStock < 0) {
-                    $this->db->transRollback();
-                    return redirect()->back()->withInput()->with('failed', 'Insufficient stock after update.');
-                }
-
-                $this->productModel->update($productId, ['product_stock' => $currentStock]);
-                $this->InventoryTransactionModel->update($id, $data);
-                $message = 'Transaction updated successfully!';
-            } else {
-                // INSERT baru
-                if ($transactionType === 'in') {
-                    $currentStock += $quantity;
-                } else {
-                    if ($currentStock < $quantity) {
-                        $this->db->transRollback();
-                        return redirect()->back()->withInput()->with('failed', 'Insufficient stock.');
+                // 3️⃣ Adjust stock berdasarkan selisih dan type
+                if ($qtyDiff != 0) {
+                    if ($type === 'in') {
+                        $this->adjustVariantStock($variantId, $qtyDiff);
+                    } else {
+                        $this->adjustVariantStock($variantId, -$qtyDiff);
                     }
-                    $currentStock -= $quantity;
                 }
 
-                $this->productModel->update($productId, ['product_stock' => $currentStock]);
-                $this->InventoryTransactionModel->insert($data);
-                $message = 'Transaction created successfully!';
+                // 4️⃣ Update transaksi
+                $this->InventoryTransactionModel->update($id, $data);
             }
 
+            /** =========================
+             * INSERT TRANSACTION (BARU)
+             * ========================= */
+            else {
+                // Langsung apply stock
+                $this->updateVariantStock($variantId, $type, $qty);
+
+                // Insert transaksi
+                $this->InventoryTransactionModel->insert($data);
+            }
+
+            // 5️⃣ Recalculate stok product
+            $this->recalcProductStock($productId);
+
             $this->db->transCommit();
-            return redirect()->to('/inventory')->with('success', $message);
+
+            return redirect()->to('/inventory')->with('success', 'Transaction saved.');
         } catch (\Throwable $e) {
             $this->db->transRollback();
-            return redirect()->back()->withInput()->with('failed', 'Error: ' . $e->getMessage());
+            return redirect()->back()->with('failed', $e->getMessage());
         }
     }
-
-
     public function delete($id)
     {
         $this->InventoryTransactionModel->delete($id);

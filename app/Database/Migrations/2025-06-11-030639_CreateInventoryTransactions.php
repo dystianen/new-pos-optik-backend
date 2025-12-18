@@ -17,6 +17,10 @@ class CreateInventoryTransactions extends Migration
                 'type' => 'CHAR',
                 'constraint' => 36,
             ],
+            'variant_id' => [
+                'type' => 'CHAR',
+                'constraint' => 36,
+            ],
             'product_id' => [
                 'type' => 'CHAR',
                 'constraint' => 36,
@@ -55,6 +59,7 @@ class CreateInventoryTransactions extends Migration
 
         // Tambahkan foreign key
         $this->forge->addForeignKey('product_id', 'products', 'product_id', 'CASCADE', 'CASCADE');
+        $this->forge->addForeignKey('variant_id', 'product_variants', 'variant_id', 'CASCADE', 'CASCADE');
         $this->forge->addForeignKey('user_id', 'users', 'user_id', 'CASCADE', 'CASCADE');
 
         $this->forge->createTable('inventory_transactions');

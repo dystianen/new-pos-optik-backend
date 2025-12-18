@@ -45,9 +45,8 @@
         <!-- Stock (base) -->
         <div class="col-12 col-md-6 mb-3">
           <label class="form-label">Base Stock</label>
-          <input type="number" name="product_stock" class="form-control"
+          <input disabled type="number" name="product_stock" class="form-control"
             value="<?= old('product_stock', $product['product_stock'] ?? '') ?>" required>
-          <small class="text-muted">Used if variants are not enabled or variant stock is empty.</small>
         </div>
 
         <!-- Brand -->
@@ -473,7 +472,7 @@
           <input type="hidden" name="variants[${idx}][label]" value="${escapeHtml(variantLabel)}">
         </td>
         <td><input type="number" step="0.01" name="variants[${idx}][price]" class="form-control form-control-sm" placeholder="Leave empty to use base price"></td>
-        <td><input type="number" name="variants[${idx}][stock]" class="form-control form-control-sm" placeholder="Leave empty to use base stock"></td>
+        <td><input disabled type="number" name="variants[${idx}][stock]" class="form-control form-control-sm" placeholder="Leave empty to use base stock"></td>
         <td>
           <input type="file" name="variants[${idx}][image]" accept=".jpg,.jpeg,.png" class="form-control form-control-sm">
         </td>
@@ -526,7 +525,7 @@
           </td>
 
           <td>
-            <input type="number" name="variants[${idx}][stock]" class="form-control form-control-sm"
+            <input disabled type="number" name="variants[${idx}][stock]" class="form-control form-control-sm"
               value="${v.stock || ''}">
           </td>
 
