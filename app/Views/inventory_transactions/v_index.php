@@ -33,6 +33,7 @@
             <th>Variant</th>
             <th>Description</th>
             <th>Quantity</th>
+            <th>Date</th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -58,6 +59,7 @@
                 <td><?= esc($inventory_transaction['variant_name']) ?></td>
                 <td><?= esc($inventory_transaction['description']) ?></td>
                 <td><?= esc($inventory_transaction['quantity']) ?></td>
+                <td><?= date('d/m/Y H:i', strtotime($inventory_transaction['transaction_date'])) ?></td>
                 <td>
                   <a href="<?= base_url('/inventory/form?id=' . $inventory_transaction['inventory_transaction_id']) ?>" class="btn btn-sm btn-warning">Edit</a>
                   <form action="<?= base_url('/inventory/delete/' . $inventory_transaction['inventory_transaction_id']) ?>" method="post" style="display:inline-block;">
