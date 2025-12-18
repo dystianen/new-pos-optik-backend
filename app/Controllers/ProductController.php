@@ -52,22 +52,31 @@ class ProductController extends BaseController
 
         $builder = $this->productModel->builder();
 
+        $builder->select('
+            products.*,
+            product_images.url AS product_image_url
+        ');
+
+        $builder->join(
+            'product_images',
+            'product_images.product_id = products.product_id AND product_images.is_primary = 1',
+            'left'
+        );
+
         if (!empty($search)) {
-            $builder->like('product_name', $search);
+            $builder->like('products.product_name', $search);
         }
 
         $products = $builder
-            ->orderBy('created_at', 'DESC')
+            ->orderBy('products.created_at', 'DESC')
             ->get()
             ->getResultArray();
 
-        $response = [
+        return $this->response->setJSON([
             'status' => 200,
             'message' => 'Successfully!',
             'data' => $products
-        ];
-
-        return $this->response->setJSON($response);
+        ]);
     }
 
     // GET /api/product/recommendations
@@ -291,12 +300,20 @@ class ProductController extends BaseController
 
         // --- STATIC DATA ---
         $data['categories'] = $this->categoryModel->findAll();
-        $data['attributes'] = $this->attributeModel->findAll();
 
-        // CREATE PRODUCT
-        if (!$id) {
-            return view('products/v_form', $data);
+        // ✅ GET ATTRIBUTES WITH MASTER VALUES
+        $attributes = $this->attributeModel->findAll();
+
+        foreach ($attributes as &$attr) {
+            // Load master values untuk setiap attribute
+            $attr['values'] = $this->db->table('product_attribute_master_values')
+                ->where('attribute_id', $attr['attribute_id'])
+                ->where('deleted_at', null)
+                ->get()
+                ->getResultArray();
         }
+
+        $data['attributes'] = $attributes;
 
         // ------------------------------------------------------------------
         // 1. PRODUCT
@@ -327,13 +344,20 @@ class ProductController extends BaseController
             ->where('deleted_at', null)
             ->findAll();
 
-        // Format: pav_values[attribute_id] = [pav_id, value]
+        // Format: pav_values[attribute_id] = [pav_id, value, value2, ...]
         $pavValues = [];
         foreach ($pav as $row) {
-            $pavValues[$row['attribute_id']] = [
-                'pav_id' => $row['pav_id'],
-                'value'  => $row['value'],
-            ];
+            $attrId = $row['attribute_id'];
+
+            if (!isset($pavValues[$attrId])) {
+                $pavValues[$attrId] = [
+                    'pav_ids' => [],
+                    'values' => []
+                ];
+            }
+
+            $pavValues[$attrId]['pav_ids'][] = $row['pav_id'];
+            $pavValues[$attrId]['values'][] = $row['value'];
         }
         $data['pav_values'] = $pavValues;
 
@@ -344,7 +368,7 @@ class ProductController extends BaseController
         $data['selected_attributes'] = $selectedAttributes;
 
         // ------------------------------------------------------------------
-        // (NEW) — SELECTED ATTRIBUTE VALUES
+        // (NEW) — SELECTED ATTRIBUTE VALUES (flat array)
         // ------------------------------------------------------------------
         $selectedAttributeValues = array_column($pav, 'value');
         $data['selected_attribute_values'] = $selectedAttributeValues;

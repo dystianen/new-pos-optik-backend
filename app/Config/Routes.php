@@ -112,10 +112,10 @@ $routes->group('users', ['filter' => 'authGuard'], function ($routes) {
 });
 
 $routes->group('in-store-sales', ['filter' => 'authGuard'], function ($routes) {
-  $routes->get('', 'OrderController::index');
-  $routes->get('form', 'OrderController::form');
-  $routes->post('save', 'OrderController::save');
-  $routes->post('delete/(:any)', 'OrderController::delete/$1');
+  $routes->get('', 'InStoreSaleController::index');
+  $routes->get('form', 'InStoreSaleController::form');
+  $routes->post('save', 'InStoreSaleController::save');
+  $routes->post('delete/(:any)', 'InStoreSaleController::delete/$1');
 });
 
 $routes->group('online-sales', ['filter' => 'authGuard'], function ($routes) {

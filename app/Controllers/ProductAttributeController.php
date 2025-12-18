@@ -17,7 +17,7 @@ class ProductAttributeController extends BaseController
         $this->attributeMasterValueModel = new ProductAttributeMasterValueModel();
     }
 
-    public function apiListProductCategory()
+    public function apiListProductAttribute()
     {
         $attributes = $this->attributeModel->findAll();
 
@@ -170,9 +170,6 @@ class ProductAttributeController extends BaseController
         return redirect()->to('/product-attribute')->with('success', 'Attribute created successfully!');
     }
 
-
-
-    // DELETE
     public function webDelete($id)
     {
         $this->attributeModel->delete($id);

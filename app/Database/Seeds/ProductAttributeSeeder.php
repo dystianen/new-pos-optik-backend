@@ -13,19 +13,19 @@ class ProductAttributeSeeder extends Seeder
         $data = [
             [
                 'attribute_name' => 'Frame Material',
-                'attribute_type' => 'select',
+                'attribute_type' => 'dropdown',
             ],
             [
                 'attribute_name' => 'Frame Shape',
-                'attribute_type' => 'select',
+                'attribute_type' => 'dropdown',
             ],
             [
                 'attribute_name' => 'Lens Type',
-                'attribute_type' => 'select',
+                'attribute_type' => 'dropdown',
             ],
             [
                 'attribute_name' => 'Lens Material',
-                'attribute_type' => 'select',
+                'attribute_type' => 'dropdown',
             ],
             [
                 'attribute_name' => 'Frame Size (Width)',
@@ -41,7 +41,7 @@ class ProductAttributeSeeder extends Seeder
             ],
             [
                 'attribute_name' => 'Color',
-                'attribute_type' => 'select',
+                'attribute_type' => 'dropdown',
             ],
         ];
 

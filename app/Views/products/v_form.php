@@ -109,18 +109,22 @@
             <?php foreach ($attributes as $attr): ?>
 
               <?php
+              $attrId = $attr['attribute_id'];
               $attrName = $attr['attribute_name'];
+              $attrType = $attr['attribute_type'];
 
-              // value untuk edit
-              $existingValue = $pav_values[$attr['attribute_id']]['value'] ?? '';
+              // ✅ Data yang sudah dipilih sebelumnya (array of values)
+              $selectedValues = $selected_attribute_values[$attrId] ?? [];
 
-              // apakah attribute ini dipilih sebagai variant
-              $isVariant = in_array($attr['attribute_id'], $selected_attributes ?? []) ? 'checked' : '';
+              // ✅ Value untuk text input (join dengan koma)
+              $existingTextValue = isset($pav_values[$attrId])
+                ? implode(', ', $pav_values[$attrId]['values'])
+                : '';
 
-              // selected checkbox value
-              $selectedValues = $selected_attribute_values[$attr['attribute_id']] ?? [];
+              // ✅ Apakah attribute ini dipilih sebagai variant
+              $isVariant = in_array($attrId, $selected_attributes ?? []) ? 'checked' : '';
 
-              // cek apakah attribute boleh jadi variant
+              // ✅ Cek apakah attribute boleh jadi variant
               $allowed = in_array($attrName, $variantAllowed);
               ?>
 
@@ -134,10 +138,11 @@
                     <?php if ($allowed): ?>
                       <div class="form-check form-switch">
                         <input
-                          class="form-check-input"
+                          class="form-check-input variant-toggle"
                           type="checkbox"
                           name="variant_attributes[]"
-                          value="<?= $attr['attribute_id'] ?>"
+                          value="<?= $attrId ?>"
+                          data-attr-id="<?= $attrId ?>"
                           <?= $isVariant ?>>
                         <label class="form-check-label">Variant</label>
                       </div>
@@ -146,49 +151,47 @@
                   </div>
 
                   <!-- JIKA TIPE TEXT -->
-                  <?php if ($attr['attribute_type'] === 'text'): ?>
+                  <?php if ($attrType === 'text'): ?>
 
                     <input
                       type="text"
-                      class="form-control"
-                      name="attributes[<?= $attr['attribute_id'] ?>]"
-                      placeholder="Enter <?= strtolower($attrName) ?>"
-                      value="<?= esc($existingValue) ?>">
+                      class="form-control attribute-input"
+                      name="attributes[<?= $attrId ?>]"
+                      data-attr-id="<?= $attrId ?>"
+                      placeholder="Enter <?= strtolower($attrName) ?> (comma separated for variants)"
+                      value="<?= esc($existingTextValue) ?>">
 
                   <?php endif; ?>
 
-                  <!-- JIKA TIPE SELECT: checkbox list -->
-                  <?php if ($attr['attribute_type'] === 'select'): ?>
-
-                    <input
-                      type="text"
-                      class="form-control mb-2"
-                      name="attributes[<?= $attr['attribute_id'] ?>]"
-                      placeholder="Enter <?= strtolower($attrName) ?> (comma separated)"
-                      value="<?= esc($existingValue) ?>">
+                  <!-- JIKA TIPE DROPDOWN: checkbox list -->
+                  <?php if ($attrType === 'dropdown'): ?>
 
                     <?php if (!empty($attr['values'])): ?>
-                      <div class="mt-2">
+                      <div class="mt-2 checkbox-group" data-attr-id="<?= $attrId ?>">
+                        <small class="text-muted d-block mb-2">Select one or more options:</small>
 
                         <?php foreach ($attr['values'] as $val): ?>
-                          <div class="form-check form-check-inline mb-2">
+                          <div class="form-check mb-2">
                             <input
-                              class="form-check-input"
+                              class="form-check-input attribute-checkbox"
                               type="checkbox"
-                              name="attribute_values[<?= $attr['attribute_id'] ?>][]"
+                              name="attributes[<?= $attrId ?>][]"
                               value="<?= esc($val['value']) ?>"
+                              data-attr-id="<?= $attrId ?>"
+                              id="attr_<?= $attrId ?>_<?= $val['attribute_master_id'] ?>"
                               <?= in_array($val['value'], $selectedValues) ? 'checked' : '' ?>>
-                            <label class="form-check-label">
+                            <label class="form-check-label" for="attr_<?= $attrId ?>_<?= $val['attribute_master_id'] ?>">
                               <?= esc($val['value']) ?>
                             </label>
                           </div>
                         <?php endforeach; ?>
 
                       </div>
+                    <?php else: ?>
+                      <p class="text-muted"><em>No options available</em></p>
                     <?php endif; ?>
 
                   <?php endif; ?>
-
                 </div>
               </div>
 
@@ -279,100 +282,9 @@
 
 <?= $this->section('scripts') ?>
 <script>
-  document.addEventListener('DOMContentLoaded', function() {
-    const deleteButtons = document.querySelectorAll('.delete-image-btn');
-
-    deleteButtons.forEach(button => {
-      button.addEventListener('click', function(e) {
-        e.preventDefault();
-
-        const imageId = this.dataset.imageId;
-        const productId = this.dataset.productId;
-        const imageContainer = this.closest('.image-container');
-        const btn = this;
-
-        // SweetAlert Konfirmasi
-        Swal.fire({
-          title: 'Hapus Gambar?',
-          text: 'Gambar yang dihapus tidak dapat dikembalikan.',
-          icon: 'warning',
-          showCancelButton: true,
-          confirmButtonText: 'Ya, hapus',
-          cancelButtonText: 'Batal',
-          confirmButtonColor: '#d33',
-          cancelButtonColor: '#3085d6'
-        }).then((result) => {
-          if (!result.isConfirmed) return;
-
-          // Button loading
-          btn.disabled = true;
-          btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
-
-          // AJAX Request
-          fetch('<?= base_url('products/delete-image') ?>', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest'
-              },
-              body: JSON.stringify({
-                image_id: imageId,
-                product_id: productId
-              })
-            })
-            .then(response => response.json())
-            .then(data => {
-
-              if (data.success) {
-
-                // Animasi fade-out
-                imageContainer.style.transition = 'opacity 0.3s, transform 0.3s';
-                imageContainer.style.opacity = '0';
-                imageContainer.style.transform = 'scale(0.8)';
-
-                setTimeout(() => {
-                  imageContainer.remove();
-
-                  // SweetAlert success
-                  Swal.fire({
-                    icon: 'success',
-                    title: 'Berhasil!',
-                    text: data.message || 'Gambar berhasil dihapus.',
-                    timer: 1500,
-                    showConfirmButton: false
-                  });
-                }, 300);
-
-              } else {
-                Swal.fire({
-                  icon: 'error',
-                  title: 'Gagal!',
-                  text: data.message || 'Tidak dapat menghapus gambar.'
-                });
-
-                // Reset button
-                btn.disabled = false;
-                btn.innerHTML = '<i class="bi bi-trash"></i>';
-              }
-            })
-            .catch(error => {
-              console.error('Error:', error);
-
-              Swal.fire({
-                icon: 'error',
-                title: 'Error!',
-                text: 'Terjadi kesalahan saat menghapus gambar.'
-              });
-
-              btn.disabled = false;
-              btn.innerHTML = '<i class="bi bi-trash"></i>';
-            });
-        });
-      });
-    });
-  });
-
-
+  // ========================================
+  // IMPROVED VARIANT GENERATION
+  // ========================================
   (function() {
     const form = document.getElementById('productForm');
     const variantSection = document.getElementById('variantSection');
@@ -381,23 +293,43 @@
 
     // REHYDRATE VARIANTS FROM PHP
     const existingVariants = <?= isset($variants) ? json_encode($variants) : '[]' ?>;
-    const pavValues = <?= isset($pav_values) ? json_encode($pav_values) : '[]' ?>;
+    const pavValues = <?= isset($pav_values) ? json_encode($pav_values) : '{}' ?>;
 
     // TRACK NEXT INDEX untuk variant baru
     let nextVariantIndex = existingVariants.length;
 
+    /**
+     * ✅ Get variant attributes WITH CORRECT VALUES
+     * - Untuk TEXT: ambil dari input, split by comma
+     * - Untuk DROPDOWN: ambil dari checked checkboxes
+     */
     function getVariantAttributes() {
       const checked = Array.from(document.querySelectorAll('input[name="variant_attributes[]"]:checked'));
+
       return checked.map(cb => {
         const attrId = cb.value;
-        const input = document.querySelector('input[name="attributes[' + attrId + ']"]');
-        const raw = input ? input.value : '';
-        const vals = raw.split(',').map(s => s.trim()).filter(Boolean);
-        const name = input.previousElementSibling ? input.previousElementSibling.textContent : '';
+        const attrName = cb.closest('.p-3').querySelector('label.fw-bold').textContent.trim();
+
+        // ✅ CEK TYPE: text atau dropdown
+        const textInput = document.querySelector(`input.attribute-input[data-attr-id="${attrId}"]`);
+        const checkboxGroup = document.querySelector(`.checkbox-group[data-attr-id="${attrId}"]`);
+
+        let values = [];
+
+        if (textInput) {
+          // TEXT TYPE: split by comma
+          const raw = textInput.value || '';
+          values = raw.split(',').map(s => s.trim()).filter(Boolean);
+        } else if (checkboxGroup) {
+          // DROPDOWN TYPE: ambil dari checked checkboxes
+          const checkedBoxes = checkboxGroup.querySelectorAll('input.attribute-checkbox:checked');
+          values = Array.from(checkedBoxes).map(cb => cb.value);
+        }
+
         return {
           id: attrId,
-          name: attrId,
-          values: vals
+          name: attrName,
+          values: values
         };
       });
     }
@@ -409,6 +341,7 @@
         acc.forEach(a => {
           curr.values.forEach(v => res.push(a.concat([{
             attrId: curr.id,
+            attrName: curr.name,
             value: v
           }])));
         });
@@ -420,26 +353,23 @@
 
     function renderVariants() {
       const attrs = getVariantAttributes();
+
       if (!attrs.length) {
         variantSection.style.display = 'none';
-        // JANGAN HAPUS EXISTING VARIANTS
-        // variantTableBody.innerHTML = '';
         return;
       }
 
-      // ensure each selected attribute has at least one value
+      // Ensure each selected attribute has at least one value
       for (const a of attrs) {
         if (!a.values.length) {
-          alert('Attribute with id ' + a.id + ' has no values. Add comma-separated values to attribute input.');
+          console.warn(`Attribute "${a.name}" has no values`);
+          variantSection.style.display = 'none';
           return;
         }
       }
 
       const combos = generateCombinations(attrs);
       variantSection.style.display = combos.length ? 'block' : 'none';
-
-      // JANGAN HAPUS SEMUA, hanya hapus yang baru (tanpa variant_id)
-      // variantTableBody.innerHTML = '';
 
       // Hapus hanya variant yang tidak punya variant_id (variant baru yang belum disave)
       const rowsToRemove = Array.from(variantTableBody.querySelectorAll('tr')).filter(tr => {
@@ -453,14 +383,13 @@
       combos.forEach((combo) => {
         const variantLabel = combo.map(c => c.value).join(' - ');
 
-        // CEK apakah variant ini sudah ada (by label atau mapping)
+        // CEK apakah variant ini sudah ada
         const exists = Array.from(variantTableBody.querySelectorAll('tr')).some(tr => {
           const label = tr.querySelector('input[name*="[label]"]');
           return label && label.value === variantLabel;
         });
 
         if (exists) {
-          console.log('Variant already exists:', variantLabel);
           return; // Skip jika sudah ada
         }
 
@@ -472,7 +401,7 @@
           <input type="hidden" name="variants[${idx}][label]" value="${escapeHtml(variantLabel)}">
         </td>
         <td><input type="number" step="0.01" name="variants[${idx}][price]" class="form-control form-control-sm" placeholder="Leave empty to use base price"></td>
-        <td><input disabled type="number" name="variants[${idx}][stock]" class="form-control form-control-sm" placeholder="Leave empty to use base stock"></td>
+        <td><input disabled type="number" name="variants[${idx}][stock]" class="form-control form-control-sm" placeholder="Auto-calculated"></td>
         <td>
           <input type="file" name="variants[${idx}][image]" accept=".jpg,.jpeg,.png" class="form-control form-control-sm">
         </td>
@@ -481,7 +410,7 @@
         </td>
       `;
 
-        // store attribute mapping
+        // Store attribute mapping
         const hidden = document.createElement('input');
         hidden.type = 'hidden';
         hidden.name = `variants[${idx}][mapping]`;
@@ -494,50 +423,41 @@
         variantTableBody.appendChild(tr);
       });
 
-      // add remove handlers
       attachRemoveHandlers();
     }
 
     function renderExistingVariants() {
-      // JANGAN HAPUS SEMUA - hanya render yang belum ada
-      // variantTableBody.innerHTML = '';
-
       existingVariants.forEach((v, idx) => {
-        // Cek apakah variant ini sudah di-render
         const alreadyRendered = variantTableBody.querySelector(`input[name="variants[${idx}][variant_id]"][value="${v.variant_id}"]`);
         if (alreadyRendered) {
-          return; // Skip jika sudah di-render
+          return;
         }
 
         const tr = document.createElement('tr');
         const mappingJson = JSON.stringify(v.pav_mapping || []);
 
         tr.innerHTML = `
-          <td>
-            ${v.variant_name}
-            <input type="hidden" name="variants[${idx}][label]" value="${escapeHtml(v.variant_name)}">
-            <input type="hidden" name="variants[${idx}][variant_id]" value="${v.variant_id}">
-          </td>
-
-          <td>
-            <input type="number" step="0.01" name="variants[${idx}][price]" class="form-control form-control-sm"
-              value="${v.price || ''}">
-          </td>
-
-          <td>
-            <input disabled type="number" name="variants[${idx}][stock]" class="form-control form-control-sm"
-              value="${v.stock || ''}">
-          </td>
-
-          <td>
-            <input type="file" name="variants[${idx}][image]" accept=".jpg,.jpeg,.png" class="form-control form-control-sm mb-1">
-            ${v.variant_image ? `<img src="${v.variant_image.url}" width="30">` : ''}
-          </td>
-
-          <td>
-            <button type="button" class="btn btn-sm btn-danger remove-variant">Remove</button>
-          </td>
-        `;
+        <td>
+          ${v.variant_name}
+          <input type="hidden" name="variants[${idx}][label]" value="${escapeHtml(v.variant_name)}">
+          <input type="hidden" name="variants[${idx}][variant_id]" value="${v.variant_id}">
+        </td>
+        <td>
+          <input type="number" step="0.01" name="variants[${idx}][price]" class="form-control form-control-sm"
+            value="${v.price || ''}">
+        </td>
+        <td>
+          <input disabled type="number" name="variants[${idx}][stock]" class="form-control form-control-sm"
+            value="${v.stock || ''}">
+        </td>
+        <td>
+          <input type="file" name="variants[${idx}][image]" accept=".jpg,.jpeg,.png" class="form-control form-control-sm mb-1">
+          ${v.variant_image ? `<img src="${v.variant_image.url}" width="30" class="rounded">` : ''}
+        </td>
+        <td>
+          <button type="button" class="btn btn-sm btn-danger remove-variant">Remove</button>
+        </td>
+      `;
 
         const hidden = document.createElement('input');
         hidden.type = 'hidden';
@@ -554,7 +474,7 @@
 
     function attachRemoveHandlers() {
       document.querySelectorAll('.remove-variant').forEach(btn => {
-        btn.removeEventListener('click', handleRemove); // Hindari double binding
+        btn.removeEventListener('click', handleRemove);
         btn.addEventListener('click', handleRemove);
       });
     }
@@ -569,39 +489,43 @@
           '&': '&amp;',
           '<': '&lt;',
           '>': '&gt;',
-          '"': '&quot',
-          "'": '&#039'
+          '"': '&quot;',
+          "'": '&#039;'
         })[m];
       });
     }
 
-    // events
+    // ✅ EVENT LISTENERS
+    // Trigger saat:
+    // 1. Toggle variant checkbox
+    // 2. Input text berubah (untuk text type)
+    // 3. Checkbox attribute berubah (untuk dropdown type)
     document.addEventListener('change', function(e) {
-      if (e.target.matches('input[name^="attributes["]') || e.target.matches('input[name="variant_attributes[]"]')) {
+      if (
+        e.target.matches('.variant-toggle') ||
+        e.target.matches('.attribute-input') ||
+        e.target.matches('.attribute-checkbox')
+      ) {
         clearTimeout(window._variantTimer);
         window._variantTimer = setTimeout(renderVariants, 300);
       }
     });
 
     rebuildBtn.addEventListener('click', function() {
-      // Hapus semua variant baru (tanpa variant_id)
       const rowsToRemove = Array.from(variantTableBody.querySelectorAll('tr')).filter(tr => {
         return !tr.querySelector('input[name*="[variant_id]"]');
       });
       rowsToRemove.forEach(row => row.remove());
-
-      // Render ulang dari kombinasi
       renderVariants();
     });
 
-    // initial render
+    // ✅ INITIAL RENDER
     window.addEventListener('load', function() {
       if (existingVariants.length > 0) {
         renderExistingVariants();
         variantSection.style.display = 'block';
-      } else {
-        renderVariants();
       }
+      renderVariants();
     });
 
   })();
