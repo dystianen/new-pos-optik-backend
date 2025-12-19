@@ -137,13 +137,13 @@
 
                     <?php if ($allowed): ?>
                       <div class="form-check form-switch">
-                        <input
+                        <input type="checkbox"
                           class="form-check-input variant-toggle"
-                          type="checkbox"
                           name="variant_attributes[]"
                           value="<?= $attrId ?>"
                           data-attr-id="<?= $attrId ?>"
-                          <?= $isVariant ?>>
+                          <?= in_array($attrId, $selected_attributes ?? []) ? 'checked' : '' ?>>
+
                         <label class="form-check-label">Variant</label>
                       </div>
                     <?php endif; ?>
@@ -160,6 +160,7 @@
                       data-attr-id="<?= $attrId ?>"
                       placeholder="Enter <?= strtolower($attrName) ?> (comma separated for variants)"
                       value="<?= esc($existingTextValue) ?>">
+
 
                   <?php endif; ?>
 
@@ -293,7 +294,6 @@
 
     // REHYDRATE VARIANTS FROM PHP
     const existingVariants = <?= isset($variants) ? json_encode($variants) : '[]' ?>;
-    const pavValues = <?= isset($pav_values) ? json_encode($pav_values) : '{}' ?>;
 
     // TRACK NEXT INDEX untuk variant baru
     let nextVariantIndex = existingVariants.length;
@@ -371,54 +371,167 @@
       const combos = generateCombinations(attrs);
       variantSection.style.display = combos.length ? 'block' : 'none';
 
-      // Hapus hanya variant yang tidak punya variant_id (variant baru yang belum disave)
-      const rowsToRemove = Array.from(variantTableBody.querySelectorAll('tr')).filter(tr => {
-        return !tr.querySelector('input[name*="[variant_id]"]');
+      // ✅ STEP 1: Simpan SEMUA data variant yang ada dengan mapping attribute mereka
+      const existingVariantsData = [];
+      Array.from(variantTableBody.querySelectorAll('tr')).forEach(tr => {
+        const labelInput = tr.querySelector('input[name*="[label]"]');
+        const variantIdInput = tr.querySelector('input[name*="[variant_id]"]');
+        const priceInput = tr.querySelector('input[name*="[price]"]');
+        const stockInput = tr.querySelector('input[name*="[stock]"]');
+        const imagePreview = tr.querySelector('img');
+        const mappingInput = tr.querySelector('input[name*="[mapping]"]');
+
+        let mapping = [];
+        const label = labelInput?.value || '';
+        const labelParts = label.split(' - ').map(s => s.trim());
+
+        try {
+          if (mappingInput && mappingInput.value) {
+            const parsed = JSON.parse(mappingInput.value);
+            console.log('📥 Raw mapping:', parsed);
+
+            // ✅ CEK FORMAT: apakah array of strings atau array of objects?
+            if (parsed.length > 0 && typeof parsed[0] === 'string') {
+              // Format lama: ['id1', 'id2'] → reconstruct dari label
+              console.log('🔄 Old format detected, reconstructing from label...');
+              mapping = parsed.map((attrId, index) => ({
+                attribute_id: attrId,
+                value: labelParts[index] || ''
+              }));
+            } else if (parsed.length > 0 && typeof parsed[0] === 'object') {
+              // Format baru: [{attribute_id: ..., value: ...}]
+              mapping = parsed;
+            }
+
+            console.log('✅ Final mapping:', mapping);
+          } else {
+            console.warn('⚠️ No mapping input, using label fallback');
+            // Fallback: parse dari label
+            const currentAttrs = getVariantAttributes();
+            mapping = labelParts.map((value, i) => ({
+              attribute_id: currentAttrs[i]?.id || null,
+              value: value
+            })).filter(m => m.attribute_id);
+          }
+        } catch (e) {
+          console.error('❌ Failed to parse mapping:', e);
+        }
+
+        existingVariantsData.push({
+          variant_id: variantIdInput ? variantIdInput.value : null,
+          label: label,
+          price: priceInput ? priceInput.value : '',
+          stock: stockInput ? stockInput.value : '',
+          image_url: imagePreview ? imagePreview.src : '',
+          mapping: mapping
+        });
       });
-      rowsToRemove.forEach(row => row.remove());
 
-      // Reset index untuk variant baru
-      nextVariantIndex = variantTableBody.querySelectorAll('tr').length;
+      console.log('📦 All existing variants data:', existingVariantsData);
 
+      // ✅ STEP 2: Hapus SEMUA variant dari table
+      variantTableBody.innerHTML = '';
+
+      // ✅ STEP 3: Reset index
+      nextVariantIndex = 0;
+
+      // ✅ STEP 4: Generate variant baru berdasarkan kombinasi
       combos.forEach((combo) => {
         const variantLabel = combo.map(c => c.value).join(' - ');
 
-        // CEK apakah variant ini sudah ada
-        const exists = Array.from(variantTableBody.querySelectorAll('tr')).some(tr => {
-          const label = tr.querySelector('input[name*="[label]"]');
-          return label && label.value === variantLabel;
+        // ✅ MATCHING LOGIC: Cari variant existing yang VALUE-nya adalah SUBSET dari combo baru
+        // Jadi jika combo baru = [Photochromic, Blue, 14mm]
+        // Dan ada variant lama = [Photochromic, Blue]
+        // Maka variant lama ini MATCH dan datanya akan digunakan
+
+        let bestMatch = null;
+        let maxMatches = 0;
+
+        existingVariantsData.forEach(v => {
+          const existingValues = v.mapping.map(m => m.value);
+          const newValues = combo.map(c => c.value);
+          const matchCount = existingValues.filter(ev => newValues.includes(ev)).length;
+
+          console.log('🔍 Checking variant:', v.label);
+          console.log('   Existing values:', existingValues);
+          console.log('   New combo values:', newValues);
+          console.log('   Match count:', matchCount, '/', existingValues.length);
+
+          if (matchCount === existingValues.length && matchCount > 0 && matchCount > maxMatches) {
+            console.log('   ✅ BEST MATCH FOUND!');
+            bestMatch = v;
+            maxMatches = matchCount;
+          }
         });
 
-        if (exists) {
-          return; // Skip jika sudah ada
-        }
+        console.log('📦 Final best match for', variantLabel, ':', bestMatch);
+
 
         const idx = nextVariantIndex++;
-
         const tr = document.createElement('tr');
-        tr.innerHTML = `
-        <td>${variantLabel}
-          <input type="hidden" name="variants[${idx}][label]" value="${escapeHtml(variantLabel)}">
-        </td>
-        <td><input type="number" step="0.01" name="variants[${idx}][price]" class="form-control form-control-sm" placeholder="Leave empty to use base price"></td>
-        <td><input disabled type="number" name="variants[${idx}][stock]" class="form-control form-control-sm" placeholder="Auto-calculated"></td>
-        <td>
-          <input type="file" name="variants[${idx}][image]" accept=".jpg,.jpeg,.png" class="form-control form-control-sm">
-        </td>
-        <td>
-          <button type="button" class="btn btn-sm btn-danger remove-variant">Remove</button>
-        </td>
-      `;
 
-        // Store attribute mapping
-        const hidden = document.createElement('input');
-        hidden.type = 'hidden';
-        hidden.name = `variants[${idx}][mapping]`;
-        hidden.value = JSON.stringify(combo.map(c => ({
-          attribute_id: c.attrId,
-          value: c.value
-        })));
-        tr.appendChild(hidden);
+        // Jika ada best match, gunakan data dari variant tersebut
+        if (bestMatch) {
+          const hasVariantId = bestMatch.variant_id;
+
+          tr.innerHTML = `
+            <td>
+              ${variantLabel}
+              <input type="hidden" name="variants[${idx}][label]" value="${escapeHtml(variantLabel)}">
+              ${hasVariantId ? `<input type="hidden" name="variants[${idx}][variant_id]" value="${bestMatch.variant_id}">` : ''}
+            </td>
+            <td>
+              <input type="number" step="0.01" name="variants[${idx}][price]" class="form-control form-control-sm"
+                value="${bestMatch.price || ''}" placeholder="Leave empty to use base price">
+            </td>
+            <td>
+              <input disabled type="number" name="variants[${idx}][stock]" class="form-control form-control-sm"
+                value="${bestMatch.stock || ''}" placeholder="Auto-calculated">
+            </td>
+            <td>
+              <input type="file" name="variants[${idx}][image]" accept=".jpg,.jpeg,.png" class="form-control form-control-sm mb-1">
+              ${bestMatch.image_url ? `<img src="${bestMatch.image_url}" width="30" class="rounded">` : ''}
+            </td>
+            <td>
+              <button type="button" class="btn btn-sm btn-danger remove-variant">Remove</button>
+            </td>
+          `;
+
+          // Update mapping dengan combo BARU (bukan mapping lama)
+          const hidden = document.createElement('input');
+          hidden.type = 'hidden';
+          hidden.name = `variants[${idx}][mapping]`;
+          hidden.value = JSON.stringify(combo.map(c => ({
+            attribute_id: c.attrId,
+            value: c.value
+          })));
+          tr.appendChild(hidden);
+        } else {
+          // Variant baru yang belum pernah ada
+          tr.innerHTML = `
+            <td>${variantLabel}
+              <input type="hidden" name="variants[${idx}][label]" value="${escapeHtml(variantLabel)}">
+            </td>
+            <td><input type="number" step="0.01" name="variants[${idx}][price]" class="form-control form-control-sm" placeholder="Leave empty to use base price"></td>
+            <td><input disabled type="number" name="variants[${idx}][stock]" class="form-control form-control-sm" placeholder="Auto-calculated"></td>
+            <td>
+              <input type="file" name="variants[${idx}][image]" accept=".jpg,.jpeg,.png" class="form-control form-control-sm">
+            </td>
+            <td>
+              <button type="button" class="btn btn-sm btn-danger remove-variant">Remove</button>
+            </td>
+          `;
+
+          // Store attribute mapping untuk variant baru
+          const hidden = document.createElement('input');
+          hidden.type = 'hidden';
+          hidden.name = `variants[${idx}][mapping]`;
+          hidden.value = JSON.stringify(combo.map(c => ({
+            attribute_id: c.attrId,
+            value: c.value
+          })));
+          tr.appendChild(hidden);
+        }
 
         variantTableBody.appendChild(tr);
       });
@@ -524,9 +637,12 @@
       if (existingVariants.length > 0) {
         renderExistingVariants();
         variantSection.style.display = 'block';
+        return;
       }
+
       renderVariants();
     });
+
 
   })();
 </script>

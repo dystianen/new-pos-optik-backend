@@ -9,6 +9,7 @@ use App\Models\ProductAttributeValueModel;
 use App\Models\ProductCategoryModel;
 use App\Models\ProductImageModel;
 use App\Models\ProductModel;
+use App\Models\ProductVariantAttributeModel;
 use App\Models\ProductVariantImageModel;
 use App\Models\ProductVariantModel;
 use App\Models\ProductVariantValueModel;
@@ -25,6 +26,7 @@ class ProductController extends BaseController
     protected $categoryModel;
     protected $variantImageModel;
     protected $customerModel;
+    protected $productVariantAttributeModel;
     protected $r2;
 
     public function __construct()
@@ -38,6 +40,7 @@ class ProductController extends BaseController
         $this->variantImageModel = new ProductVariantImageModel();
         $this->pvValueModel = new ProductVariantValueModel();
         $this->customerModel = new CustomerModel();
+        $this->productVariantAttributeModel = new ProductVariantAttributeModel();
         $this->r2 = new R2Storage();
     }
 
@@ -180,18 +183,36 @@ class ProductController extends BaseController
     public function apiProductDetail($id)
     {
         $product = $this->productModel->find($id);
-        if ($product) {
-            $response = [
-                'status' => 200,
-                'message' => 'Succesfully!',
-                'data' => $product
-            ];
 
-            return $this->response->setJSON($response);
+        if (!$product) {
+            return $this->response
+                ->setStatusCode(ResponseInterface::HTTP_NOT_FOUND)
+                ->setJSON(['message' => 'Product not found']);
         }
 
-        return $this->response->setStatusCode(ResponseInterface::HTTP_NOT_FOUND)
-            ->setJSON(['message' => 'Product not found']);
+        // Primary image
+        $galleryImage = $this->productImageModel
+            ->select('url, alt_text')
+            ->where('product_id', $id)
+            ->where('is_primary', 1)
+            ->findAll();
+
+
+        // Gallery images (non-primary)
+        $variantImage = $this->productImageModel
+            ->select('url, alt_text')
+            ->where('product_id', $id)
+            ->where('is_primary', 0)
+            ->findAll();
+
+        $product['gallery'] = $galleryImage;
+        $product['variant_image'] = $variantImage;
+
+        return $this->response->setJSON([
+            'status'  => 200,
+            'message' => 'Successfully!',
+            'data'    => $product
+        ]);
     }
 
     public function apiProduct()
@@ -296,7 +317,7 @@ class ProductController extends BaseController
     {
         $data = [];
 
-        $id = $this->request->getVar('id');
+        $id = $this->request->getGet('id');
 
         // --- STATIC DATA ---
         $data['categories'] = $this->categoryModel->findAll();
@@ -314,6 +335,20 @@ class ProductController extends BaseController
         }
 
         $data['attributes'] = $attributes;
+
+        if (empty($id)) {
+            log_message('debug', 'Mode: CREATE (no ID)');
+
+            $data['product'] = null;
+            $data['product_images'] = [];
+            $data['pav_values'] = [];
+            $data['selected_attributes'] = [];
+            $data['selected_attribute_values'] = [];
+            $data['variants'] = [];
+
+            return view('products/v_form', $data);
+        }
+
 
         // ------------------------------------------------------------------
         // 1. PRODUCT
@@ -364,14 +399,30 @@ class ProductController extends BaseController
         // ------------------------------------------------------------------
         // (NEW) — SELECTED ATTRIBUTE IDs
         // ------------------------------------------------------------------
-        $selectedAttributes = array_unique(array_column($pav, 'attribute_id'));
+        $variantAttrs = $this->productVariantAttributeModel
+            ->where('product_id', $id)
+            ->findAll();
+
+        $selectedAttributes = array_column($variantAttrs, 'attribute_id');
         $data['selected_attributes'] = $selectedAttributes;
 
         // ------------------------------------------------------------------
         // (NEW) — SELECTED ATTRIBUTE VALUES (flat array)
         // ------------------------------------------------------------------
-        $selectedAttributeValues = array_column($pav, 'value');
+        $selectedAttributeValues = [];
+
+        foreach ($pav as $row) {
+            $attrId = $row['attribute_id'];
+
+            if (!isset($selectedAttributeValues[$attrId])) {
+                $selectedAttributeValues[$attrId] = [];
+            }
+
+            $selectedAttributeValues[$attrId][] = $row['value'];
+        }
+
         $data['selected_attribute_values'] = $selectedAttributeValues;
+
 
         // ------------------------------------------------------------------
         // 4. PRODUCT VARIANTS
@@ -416,126 +467,38 @@ class ProductController extends BaseController
         $id = $post['id'] ?? null;
 
         log_message('debug', '========== SAVE PRODUCT START ==========');
-        log_message('debug', 'POST Data: ' . json_encode($post));
+        log_message('debug', 'POST: ' . json_encode($post));
 
-        // ---------------------------------------------------------
+        // -------------------------------------------------
         // VALIDATION
-        // ---------------------------------------------------------
+        // -------------------------------------------------
         $rules = [
             'product_name'  => 'required|min_length[3]',
             'product_price' => 'required|numeric',
-            'product_stock' => 'required|integer',
             'category_id'   => 'required',
         ];
 
         if (!$this->validate($rules)) {
-            return redirect()->back()->withInput()->with('failed', 'Please check your input.');
+            return redirect()->back()->withInput()->with('failed', 'Invalid input');
         }
 
         $productData = [
             'category_id'   => $post['category_id'],
             'product_name'  => $post['product_name'],
             'product_price' => $post['product_price'],
-            'product_stock' => $post['product_stock'],
             'product_brand' => $post['product_brand'] ?? null,
         ];
 
         try {
-            // KUMPULKAN DATA IMAGE YANG MAU DIHAPUS DULU (SEBELUM TRANSACTION)
-            $imagesToDelete = [];
 
-            log_message('debug', 'Step 1: Collecting images to delete');
+            // =================================================
+            // START TRANSACTION
+            // =================================================
+            $db->transBegin();
 
-            if (!empty($post['variants']) && is_array($post['variants'])) {
-
-                log_message('debug', 'Variants count: ' . count($post['variants']));
-
-                foreach ($post['variants'] as $index => $v) {
-
-                    try {
-                        log_message('debug', "Processing variant index: $index");
-                        log_message('debug', "Variant data: " . json_encode($v));
-
-                        // PERBAIKAN: Cek apakah $v adalah array
-                        if (!is_array($v)) {
-                            log_message('error', "Variant at index $index is not an array: " . gettype($v));
-                            continue;
-                        }
-
-                        $variantId = $v['variant_id'] ?? null;
-                        $file = $request->getFile("variants.$index.image");
-
-                        log_message('debug', "Variant ID: $variantId, File valid: " . ($file && $file->isValid() ? 'YES' : 'NO'));
-
-                        if ($variantId && $file && $file->isValid() && !$file->hasMoved()) {
-
-                            log_message('debug', "Checking old image for variant: $variantId");
-
-                            // Cek image lama
-                            $oldVariantImage = $this->variantImageModel
-                                ->where('variant_id', $variantId)
-                                ->first();
-
-                            log_message('debug', 'Old Variant Image: ' . json_encode($oldVariantImage));
-
-                            if ($oldVariantImage && is_array($oldVariantImage)) {
-
-                                $oldProductImage = $this->productImageModel
-                                    ->find($oldVariantImage['product_image_id']);
-
-                                log_message('debug', 'Old Product Image: ' . json_encode($oldProductImage));
-
-                                if ($oldProductImage && is_array($oldProductImage)) {
-
-                                    $imagesToDelete[] = [
-                                        'variant_id' => $variantId,
-                                        'product_image_id' => $oldProductImage['product_image_id'],
-                                        'filename' => $oldProductImage['url'],
-                                        'full_path' => $oldProductImage['url']
-                                    ];
-
-                                    log_message('debug', 'Added to delete queue: ' . $oldProductImage['url']);
-                                }
-                            }
-                        }
-                    } catch (\Throwable $e) {
-                        log_message('error', "Error processing variant $index: " . $e->getMessage());
-                        log_message('error', "Line: " . $e->getLine() . " in " . $e->getFile());
-                    }
-                }
-            }
-
-            log_message('debug', 'Step 2: Images to delete: ' . json_encode($imagesToDelete));
-
-            // HAPUS IMAGE LAMA SEBELUM TRANSACTION DIMULAI
-            foreach ($imagesToDelete as $img) {
-
-                try {
-                    log_message('debug', 'Deleting image: ' . json_encode($img));
-
-                    // Hapus file fisik
-                    if (!empty($img['filename'])) {
-                        $this->r2->deleteFile($img['filename']);
-                        log_message('debug', 'Deleted R2 object: ' . $img['filename']);
-                    }
-
-                    // Hapus record
-                    if (isset($img['variant_id']) && isset($img['product_image_id'])) {
-                        $this->variantImageModel->where('variant_id', $img['variant_id'])->delete();
-                        $this->productImageModel->delete($img['product_image_id']);
-                        log_message('debug', 'Database records deleted for variant: ' . $img['variant_id']);
-                    }
-                } catch (\Throwable $e) {
-                    log_message('error', 'Error deleting image: ' . $e->getMessage());
-                }
-            }
-
-            log_message('debug', 'Step 3: Starting transaction');
-
-            // BARU MULAI TRANSACTION
-            $db->transStart();
-
-            // INSERT / UPDATE PRODUCT
+            // -------------------------------------------------
+            // SAVE PRODUCT
+            // -------------------------------------------------
             if ($id) {
                 $this->productModel->update($id, $productData);
                 $productId = $id;
@@ -544,45 +507,67 @@ class ProductController extends BaseController
                 $productId = $this->productModel->getInsertID();
             }
 
-            log_message('debug', 'Product saved with ID: ' . $productId);
+            log_message('debug', "Product ID: $productId");
 
-            // UPLOAD PRODUCT IMAGES (MULTIPLE)
-            $images = $request->getFiles();
+            // -------------------------------------------------
+            // PRODUCT IMAGES (PRIMARY)
+            // -------------------------------------------------
+            $files = $request->getFiles();
 
-            if (!empty($images['images'])) {
-                foreach ($images['images'] as $img) {
-                    if ($img->isValid() && !$img->hasMoved()) {
-                        $newName = $img->getRandomName();
-                        $tempPath = $img->getTempName();
+            if (!empty($files['images'])) {
+                foreach ($files['images'] as $img) {
+                    if (!$img->isValid() || $img->hasMoved()) continue;
 
-                        $objectKey = $newName;
+                    $objectUrl = $this->r2->uploadFile(
+                        $img->getTempName(),
+                        $img->getRandomName()
+                    );
 
-                        // Unggah file ke R2
-                        $objectUrl = $this->r2->uploadFile($tempPath, $objectKey);
-
-                        if ($objectUrl) {
-                            log_message('debug', 'objectUrl: ' . $objectUrl);
-
-                            $this->productImageModel->insert([
-                                'product_id' => $productId,
-                                'url'        => $objectUrl,
-                                'alt_text'   => $post['product_name'],
-                                'mime_type'  => $img->getClientMimeType(),
-                                'size_bytes' => $img->getSize(),
-                                'is_primary' => 1
-                            ]);
-                        } else {
-                            log_message('error', 'Gagal mengunggah file ke R2: ' . $newName);
-                        }
+                    if (!$objectUrl) {
+                        throw new \Exception('Failed upload product image');
                     }
+
+                    $this->productImageModel->insert([
+                        'product_id'  => $productId,
+                        'url'         => $objectUrl,
+                        'alt_text'    => $post['product_name'],
+                        'mime_type'   => $img->getClientMimeType(),
+                        'size_bytes'  => $img->getSize(),
+                        'is_primary'  => 1,
+                    ]);
                 }
             }
 
+            // -------------------------------------------------
+            // VARIANT ATTRIBUTE TOGGLE (ON / OFF)
+            // -------------------------------------------------
+            $variantAttributes = $post['variant_attributes'] ?? [];
+
+            // reset toggle lama
+            $this->productVariantAttributeModel
+                ->where('product_id', $productId)
+                ->delete();
+
+            // simpan toggle baru
+            foreach ($variantAttributes as $attrId) {
+                $this->productVariantAttributeModel->insert([
+                    'product_id'   => $productId,
+                    'attribute_id' => $attrId,
+                ]);
+            }
+
+
+            // -------------------------------------------------
             // PRODUCT ATTRIBUTE VALUES
+            // -------------------------------------------------
             if (!empty($post['attributes'])) {
                 foreach ($post['attributes'] as $attrId => $value) {
+
                     $exists = $this->pavModel
-                        ->where(['product_id' => $productId, 'attribute_id' => $attrId])
+                        ->where([
+                            'product_id'   => $productId,
+                            'attribute_id' => $attrId
+                        ])
                         ->first();
 
                     if ($exists) {
@@ -597,166 +582,218 @@ class ProductController extends BaseController
                 }
             }
 
-            log_message('debug', 'Step 4: Processing variants');
-
+            // -------------------------------------------------
             // VARIANTS
-            $existing = $this->variantModel->where('product_id', $productId)->findAll();
-            $existingIds = array_column($existing, 'variant_id');
+            // -------------------------------------------------
+            $existingVariants = $this->variantModel
+                ->where('product_id', $productId)
+                ->findAll();
+
+            $existingIds = array_column($existingVariants, 'variant_id');
             $receivedIds = [];
 
             if (!empty($post['variants'])) {
+
                 foreach ($post['variants'] as $index => $v) {
 
-                    try {
-                        log_message('debug', "Saving variant index: $index");
+                    if (!is_array($v)) continue;
 
-                        // VALIDASI: Pastikan $v adalah array
-                        if (!is_array($v)) {
-                            log_message('error', "Variant $index is not array, skipping");
-                            continue;
+                    $variantId   = $v['variant_id'] ?? null;
+                    $variantName = $v['label'] ?? 'Variant';
+                    $price       = $v['price'] ?? null;
+
+                    // ----------------------------
+                    // INSERT / UPDATE VARIANT
+                    // ----------------------------
+                    if ($variantId) {
+
+                        $this->variantModel->update($variantId, [
+                            'variant_name' => $variantName,
+                            'price'        => $price
+                        ]);
+                    } else {
+                        $insert = $this->variantModel->insert([
+                            'variant_id'   => $variantId,
+                            'product_id'   => $productId,
+                            'variant_name' => $variantName,
+                            'price'        => $price
+                        ]);
+
+                        $variantId = $this->variantModel->getInsertID();
+
+                        if (!$insert) {
+                            throw new \Exception('Failed insert variant');
                         }
+                    }
 
-                        $variantId = $v['variant_id'] ?? null;
-                        $variantName = $v['label'] ?? 'Variant';
-                        $price = $v['price'] ?? null;
-                        $stock = $v['stock'] ?? null;
+                    // HARD CHECK (FK SAFETY)
+                    $variantExists = $this->variantModel
+                        ->where('variant_id', $variantId)
+                        ->first();
 
-                        // UPDATE
-                        if ($variantId) {
-                            $this->variantModel->update($variantId, [
-                                'variant_name' => $variantName,
-                                'price'        => $price,
-                                'stock'        => $stock
-                            ]);
-                            $receivedIds[] = $variantId;
-                            log_message('debug', "Updated variant: $variantId");
-                        }
-                        // INSERT
-                        else {
-                            $this->variantModel->insert([
-                                'product_id'   => $productId,
-                                'variant_name' => $variantName,
-                                'price'        => $price,
-                                'stock'        => $stock
-                            ]);
-                            $variantId = $this->variantModel->getInsertID();
-                            $receivedIds[] = $variantId;
-                            log_message('debug', "Inserted new variant: $variantId");
-                        }
+                    if (!$variantExists) {
+                        throw new \Exception("Variant not exists after save: $variantId");
+                    }
 
-                        // VARIANT IMAGE (UPLOAD BARU)
-                        $file = $request->getFile("variants.$index.image");
+                    $receivedIds[] = $variantId;
 
-                        if ($file && $file->isValid() && !$file->hasMoved()) {
-                            $tempPath = $file->getTempName();
-                            $newName = $file->getRandomName();
+                    // ----------------------------
+                    // VARIANT IMAGE
+                    // ----------------------------
+                    $file = $request->getFile("variants.$index.image");
 
-                            $objectUrl = $this->r2->uploadFile($tempPath, $newName);
+                    if ($file && $file->isValid() && !$file->hasMoved()) {
 
-                            if ($objectUrl) {
-                                $this->productImageModel->insert([
-                                    'product_id' => $productId,
-                                    'url'        => $objectUrl,
-                                    'alt_text'   => $variantName,
-                                    'mime_type'  => $file->getClientMimeType(),
-                                    'size_bytes' => $file->getSize(),
-                                    'is_primary' => 0
-                                ]);
+                        // Delete old image
+                        $old = $this->variantImageModel
+                            ->where('variant_id', $variantId)
+                            ->first();
 
-                                $productImageId = $this->productImageModel->getInsertID();
+                        if ($old) {
+                            $oldImg = $this->productImageModel
+                                ->find($old['product_image_id']);
 
-                                $this->variantImageModel->insert([
-                                    'variant_id'       => $variantId,
-                                    'product_image_id' => $productImageId
-                                ]);
-
-                                log_message('debug', 'Uploaded variant image to R2: ' . $newName);
+                            if ($oldImg) {
+                                $this->r2->deleteFile($oldImg['url']);
+                                $this->variantImageModel->delete($old['id']);
+                                $this->productImageModel->delete($oldImg['product_image_id']);
                             }
                         }
 
-                        // VARIANT → ATTRIBUTE MAPPING
-                        if (!empty($v['mapping'])) {
-                            $mapping = is_string($v['mapping']) ? json_decode($v['mapping'], true) : $v['mapping'];
+                        $url = $this->r2->uploadFile(
+                            $file->getTempName(),
+                            $file->getRandomName()
+                        );
 
-                            if (is_array($mapping)) {
-                                $this->pvValueModel->where('variant_id', $variantId)->delete();
+                        if (!$url) {
+                            throw new \Exception('Failed upload variant image');
+                        }
 
-                                foreach ($mapping as $map) {
-                                    if (!is_array($map)) continue;
+                        $this->productImageModel->insert([
+                            'product_id'       => $productId,
+                            'url'              => $url,
+                            'alt_text'         => $variantName,
+                            'mime_type'        => $file->getClientMimeType(),
+                            'size_bytes'       => $file->getSize(),
+                            'is_primary'       => 0
+                        ]);
 
-                                    $pav = $this->pavModel->where([
-                                        'product_id'   => $productId,
-                                        'attribute_id' => $map['attribute_id'],
-                                        'value'        => $map['value']
-                                    ])->first();
+                        $productImageId = $this->productImageModel->getInsertID();
 
-                                    if (!$pav) {
-                                        $this->pavModel->insert([
-                                            'product_id'   => $productId,
-                                            'attribute_id' => $map['attribute_id'],
-                                            'value'        => $map['value']
-                                        ]);
-                                        $pavId = $this->pavModel->getInsertID();
-                                    } else {
-                                        $pavId = $pav['pav_id'];
+                        $this->variantImageModel->insert([
+                            'variant_id'       => $variantId,
+                            'product_image_id' => $productImageId
+                        ]);
+                    }
+
+                    // ----------------------------
+                    // VARIANT ATTRIBUTE MAPPING
+                    // ----------------------------
+                    if (!empty($v['mapping'])) {
+
+                        $mapping = is_string($v['mapping'])
+                            ? json_decode($v['mapping'], true)
+                            : $v['mapping'];
+
+                        if (is_array($mapping)) {
+
+                            // Hapus mapping lama
+                            $this->pvValueModel
+                                ->where('variant_id', $variantId)
+                                ->delete();
+
+                            foreach ($mapping as $item) {
+
+                                // ✅ CEK FORMAT: apakah old format (string ID) atau new format (object)?
+                                if (is_string($item)) {
+                                    // OLD FORMAT: langsung pav_id
+                                    $pavId = $item;
+                                } else {
+                                    // NEW FORMAT: {attribute_id: "...", value: "..."}
+                                    $attributeId = $item['attribute_id'] ?? null;
+                                    $value = $item['value'] ?? null;
+
+                                    if (!$attributeId || !$value) {
+                                        log_message('error', 'Invalid mapping item: ' . json_encode($item));
+                                        continue;
                                     }
 
-                                    $this->pvValueModel->insert([
-                                        'variant_id' => $variantId,
-                                        'pav_id'     => $pavId
-                                    ]);
+                                    // ✅ LOOKUP PAV_ID dari attribute_id + value
+                                    $pav = $this->pavModel
+                                        ->where('attribute_id', $attributeId)
+                                        ->where('value', $value)
+                                        ->first();
+
+                                    if (!$pav) {
+                                        throw new \Exception("PAV not found for attribute_id=$attributeId, value=$value");
+                                    }
+
+                                    $pavId = $pav['pav_id'];
                                 }
+
+                                // HARD SAFETY CHECK
+                                if (!$this->pavModel->find($pavId)) {
+                                    throw new \Exception("PAV not found: $pavId");
+                                }
+
+                                $this->pvValueModel->insert([
+                                    'variant_id' => $variantId,
+                                    'pav_id'     => $pavId
+                                ]);
                             }
                         }
-                    } catch (\Throwable $e) {
-                        log_message('error', "Error saving variant $index: " . $e->getMessage());
-                        log_message('error', "Line: " . $e->getLine());
                     }
                 }
             }
 
-            log_message('debug', 'Step 5: Deleting removed variants');
-
+            // -------------------------------------------------
             // DELETE REMOVED VARIANTS
-            foreach ($existingIds as $old) {
-                if (!in_array($old, $receivedIds)) {
-                    $this->pvValueModel->where('variant_id', $old)->delete();
+            // -------------------------------------------------
+            foreach ($existingIds as $oldId) {
 
-                    if ($oldVariantImage) {
-                        $img = $this->productImageModel->find($oldVariantImage['product_image_id']);
+                if (!in_array($oldId, $receivedIds)) {
 
-                        if ($img && !empty($img['url'])) {
-                            $filename = basename($img['url']); // hanya ambil nama object R2
-                            $this->r2->deleteFile($filename);
-                            log_message('debug', "Deleted R2 object for variant: $filename");
+                    $this->pvValueModel->where('variant_id', $oldId)->delete();
+
+                    $img = $this->variantImageModel
+                        ->where('variant_id', $oldId)
+                        ->first();
+
+                    if ($img) {
+                        $pimg = $this->productImageModel
+                            ->find($img['product_image_id']);
+
+                        if ($pimg) {
+                            $this->r2->deleteFile($pimg['url']);
+                            $this->productImageModel->delete($pimg['product_image_id']);
                         }
+
+                        $this->variantImageModel->delete($img['id']);
                     }
-                    $this->variantImageModel->where('variant_id', $old)->delete();
-                    $this->variantModel->delete($old);
-                    log_message('debug', 'Deleted variant: ' . $old);
+
+                    $this->variantModel->delete($oldId);
                 }
             }
 
-            $db->transComplete();
-
-            if ($db->transStatus() === false) {
-                log_message('error', 'Transaction failed!');
-                session()->setFlashdata('error', 'Transaction failed. Please try again.');
-            } else {
-                log_message('debug', 'Transaction completed successfully');
-                session()->setFlashdata('success', 'Product saved successfully.');
-            }
+            // =================================================
+            // COMMIT
+            // =================================================
+            $db->transCommit();
+            session()->setFlashdata('success', 'Product saved successfully');
         } catch (\Throwable $e) {
-            log_message('error', 'Save product error: ' . $e->getMessage());
-            log_message('error', 'Error on line: ' . $e->getLine() . ' in file: ' . $e->getFile());
-            log_message('error', 'Stack trace: ' . $e->getTraceAsString());
+
+            $db->transRollback();
+
+            log_message('error', $e->getMessage());
+            log_message('error', $e->getTraceAsString());
+
             session()->setFlashdata('error', $e->getMessage());
         }
 
         log_message('debug', '========== SAVE PRODUCT END ==========');
-
         return redirect()->to('/products');
     }
+
 
     public function deleteImage()
     {
@@ -830,7 +867,6 @@ class ProductController extends BaseController
             ])->setStatusCode(500);
         }
     }
-
 
     public function webDelete($id)
     {

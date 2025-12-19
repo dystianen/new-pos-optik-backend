@@ -30,14 +30,6 @@ class ProductVariantModel extends Model
         'deleted_at'
     ];
 
-    protected $validationRules = [
-        'variant_id'    => 'permit_empty|alpha_numeric_punct|min_length[1]|max_length[36]',
-        'product_id'    => 'required|alpha_numeric_punct|min_length[1]|max_length[36]',
-        'variant_name'  => 'required|string|max_length[100]',
-        'price'         => 'decimal',
-        'stock'         => 'integer',
-    ];
-
     protected $validationMessages = [];
     protected $skipValidation     = false;
 

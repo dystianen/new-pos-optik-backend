@@ -38,7 +38,6 @@ class ProductModel extends Model
         'category_id'   => 'permit_empty|alpha_numeric_punct|min_length[1]|max_length[36]',
         'product_name'  => 'required|string|max_length[100]',
         'product_price' => 'required|decimal',
-        'product_stock' => 'required|integer',
         'product_brand' => 'permit_empty|string|max_length[50]',
         'description'   => 'permit_empty',
     ];
