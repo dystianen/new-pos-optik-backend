@@ -48,6 +48,68 @@ class ProductController extends BaseController
     // API FUNCTIONS
     // =======================
 
+    // GET /api/products
+    public function apiProduct()
+    {
+        $category = $this->request->getVar('category');
+        $search   = $this->request->getVar('search');
+        $page     = $this->request->getVar('page') ?? 1;
+        $limit    = $this->request->getVar('limit') ?? 10;
+
+        // pakai builder dari model
+        $builder = $this->productModel
+            ->select('
+            products.*,
+            product_images.url AS product_image_url
+        ')
+            ->join(
+                'product_images',
+                'product_images.product_id = products.product_id 
+             AND product_images.is_primary = 1',
+                'left'
+            )
+            ->where('products.deleted_at', null);
+
+        if ($category) {
+            $builder->where('products.category_id', $category);
+        }
+
+        if ($search) {
+            $builder->groupStart()
+                ->like('products.product_name', $search)
+                ->orLike('products.product_brand', $search)
+                ->groupEnd();
+        }
+
+        // IMPORTANT: hitung total sebelum paginate
+        $totalItems = $builder->countAllResults(false);
+
+        $products = $builder
+            ->orderBy('products.created_at', 'DESC')
+            ->paginate($limit, 'products', $page);
+
+        if (empty($products)) {
+            return $this->response
+                ->setStatusCode(ResponseInterface::HTTP_NOT_FOUND)
+                ->setJSON(['message' => 'No products found']);
+        }
+
+        $pager = [
+            'currentPage' => $this->productModel->pager->getCurrentPage('products'),
+            'totalPages'  => $this->productModel->pager->getPageCount('products'),
+            'limit'       => (int) $limit,
+            'totalItems'  => $totalItems,
+        ];
+
+        return $this->response->setJSON([
+            'status'  => 200,
+            'message' => 'Successfully!',
+            'data'    => $products,
+            'pager'   => $pager,
+        ]);
+    }
+
+
     // GET /api/products/new-eyewear
     public function apiListNewEyewear()
     {
@@ -130,6 +192,7 @@ class ProductController extends BaseController
             p.product_id,
             p.product_name,
             p.product_brand,
+            p.product_price,
             pi.url AS product_image_url
         ')
             ->join(
@@ -333,56 +396,6 @@ class ProductController extends BaseController
             'message' => 'Successfully!',
             'data'    => $product
         ]);
-    }
-
-    // GET /api/products
-    public function apiProduct()
-    {
-        $category = $this->request->getVar('category');
-        $search   = $this->request->getVar('search');
-        $page     = $this->request->getVar('page') ?? 1;
-        $limit    = $this->request->getVar('limit') ?? 10;
-
-        $builder = $this->productModel;
-
-        if ($category) {
-            $builder = $builder->where('category_id', $category);
-        }
-
-        if ($search) {
-            $builder = $builder->groupStart()
-                ->like('product_name', $search)
-                ->orLike('product_brand', $search)
-                ->groupEnd();
-        }
-
-        $totalItems = $builder->countAllResults(false);
-
-        $products = $builder
-            ->orderBy('product_id', 'DESC')
-            ->paginate($limit, 'products', $page);
-
-        if (!$products) {
-            return $this->response
-                ->setStatusCode(ResponseInterface::HTTP_NOT_FOUND)
-                ->setJSON(['message' => 'No products found']);
-        }
-
-        $pager = [
-            'currentPage' => $this->productModel->pager->getCurrentPage('products'),
-            'totalPages'  => $this->productModel->pager->getPageCount('products'),
-            'limit'       => $limit,
-            'totalItems'  => $totalItems,
-        ];
-
-        $response = [
-            'status'  => 200,
-            'message' => 'Succesfully!',
-            'data'    => $products,
-            'pager'   => $pager,
-        ];
-
-        return $this->response->setJSON($response);
     }
 
     // GET /api/products/{id}/attributes
