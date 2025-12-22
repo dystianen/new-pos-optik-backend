@@ -109,7 +109,6 @@ class ProductController extends BaseController
         ]);
     }
 
-
     // GET /api/products/new-eyewear
     public function apiListNewEyewear()
     {
@@ -698,12 +697,23 @@ class ProductController extends BaseController
 
             if (!empty($files['images'])) {
 
-                // pastikan hanya 1 primary image per product
-                $this->productImageModel
-                    ->where('product_id', $productId)
-                    ->where('type', 'gallery')
-                    ->set(['is_primary' => 0])
-                    ->update();
+                // ✅ Cek dulu apakah ada file yang valid
+                $hasValidImages = false;
+                foreach ($files['images'] as $img) {
+                    if ($img->isValid() && !$img->hasMoved()) {
+                        $hasValidImages = true;
+                        break;
+                    }
+                }
+
+                // ✅ Hanya reset primary jika memang ada gambar baru
+                if ($hasValidImages) {
+                    $this->productImageModel
+                        ->where('product_id', $productId)
+                        ->where('type', 'gallery')
+                        ->set(['is_primary' => 0])
+                        ->update();
+                }
 
                 $isPrimarySet = false;
 
@@ -734,7 +744,6 @@ class ProductController extends BaseController
                 }
             }
 
-
             // -------------------------------------------------
             // VARIANT ATTRIBUTE TOGGLE (ON / OFF)
             // -------------------------------------------------
@@ -760,21 +769,40 @@ class ProductController extends BaseController
             if (!empty($post['attributes'])) {
                 foreach ($post['attributes'] as $attrId => $value) {
 
-                    $exists = $this->pavModel
-                        ->where([
-                            'product_id'   => $productId,
-                            'attribute_id' => $attrId
-                        ])
-                        ->first();
+                    // ✅ HANDLE ARRAY VALUES (untuk checkbox/multi-select)
+                    if (is_array($value)) {
+                        // Hapus PAV lama untuk attribute ini
+                        $this->pavModel
+                            ->where('product_id', $productId)
+                            ->where('attribute_id', $attrId)
+                            ->delete();
 
-                    if ($exists) {
-                        $this->pavModel->update($exists['pav_id'], ['value' => $value]);
+                        // Insert setiap value sebagai PAV baru
+                        foreach ($value as $singleValue) {
+                            $this->pavModel->insert([
+                                'product_id'   => $productId,
+                                'attribute_id' => $attrId,
+                                'value'        => $singleValue
+                            ]);
+                        }
                     } else {
-                        $this->pavModel->insert([
-                            'product_id'   => $productId,
-                            'attribute_id' => $attrId,
-                            'value'        => $value
-                        ]);
+                        // Single value (text/number/single select)
+                        $exists = $this->pavModel
+                            ->where([
+                                'product_id'   => $productId,
+                                'attribute_id' => $attrId
+                            ])
+                            ->first();
+
+                        if ($exists) {
+                            $this->pavModel->update($exists['pav_id'], ['value' => $value]);
+                        } else {
+                            $this->pavModel->insert([
+                                'product_id'   => $productId,
+                                'attribute_id' => $attrId,
+                                'value'        => $value
+                            ]);
+                        }
                     }
                 }
             }
@@ -852,7 +880,7 @@ class ProductController extends BaseController
 
                             if ($oldImg) {
                                 $this->r2->deleteFile($oldImg['url']);
-                                $this->variantImageModel->delete($old['id']);
+                                $this->variantImageModel->delete($old['pv_image_id']);
                                 $this->productImageModel->delete($oldImg['product_image_id']);
                             }
                         }
@@ -966,7 +994,7 @@ class ProductController extends BaseController
                             $this->productImageModel->delete($pimg['product_image_id']);
                         }
 
-                        $this->variantImageModel->delete($img['id']);
+                        $this->variantImageModel->delete($img['pv_image_id']);
                     }
 
                     $this->variantModel->delete($oldId);
@@ -978,18 +1006,21 @@ class ProductController extends BaseController
             // =================================================
             $db->transCommit();
             session()->setFlashdata('success', 'Product saved successfully');
+            return redirect()->to('/products');
         } catch (\Throwable $e) {
-
             $db->transRollback();
 
             log_message('error', $e->getMessage());
             log_message('error', $e->getTraceAsString());
 
-            session()->setFlashdata('error', $e->getMessage());
+            return redirect()
+                ->back()
+                ->withInput()
+                ->with('failed', $e->getMessage());
         }
 
+
         log_message('debug', '========== SAVE PRODUCT END ==========');
-        return redirect()->to('/products');
     }
 
 

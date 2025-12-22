@@ -24,6 +24,9 @@ class R2Storage
         'key'    => getenv('R2_ACCESS_KEY_ID'),
         'secret' => getenv('R2_SECRET_ACCESS_KEY'),
       ],
+      'http' => [
+        'verify' => false
+      ],
       'use_path_style_endpoint' => false,
     ]);
   }
