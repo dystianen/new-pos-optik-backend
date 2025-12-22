@@ -667,7 +667,7 @@ class ProductController extends BaseController
             'category_id'   => $post['category_id'],
             'product_name'  => $post['product_name'],
             'product_price' => $post['product_price'],
-            'product_brand' => $post['product_brand'] ?? null,
+            'product_brand' => !empty($post['product_brand']) ? strtoupper($post['product_brand']) : null,
         ];
 
         try {

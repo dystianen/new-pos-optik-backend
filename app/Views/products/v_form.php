@@ -46,7 +46,7 @@
         <div class="col-12 col-md-6 mb-3">
           <label class="form-label">Base Stock</label>
           <input disabled type="number" name="product_stock" class="form-control"
-            value="<?= old('product_stock', $product['product_stock'] ?? '') ?>" required>
+            value="<?= old('product_stock', $product['product_stock'] ?? '') ?>" placeholder="Auto-calculated">
         </div>
 
         <!-- Brand -->
