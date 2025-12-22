@@ -80,6 +80,7 @@
                         title="Delete Image">
                         <i class="fas fa-trash"></i>
                       </button>
+
                     </div>
                   </div>
                 <?php endforeach; ?>
@@ -607,6 +608,70 @@
         })[m];
       });
     }
+
+    document.querySelectorAll('.delete-image-btn').forEach((btn) => {
+      btn.addEventListener('click', async function() {
+        const imageId = this.dataset.imageId
+        const productId = this.dataset.productId
+
+        const confirm = await Swal.fire({
+          title: 'Delete image?',
+          text: 'This action cannot be undone',
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#d33',
+          confirmButtonText: 'Yes, delete it'
+        })
+
+        if (!confirm.isConfirmed) return
+
+        Swal.fire({
+          title: 'Deleting...',
+          allowOutsideClick: false,
+          didOpen: () => Swal.showLoading()
+        })
+
+        try {
+          const response = await fetch('<?= site_url('products/delete-image') ?>', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({
+              image_id: imageId,
+              product_id: productId
+            })
+          })
+
+          const result = await response.json()
+
+          if (!response.ok || !result.success) {
+            throw new Error(result.message || 'Failed to delete image')
+          }
+
+          // ✅ INI FIX UTAMANYA
+          const wrapper = this.closest('.image-container')
+          if (wrapper) {
+            wrapper.remove()
+          }
+
+          Swal.fire({
+            icon: 'success',
+            title: 'Deleted',
+            text: result.message,
+            timer: 1200,
+            showConfirmButton: false
+          })
+        } catch (error) {
+          Swal.fire({
+            icon: 'error',
+            title: 'Failed',
+            text: error.message
+          })
+        }
+      })
+    })
 
     // ✅ EVENT LISTENERS
     // Trigger saat:
