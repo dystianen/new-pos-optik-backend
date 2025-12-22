@@ -25,6 +25,7 @@ class ProductImageModel extends Model
         'url',
         'alt_text',
         'sort_order',
+        'type',
         'is_primary',
         'mime_type',
         'size_bytes',

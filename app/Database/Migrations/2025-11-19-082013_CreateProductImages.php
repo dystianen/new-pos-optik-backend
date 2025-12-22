@@ -32,6 +32,10 @@ class CreateProductImages extends Migration
                 'type' => 'INT',
                 'default' => 0,
             ],
+            'type'      => [
+                'type' => 'ENUM',
+                'constraint' => ['gallery', 'variant']
+            ],
             'is_primary' => [
                 'type' => 'BOOLEAN',
                 'default' => false,
