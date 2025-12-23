@@ -4,6 +4,21 @@ use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 
 if (!function_exists('generateJWT')) {
+  function getJWTUser()
+  {
+    $request = service('request');
+    $authHeader = $request->getHeaderLine('Authorization');
+
+    if (!$authHeader) {
+      return false;
+    }
+
+    // Expect: Bearer token
+    $token = str_replace('Bearer ', '', $authHeader);
+
+    return validateJWT($token);
+  }
+
   function generateJWT($payload)
   {
     $key = getenv('JWT_SECRET') ?: 'your_secret_key';  // simpan di .env

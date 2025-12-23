@@ -3,6 +3,8 @@
 namespace App\Controllers;
 
 use App\Controllers\BaseController;
+use App\Models\CartItemModel;
+use App\Models\CartModel;
 use App\Models\OrderItemModel;
 use App\Models\OrderModel;
 use CodeIgniter\API\ResponseTrait;
@@ -10,90 +12,143 @@ use CodeIgniter\API\ResponseTrait;
 class CartController extends BaseController
 {
     use ResponseTrait;
+    protected $cartModel;
+    protected $cartItemModel;
     protected $orderModel;
     protected $orderItemModel;
 
     public function __construct()
     {
+        $this->cartModel = new CartModel();
+        $this->cartItemModel = new CartItemModel();
         $this->orderModel = new OrderModel();
         $this->orderItemModel = new OrderItemModel();
     }
 
     public function addToCart()
     {
-        $decoded = $this->decodedToken();
-        $customerId = $decoded->user_id;
+        $db = db_connect();
+        $db->transStart();
 
-        if (!$customerId) {
-            return $this->respond([
-                'status' => 401,
-                'message' => 'Please login first to add items to the cart.'
-            ], 401);
+        try {
+            // 🔐 JWT
+            $jwtUser = getJWTUser();
+            if (!$jwtUser) {
+                return $this->response->setStatusCode(401)->setJSON([
+                    'message' => 'Unauthorized'
+                ]);
+            }
+
+            $customerId = $jwtUser->user_id;
+
+            // 📥 Input
+            $productId = $this->request->getVar('product_id');
+            $variantId = $this->request->getVar('variant_id');
+            $qty       = (int) $this->request->getVar('quantity');
+
+            if (!$productId || $qty <= 0) {
+                throw new \Exception('Invalid input');
+            }
+
+            // 🔎 Product
+            $product = $db->table('products')
+                ->where('product_id', $productId)
+                ->where('deleted_at', null)
+                ->get()
+                ->getRowArray();
+
+            if (!$product) {
+                throw new \Exception('Product not found');
+            }
+
+            // 🧮 Harga & stok
+            if ($variantId) {
+                $variant = $db->table('product_variants')
+                    ->where('variant_id', $variantId)
+                    ->where('product_id', $productId)
+                    ->get()
+                    ->getRowArray();
+
+                if (!$variant) {
+                    throw new \Exception('Invalid variant');
+                }
+
+                if ($variant['stock'] < $qty) {
+                    throw new \Exception('Insufficient variant stock');
+                }
+
+                $price = $variant['price'];
+            } else {
+                if ($product['product_stock'] < $qty) {
+                    throw new \Exception('Insufficient product stock');
+                }
+
+                $price = $product['product_price'];
+            }
+
+            $cart = $this->cartModel
+                ->where('customer_id', $customerId)
+                ->where('deleted_at', null)
+                ->first();
+
+            if (!$cart) {
+                $this->cartModel->insert([
+                    'customer_id' => $customerId,
+                ]);
+
+                // ⚠️ UUID diambil dari entity hasil insert
+                $cart = $this->cartModel
+                    ->where('customer_id', $customerId)
+                    ->where('deleted_at', null)
+                    ->first();
+
+                if (!$cart) {
+                    throw new \Exception('Failed to create cart');
+                }
+            }
+
+            $cartId = $cart['cart_id']; // ✅ UUID VALID
+
+            $cartItem = $this->cartItemModel
+                ->where('cart_id', $cartId)
+                ->where('product_id', $productId)
+                ->where('deleted_at', null)
+                ->when($variantId !== null, function ($q) use ($variantId) {
+                    return $q->where('variant_id', $variantId);
+                })
+                ->when($variantId === null, function ($q) {
+                    return $q->where('variant_id', null);
+                })
+                ->first();
+
+            if ($cartItem) {
+                $this->cartItemModel->update($cartItem['cart_item_id'], [
+                    'quantity'   => $cartItem['quantity'] + $qty,
+                ]);
+            } else {
+                $this->cartItemModel->insert([
+                    'cart_id'    => $cartId,
+                    'product_id' => $productId,
+                    'variant_id' => $variantId,
+                    'quantity'   => $qty,
+                    'price'      => $price,
+                ]);
+            }
+
+            $db->transComplete();
+
+            return $this->response->setJSON([
+                'message' => 'Item added to cart'
+            ]);
+        } catch (\Throwable $e) {
+            $db->transRollback();
+
+            return $this->response->setStatusCode(400)->setJSON([
+                'message' => $e->getMessage()
+            ]);
         }
-
-        $productId = $this->request->getVar('product_id') ?? null;
-        $quantity = $this->request->getVar('quantity') ?? 1;
-        $price = $this->request->getVar('price') ?? '0';
-        $shipping_cost = 20000;
-
-        if (!$productId || !$price) {
-            return $this->respond([
-                'status' => 400,
-                'message' => 'Product ID and price are required.'
-            ], 400);
-        }
-
-        // Check for existing 'cart' order
-        $order = $this->orderModel
-            ->where('customer_id', $customerId)
-            ->where('status', 'cart')
-            ->first();
-
-        if (!$order) {
-            $orderData = [
-                'customer_id' => $customerId,
-                'grand_total' => 0,
-                'total_price' => 0,
-                'shipping_costs' => $shipping_cost,
-                'proof_of_payment' => null,
-                'status' => 'cart',
-            ];
-            $orderId = $this->orderModel->insert($orderData);
-        } else {
-            $orderId = $order['order_id'];
-        }
-
-        // Insert item
-        $orderItemData = [
-            'order_id' => $orderId,
-            'product_id' => $productId,
-            'quantity' => $quantity,
-            'price' => $price
-        ];
-        $this->orderItemModel->insert($orderItemData);
-
-        // Update total_price
-        $totalPrice = $this->orderItemModel
-            ->select('SUM(quantity * price) AS total')
-            ->where('order_id', $orderId)
-            ->get()
-            ->getRow()
-            ->total;
-
-        $this->orderModel->update($orderId, [
-            'total_price' => $totalPrice,
-            'grand_total' => $totalPrice + $shipping_cost
-        ]);
-
-        return $this->respond([
-            'status' => 200,
-            'message' => 'Product added to cart.',
-            'data' => [
-                'order_id' => $orderId,
-                'total_price' => $totalPrice
-            ]
-        ], 200);
     }
+
 
     public function getCart()
     {

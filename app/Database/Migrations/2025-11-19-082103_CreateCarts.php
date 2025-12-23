@@ -18,11 +18,6 @@ class CreateCarts extends Migration
                 'constraint' => 36,
                 'null' => true,
             ],
-            'status' => [
-                'type' => 'ENUM',
-                'constraint' => ['active', 'abandoned', 'saved'],
-                'default' => 'active',
-            ],
             'created_at' => [
                 'type' => 'DATETIME',
                 'null' => true,

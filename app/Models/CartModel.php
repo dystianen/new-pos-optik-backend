@@ -22,13 +22,11 @@ class CartModel extends Model
     protected $allowedFields = [
         'cart_id',
         'customer_id',
-        'status',
     ];
 
     protected $validationRules = [
         'cart_id'     => 'permit_empty|alpha_numeric_punct|min_length[1]|max_length[36]',
         'customer_id' => 'permit_empty|alpha_numeric_punct|min_length[1]|max_length[36]',
-        'status'      => 'required|in_list[active,abandoned,saved]',
     ];
 
     protected $validationMessages = [];
