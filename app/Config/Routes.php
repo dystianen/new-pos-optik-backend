@@ -43,8 +43,8 @@ $routes->group('api', ['filter' => 'cors'], function ($routes) {
 
   // CART
   $routes->group('cart', ['filter' => 'authApi'], function ($routes) {
+    $routes->get('', 'CartController::listCart');
     $routes->post('add-to-cart', 'CartController::addToCart');
-    $routes->get('', 'CartController::getCart');
     $routes->get('total-cart', 'CartController::getTotalCart');
     $routes->delete('delete/(:any)', 'CartController::deleteCartItem/$1');
   });

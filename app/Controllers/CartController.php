@@ -150,153 +150,246 @@ class CartController extends BaseController
     }
 
 
-    public function getCart()
+    public function listCart()
     {
-        $decoded = $this->decodedToken();
-        $customerId = $decoded->user_id;
+        try {
+            $jwtUser = getJWTUser();
+            if (!$jwtUser) {
+                return $this->response->setStatusCode(401)->setJSON([
+                    'message' => 'Unauthorized'
+                ]);
+            }
 
-        if (!$customerId) {
-            return $this->respond([
-                'status' => 401,
-                'message' => 'Please login first to view the cart.'
-            ], 401);
+            $customerId = $jwtUser->user_id;
+
+            $cart = $this->cartModel
+                ->where('customer_id', $customerId)
+                ->where('deleted_at', null)
+                ->first();
+
+            if (!$cart) {
+                return $this->response->setJSON([
+                    'items' => [],
+                    'summary' => [
+                        'total_qty' => 0,
+                        'total_price' => 0
+                    ]
+                ]);
+            }
+
+            /**
+             * 🔥 LOGIC IMAGE
+             * - Variant → product_variant_images
+             * - Non Variant → product_images (is_primary)
+             */
+            $items = $this->cartItemModel
+                ->select("
+                    cart_items.cart_item_id,
+                    cart_items.product_id,
+                    cart_items.variant_id,
+                    cart_items.quantity,
+                    cart_items.price,
+
+                    products.product_name,
+                    product_variants.variant_name,
+
+                    COALESCE(pvi_img.url, pi_img.url) AS image
+                ")
+                ->join('products', 'products.product_id = cart_items.product_id')
+
+                ->join(
+                    'product_variants',
+                    'product_variants.variant_id = cart_items.variant_id',
+                    'left'
+                )
+
+                // 🔥 VARIANT IMAGE
+                ->join(
+                    'product_variant_images pvi',
+                    'pvi.variant_id = cart_items.variant_id 
+                 AND pvi.deleted_at IS NULL',
+                    'left'
+                )
+                ->join(
+                    'product_images pvi_img',
+                    'pvi_img.product_image_id = pvi.product_image_id
+                        AND pvi_img.deleted_at IS NULL',
+                    'left'
+                )
+
+                // 🔥 PRODUCT PRIMARY IMAGE
+                ->join(
+                    'product_images pi_img',
+                    'pi_img.product_id = products.product_id
+                        AND pi_img.is_primary = 1
+                        AND pi_img.deleted_at IS NULL',
+                    'left'
+                )
+
+                ->where('cart_items.cart_id', $cart['cart_id'])
+                ->where('cart_items.deleted_at', null)
+                ->findAll();
+
+            // 🧮 Summary
+            $totalQty = 0;
+            $totalPrice = 0;
+
+            $mappedItems = array_map(function ($item) use (&$totalQty, &$totalPrice) {
+                $subtotal = $item['price'] * $item['quantity'];
+
+                $totalQty += $item['quantity'];
+                $totalPrice += $subtotal;
+
+                return [
+                    'cart_item_id' => $item['cart_item_id'],
+                    'product_id'   => $item['product_id'],
+                    'variant_id'   => $item['variant_id'],
+                    'product_name' => $item['product_name'],
+                    'variant_name' => $item['variant_name'],
+                    'image'        => $item['image'],
+                    'price'        => (int) $item['price'],
+                    'quantity'     => (int) $item['quantity'],
+                    'subtotal'     => (int) $subtotal
+                ];
+            }, $items);
+
+            return $this->response->setJSON([
+                'status' => 200,
+                'data' => [
+                    'items' => $mappedItems,
+                    'summary' => [
+                        'total_qty'   => $totalQty,
+                        'total_price' => $totalPrice
+                    ]
+                ]
+            ]);
+        } catch (\Throwable $e) {
+            return $this->response->setStatusCode(400)->setJSON([
+                'message' => $e->getMessage()
+            ]);
         }
-
-        $order = $this->orderModel
-            ->where('customer_id', $customerId)
-            ->where('status', 'cart')
-            ->first();
-
-        if (!$order) {
-            return $this->respond([
-                'status' => 404,
-                'message' => 'No cart found.'
-            ], 404);
-        }
-
-        $orderItems = $this->orderItemModel
-            ->where('order_id', $order['order_id'])
-            ->join('products', 'products.product_id = order_items.product_id')
-            ->findAll();
-
-        return $this->respond([
-            'status' => 200,
-            'message' => 'Cart retrieved successfully.',
-            'data' => [
-                'order_id' => $order['order_id'],
-                'shipping_costs' => $order['shipping_costs'],
-                'total_price' => $order['total_price'],
-                'grand_total' => $order['grand_total'],
-                'items' => $orderItems,
-            ]
-        ], 200);
     }
+
+
 
     public function getTotalCart()
     {
-        $decoded = $this->decodedToken();
-        $customerId = $decoded->user_id;
+        try {
+            // 🔐 JWT
+            $jwtUser = getJWTUser();
+            if (!$jwtUser) {
+                return $this->response->setStatusCode(401)->setJSON([
+                    'message' => 'Please login first to view cart.'
+                ]);
+            }
 
-        if (!$customerId) {
-            return $this->respond([
-                'status' => 401,
-                'message' => 'Please login first to view the total cart quantity.'
-            ], 401);
-        }
+            $customerId = $jwtUser->user_id;
 
-        // Ambil order dengan status cart
-        $order = $this->orderModel
-            ->where('customer_id', $customerId)
-            ->where('status', 'cart')
-            ->first();
+            // 🛒 Cart
+            $cart = $this->cartModel
+                ->where('customer_id', $customerId)
+                ->where('deleted_at', null)
+                ->first();
 
-        if (!$order) {
-            // Tidak ada cart, tetap return sukses dengan 0 item
-            return $this->respond([
+            if (!$cart) {
+                return $this->response->setJSON([
+                    'status' => 200,
+                    'data'   => [
+                        'total_items' => 0
+                    ]
+                ]);
+            }
+
+            // 🧮 Total Quantity
+            $totalItems = $this->cartItemModel
+                ->select('SUM(quantity) AS total_items')
+                ->where('cart_id', $cart['cart_id'])
+                ->where('deleted_at', null)
+                ->get()
+                ->getRow()
+                ->total_items ?? 0;
+
+            return $this->response->setJSON([
                 'status' => 200,
-                'message' => 'No cart found.',
-                'data' => [
-                    'order_id' => null,
-                    'total_items' => 0
+                'data'   => [
+                    'total_items' => (int) $totalItems
                 ]
             ]);
+        } catch (\Throwable $e) {
+            return $this->response->setStatusCode(400)->setJSON([
+                'message' => $e->getMessage()
+            ]);
         }
-
-        // Hitung total item di order tersebut
-        $totalItems = $this->orderItemModel
-            ->select('SUM(quantity) AS total_items')
-            ->where('order_id', $order['order_id'])
-            ->get()
-            ->getRow()
-            ->total_items;
-
-        return $this->respond([
-            'status' => 200,
-            'message' => 'Total cart quantity retrieved successfully.',
-            'data' => [
-                'order_id' => $order['order_id'],
-                'total_items' => (int) $totalItems
-            ]
-        ]);
     }
 
-    public function deleteCartItem($itemId)
+    public function deleteCartItem($cartItemId)
     {
-        $decoded = $this->decodedToken();
-        $customerId = $decoded->user_id;
+        $db = db_connect();
+        $db->transStart();
 
-        if (!$customerId) {
-            return $this->respond([
-                'status' => 401,
-                'message' => 'Please login first to delete items from the cart.'
-            ], 401);
+        try {
+            // 🔐 JWT
+            $jwtUser = getJWTUser();
+            if (!$jwtUser) {
+                return $this->response->setStatusCode(401)->setJSON([
+                    'message' => 'Please login first.'
+                ]);
+            }
+
+            $customerId = $jwtUser->user_id;
+
+            // 🛒 Cart
+            $cart = $this->cartModel
+                ->where('customer_id', $customerId)
+                ->where('deleted_at', null)
+                ->first();
+
+            if (!$cart) {
+                throw new \Exception('Cart not found');
+            }
+
+            // 📦 Cart Item
+            $cartItem = $this->cartItemModel
+                ->where('cart_item_id', $cartItemId)
+                ->where('cart_id', $cart['cart_id'])
+                ->where('deleted_at', null)
+                ->first();
+
+            if (!$cartItem) {
+                throw new \Exception('Cart item not found');
+            }
+
+            // 🗑️ Soft delete
+            $this->cartItemModel->update($cartItemId, [
+                'deleted_at' => date('Y-m-d H:i:s')
+            ]);
+
+            // 🧮 Recalculate total
+            $summary = $this->cartItemModel
+                ->select('
+                    SUM(quantity) AS total_qty,
+                    SUM(quantity * price) AS total_price
+                ')
+                ->where('cart_id', $cart['cart_id'])
+                ->where('deleted_at', null)
+                ->get()
+                ->getRow();
+
+            $db->transComplete();
+
+            return $this->response->setJSON([
+                'message' => 'Item removed from cart',
+                'summary' => [
+                    'total_qty'   => (int) ($summary->total_qty ?? 0),
+                    'total_price' => (int) ($summary->total_price ?? 0)
+                ]
+            ]);
+        } catch (\Throwable $e) {
+            $db->transRollback();
+
+            return $this->response->setStatusCode(400)->setJSON([
+                'message' => $e->getMessage()
+            ]);
         }
-
-        // Ambil item yang akan dihapus
-        $item = $this->orderItemModel->find($itemId);
-
-        if (!$item) {
-            return $this->respond([
-                'status' => 404,
-                'message' => 'Item not found.'
-            ], 404);
-        }
-
-        // Ambil order cart milik user
-        $order = $this->orderModel
-            ->where('order_id', $item['order_id'])
-            ->where('customer_id', $customerId)
-            ->where('status', 'cart')
-            ->first();
-
-        if (!$order) {
-            return $this->respond([
-                'status' => 403,
-                'message' => 'Unauthorized access to cart.'
-            ], 403);
-        }
-
-        // Hapus item dari order_items
-        $this->orderItemModel->delete($itemId);
-
-        // Hitung ulang total_price
-        $totalPrice = $this->orderItemModel
-            ->select('SUM(quantity * price) AS total')
-            ->where('order_id', $order['order_id'])
-            ->get()
-            ->getRow()
-            ->total ?? 0;
-
-        // Update total_price di order
-        $this->orderModel->update($order['order_id'], ['total_price' => $totalPrice]);
-
-        return $this->respond([
-            'status' => 200,
-            'message' => 'Item deleted and cart updated.',
-            'data' => [
-                'order_id' => $order['order_id'],
-                'total_price' => $totalPrice
-            ]
-        ]);
     }
 }
