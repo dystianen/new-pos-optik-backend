@@ -9,10 +9,10 @@ class DataSeeder extends Seeder
     public function run()
     {
         $this->call('RoleSeeder');
+        $this->call('UserSeeder');
         $this->call('CustomerSeeder');
         $this->call('ProductCategorySeeder');
         $this->call('ProductAttributeSeeder');
-        $this->call('UserSeeder');
-        $this->call('AttributeMasterSeeder');
+        $this->call('ProductAttributeMasterValuesSeeder');
     }
 }

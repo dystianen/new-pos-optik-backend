@@ -53,9 +53,6 @@ class ProductAttributeSeeder extends Seeder
             ],
         ];
 
-        // Insert multiple rows
-        foreach ($data as $row) {
-            $productAttributeModel->insert($row);
-        }
+        $productAttributeModel->insertBatch($data);
     }
 }
