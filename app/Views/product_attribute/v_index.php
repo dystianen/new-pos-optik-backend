@@ -14,6 +14,7 @@
             <th>No</th>
             <th>Name</th>
             <th>Type</th>
+            <th>Values</th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -30,6 +31,7 @@
                 <td><?= $startIndex++ ?></td>
                 <td><?= $attribute['attribute_name'] ?></td>
                 <td><?= $attribute['attribute_type'] ?></td>
+                <td><?= !empty($attribute['master_values']) ? esc($attribute['master_values']) : '-' ?></td>
                 <td>
                   <a href="<?= base_url('/product-attribute/form?id=' . $attribute['attribute_id']) ?>" class="btn btn-sm btn-warning">Edit</a>
                   <form action="<?= base_url('/product-attribute/delete/' . $attribute['attribute_id']) ?>" method="post" style="display:inline-block;">

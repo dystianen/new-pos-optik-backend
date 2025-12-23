@@ -13,6 +13,6 @@ class DataSeeder extends Seeder
         $this->call('ProductCategorySeeder');
         $this->call('ProductAttributeSeeder');
         $this->call('UserSeeder');
-        // $this->call('ProductSeeder');
+        $this->call('AttributeMasterSeeder');
     }
 }

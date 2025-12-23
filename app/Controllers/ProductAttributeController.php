@@ -34,7 +34,28 @@ class ProductAttributeController extends BaseController
     {
         $page = $this->request->getVar('page') ?? 1;
         $perPage = 10;
-        $attributes = $this->attributeModel->paginate($perPage, 'default', $page);
+
+        $attributes = $this->attributeModel
+            ->paginate($perPage, 'default', $page);
+
+        // Ambil semua master values
+        $masterValues = $this->attributeMasterValueModel
+            ->select('attribute_id, value')
+            ->findAll();
+
+        // Group by attribute_id
+        $groupedValues = [];
+        foreach ($masterValues as $row) {
+            $groupedValues[$row['attribute_id']][] = $row['value'];
+        }
+
+        // Gabungkan value pakai koma
+        foreach ($attributes as &$attr) {
+            $values = $groupedValues[$attr['attribute_id']] ?? [];
+            $attr['master_values'] = implode(', ', $values);
+        }
+        unset($attr);
+
         $pager = [
             'currentPage' => $this->attributeModel->pager->getCurrentPage('default'),
             'totalPages' => $this->attributeModel->pager->getPageCount('default'),

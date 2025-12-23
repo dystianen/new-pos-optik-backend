@@ -21,6 +21,12 @@ class ProductAttributeMasterValueModel extends Model
         'deleted_at',
     ];
 
+    protected $useTimestamps    = true;
+    protected $dateFormat       = 'datetime';
+    protected $createdField     = 'created_at';
+    protected $updatedField     = 'updated_at';
+    protected $deletedField     = 'deleted_at';
+
     protected $beforeInsert = ['generateUuid'];
 
     protected function generateUuid(array $data)
