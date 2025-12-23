@@ -545,7 +545,7 @@ class ProductController extends BaseController
         // ------------------------------------------------------------------
         $images = $this->productImageModel
             ->where('product_id', $id)
-            ->where('is_primary', 1)
+            ->where('type', 'gallery')
             ->where('deleted_at', null)
             ->orderBy('sort_order', 'ASC')
             ->findAll();
@@ -1022,7 +1022,6 @@ class ProductController extends BaseController
 
         log_message('debug', '========== SAVE PRODUCT END ==========');
     }
-
 
     public function deleteImage()
     {
