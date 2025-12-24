@@ -4,6 +4,7 @@ namespace App\Controllers;
 
 use App\Controllers\BaseController;
 use App\Models\CartItemModel;
+use App\Models\CartItemPrescriptionModel;
 use App\Models\CartModel;
 use App\Models\OrderItemModel;
 use App\Models\OrderModel;
@@ -16,6 +17,7 @@ class CartController extends BaseController
     protected $cartItemModel;
     protected $orderModel;
     protected $orderItemModel;
+    protected $cartItemPrescriptionModel;
 
     public function __construct()
     {
@@ -23,6 +25,7 @@ class CartController extends BaseController
         $this->cartItemModel = new CartItemModel();
         $this->orderModel = new OrderModel();
         $this->orderItemModel = new OrderItemModel();
+        $this->cartItemPrescriptionModel = new CartItemPrescriptionModel();
     }
 
     public function addToCart()
@@ -40,11 +43,12 @@ class CartController extends BaseController
             }
 
             $customerId = $jwtUser->user_id;
-
+            $payload = $this->request->getJSON(true);
             // 📥 Input
-            $productId = $this->request->getVar('product_id');
-            $variantId = $this->request->getVar('variant_id');
-            $qty       = (int) $this->request->getVar('quantity');
+            $productId    = $payload['product_id'] ?? null;
+            $variantId    = $payload['variant_id'] ?? null;
+            $qty          = (int) ($payload['quantity'] ?? 0);
+            $prescription = $payload['prescription'] ?? null;
 
             if (!$productId || $qty <= 0) {
                 throw new \Exception('Invalid input');
@@ -86,6 +90,7 @@ class CartController extends BaseController
                 $price = $product['product_price'];
             }
 
+            // 🛒 Cart
             $cart = $this->cartModel
                 ->where('customer_id', $customerId)
                 ->where('deleted_at', null)
@@ -96,49 +101,53 @@ class CartController extends BaseController
                     'customer_id' => $customerId,
                 ]);
 
-                // ⚠️ UUID diambil dari entity hasil insert
                 $cart = $this->cartModel
                     ->where('customer_id', $customerId)
                     ->where('deleted_at', null)
                     ->first();
-
-                if (!$cart) {
-                    throw new \Exception('Failed to create cart');
-                }
             }
 
-            $cartId = $cart['cart_id']; // ✅ UUID VALID
+            $cartId = $cart['cart_id'];
 
-            $cartItem = $this->cartItemModel
-                ->where('cart_id', $cartId)
-                ->where('product_id', $productId)
-                ->where('deleted_at', null)
-                ->when($variantId !== null, function ($q) use ($variantId) {
-                    return $q->where('variant_id', $variantId);
-                })
-                ->when($variantId === null, function ($q) {
-                    return $q->where('variant_id', null);
-                })
-                ->first();
+            // 🧾 Cart Item
+            $this->cartItemModel->insert([
+                'cart_id'    => $cartId,
+                'product_id' => $productId,
+                'variant_id' => $variantId,
+                'quantity'   => $qty,
+                'price'      => $price,
+            ]);
 
-            if ($cartItem) {
-                $this->cartItemModel->update($cartItem['cart_item_id'], [
-                    'quantity'   => $cartItem['quantity'] + $qty,
-                ]);
-            } else {
-                $this->cartItemModel->insert([
-                    'cart_id'    => $cartId,
-                    'product_id' => $productId,
-                    'variant_id' => $variantId,
-                    'quantity'   => $qty,
-                    'price'      => $price,
+            $cartItemId = $this->cartItemModel->getInsertID();
+
+            // 👓 SIMPAN RESEP MATA
+            if ($prescription && ($prescription['type'] ?? 'none') !== 'none') {
+                $pdRight = $prescription['right']['pd'] ?? null;
+                $pdLeft  = $prescription['left']['pd'] ?? null;
+
+                $this->cartItemPrescriptionModel->insert([
+                    'cart_item_id' => $cartItemId,
+
+                    'right_sph'  => $prescription['right']['sph'] ?? null,
+                    'right_cyl'  => $prescription['right']['cyl'] ?? null,
+                    'right_axis' => $prescription['right']['axis'] ?? null,
+                    'right_add'  => $prescription['right']['add'] ?? null,
+
+                    'left_sph'   => $prescription['left']['sph'] ?? null,
+                    'left_cyl'   => $prescription['left']['cyl'] ?? null,
+                    'left_axis'  => $prescription['left']['axis'] ?? null,
+                    'left_add'   => $prescription['left']['add'] ?? null,
+
+                    'pd_single'  => null,
+                    'pd_left'    => $pdLeft,
+                    'pd_right'   => $pdRight,
                 ]);
             }
 
             $db->transComplete();
 
             return $this->response->setJSON([
-                'message' => 'Item added to cart'
+                'message' => 'Item added to cart with prescription'
             ]);
         } catch (\Throwable $e) {
             $db->transRollback();
@@ -360,9 +369,7 @@ class CartController extends BaseController
             }
 
             // 🗑️ Soft delete
-            $this->cartItemModel->update($cartItemId, [
-                'deleted_at' => date('Y-m-d H:i:s')
-            ]);
+            $this->cartItemModel->delete($cartItemId);
 
             // 🧮 Recalculate total
             $summary = $this->cartItemModel
