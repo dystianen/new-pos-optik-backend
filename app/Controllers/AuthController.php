@@ -131,7 +131,7 @@ class AuthController extends BaseController
             ], 401);
         }
 
-        $key = getenv('JWT_SECRET');
+        $key = getenv('JWT_SECRET_KEY');
         $iat = time();
 
         // Access Token - 1 jam (untuk transaksi sensitif)
@@ -190,7 +190,7 @@ class AuthController extends BaseController
             }
 
             // Secret key (sama dengan yang dipakai saat generate token)
-            $key = getenv('JWT_SECRET');
+            $key = getenv('JWT_SECRET_KEY');
 
             if (empty($key)) {
                 return $this->respond([
