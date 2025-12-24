@@ -8,7 +8,9 @@ use App\Models\RoleModel;
 use App\Models\UserModel;
 use CodeIgniter\API\ResponseTrait;
 use CodeIgniter\HTTP\ResponseInterface;
+use Exception;
 use Firebase\JWT\JWT;
+use Firebase\JWT\Key;
 
 class AuthController extends BaseController
 {
@@ -23,48 +25,11 @@ class AuthController extends BaseController
         helper(['form', 'url']); // load form & URL helper
     }
 
-    public function signin()
-    {
-        return view('auth/v_signin');
-    }
+    // =======================
+    // API FUNCTIONS
+    // =======================
 
-    public function signinStore()
-    {
-        $session = session();
-        $email = $this->request->getVar('email');
-        $password = $this->request->getVar('password');
-
-        $data = $this->userModel->where('user_email', $email)->first();
-        $role = $this->roleModel->where('role_id', $data['role_id'])->first();
-
-        if ($data) {
-            $pass = $data['password'];
-            $authenticatePassword = password_verify($password, $pass);
-            if ($authenticatePassword) {
-                $ses_data = [
-                    'id' => $data['user_id'],
-                    'full_name' => $data['user_name'],
-                    'email' => $data['user_email'],
-                    'role_name' => $role['role_name'],
-                    'isLoggedIn' => TRUE
-                ];
-
-                $session->set($ses_data);
-
-                return redirect()->to(base_url('/dashboard'));
-            } else {
-                $session->setFlashdata('failed', 'Password is incorrect.');
-                return redirect()->to('/signin');
-            }
-        } else {
-            $session->setFlashdata('failed', 'Email does not exist.');
-            return redirect()->to('/signin');
-        }
-    }
-
-    /**
-     * Register
-     */
+    // GET /api/auth/register
     public function register()
     {
         $rules = [
@@ -144,9 +109,7 @@ class AuthController extends BaseController
         ]);
     }
 
-    /**
-     * Login
-     */
+    // GET /api/auth/login
     public function login()
     {
         $email = $this->request->getVar('customer_email');
@@ -170,33 +133,186 @@ class AuthController extends BaseController
 
         $key = getenv('JWT_SECRET');
         $iat = time();
-        $exp = $iat + 3600;
 
-        $payload = [
-            "iss" => "Issuer of the JWT",
-            "aud" => "Audience that the JWT",
-            "sub" => "Subject of the JWT",
+        // Access Token - 1 jam (untuk transaksi sensitif)
+        $accessTokenPayload = [
+            "iss" => "Your Store",
             "iat" => $iat,
-            "exp" => $exp,
+            "exp" => $iat + 3600, // 1 jam
             "user_id" => $user['customer_id'],
             "user_name" => $user['customer_name'],
             "email" => $user['customer_email'],
+            "type" => "access"
         ];
 
-        $token = JWT::encode($payload, $key, 'HS256');
+        // Refresh Token - 30 hari (untuk kenyamanan)
+        $refreshTokenPayload = [
+            "iss" => "Your Store",
+            "iat" => $iat,
+            "exp" => $iat + (30 * 24 * 60 * 60), // 30 hari
+            "user_id" => $user['customer_id'],
+            "type" => "refresh"
+        ];
+
+        $accessToken = JWT::encode($accessTokenPayload, $key, 'HS256');
+        $refreshToken = JWT::encode($refreshTokenPayload, $key, 'HS256');
 
         return $this->respond([
-            'status' => 200,
             'message' => 'Login successfully!',
             'data' => [
-                'token' => $token
+                'access_token' => $accessToken,
+                'refresh_token' => $refreshToken,
+                'token_type' => 'Bearer',
+                'expires_in' => 3600,
+                'user' => [
+                    'id' => $user['customer_id'],
+                    'name' => $user['customer_name'],
+                    'email' => $user['customer_email']
+                ]
             ]
         ], 200);
     }
 
-    /**
-     * Logout
-     */
+    // GET /api/auth/refresh
+    public function refresh()
+    {
+        try {
+            // Ambil refresh token dari request body
+            $json = $this->request->getJSON();
+            $refreshToken = $json->refresh_token ?? null;
+
+            // Validasi: refresh token harus ada
+            if (empty($refreshToken)) {
+                return $this->respond([
+                    'status' => 'error',
+                    'message' => 'Refresh token tidak ditemukan'
+                ], 400);
+            }
+
+            // Secret key (sama dengan yang dipakai saat generate token)
+            $key = getenv('JWT_SECRET');
+
+            if (empty($key)) {
+                return $this->respond([
+                    'status' => 'error',
+                    'message' => 'JWT secret key tidak ditemukan'
+                ], 500);
+            }
+
+            // Decode dan validasi refresh token
+            try {
+                $decoded = JWT::decode($refreshToken, new Key($key, 'HS256'));
+            } catch (Exception $e) {
+                return $this->respond([
+                    'status' => 'error',
+                    'message' => 'Refresh token tidak valid atau sudah expired',
+                    'error' => $e->getMessage()
+                ], 401);
+            }
+
+            // Validasi: pastikan ini adalah refresh token (bukan access token)
+            if (!isset($decoded->type) || $decoded->type !== 'refresh') {
+                return $this->respond([
+                    'status' => 'error',
+                    'message' => 'Token bukan refresh token'
+                ], 400);
+            }
+
+            // Validasi: cek apakah user masih ada di database
+            $customerModel = new \App\Models\CustomerModel();
+            $user = $customerModel->find($decoded->user_id);
+
+            if (!$user) {
+                return $this->respond([
+                    'status' => 'error',
+                    'message' => 'User tidak ditemukan'
+                ], 404);
+            }
+
+            // Generate access token baru
+            $iat = time();
+            $exp = $iat + 3600; // 1 jam
+
+            $accessTokenPayload = [
+                "iss" => "Issuer of the JWT",
+                "aud" => "Audience that the JWT",
+                "sub" => "Subject of the JWT",
+                "iat" => $iat,
+                "exp" => $exp,
+                "user_id" => $user['customer_id'],
+                "user_name" => $user['customer_name'],
+                "email" => $user['customer_email'],
+                "type" => "access"
+            ];
+
+            $newAccessToken = JWT::encode($accessTokenPayload, $key, 'HS256');
+
+            // Return access token baru
+            return $this->respond([
+                'message' => 'Token berhasil diperbarui',
+                'data' => [
+                    'access_token' => $newAccessToken,
+                    'token_type' => 'Bearer',
+                    'expires_in' => 3600, // dalam detik
+                    'user' => [
+                        'id' => $user['customer_id'],
+                        'name' => $user['customer_name'],
+                        'email' => $user['customer_email']
+                    ]
+                ]
+            ], 200);
+        } catch (Exception $e) {
+            return $this->respond([
+                'status' => 'error',
+                'message' => 'Terjadi kesalahan saat refresh token',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    // =======================
+    // WEB DASHBOARD FUNCTIONS
+    // =======================
+
+    public function signin()
+    {
+        return view('auth/v_signin');
+    }
+
+    public function signinStore()
+    {
+        $session = session();
+        $email = $this->request->getVar('email');
+        $password = $this->request->getVar('password');
+
+        $data = $this->userModel->where('user_email', $email)->first();
+        $role = $this->roleModel->where('role_id', $data['role_id'])->first();
+
+        if ($data) {
+            $pass = $data['password'];
+            $authenticatePassword = password_verify($password, $pass);
+            if ($authenticatePassword) {
+                $ses_data = [
+                    'id' => $data['user_id'],
+                    'full_name' => $data['user_name'],
+                    'email' => $data['user_email'],
+                    'role_name' => $role['role_name'],
+                    'isLoggedIn' => TRUE
+                ];
+
+                $session->set($ses_data);
+
+                return redirect()->to(base_url('/dashboard'));
+            } else {
+                $session->setFlashdata('failed', 'Password is incorrect.');
+                return redirect()->to('/signin');
+            }
+        } else {
+            $session->setFlashdata('failed', 'Email does not exist.');
+            return redirect()->to('/signin');
+        }
+    }
+
     public function logout()
     {
         session()->destroy();

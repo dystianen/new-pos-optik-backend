@@ -17,6 +17,10 @@ class ProductAttributeController extends BaseController
         $this->attributeMasterValueModel = new ProductAttributeMasterValueModel();
     }
 
+    // =======================
+    // API FUNCTIONS
+    // =======================
+
     public function apiListProductAttribute()
     {
         $attributes = $this->attributeModel->findAll();
@@ -29,7 +33,10 @@ class ProductAttributeController extends BaseController
         return $this->response->setJSON($response);
     }
 
-    // READ
+    // =======================
+    // WEB DASHBOARD FUNCTIONS
+    // =======================
+
     public function webIndex()
     {
         $page = $this->request->getVar('page') ?? 1;

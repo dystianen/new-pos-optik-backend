@@ -15,6 +15,10 @@ class ProductVariantController extends BaseController
         $this->variantModel = new ProductVariantModel();
     }
 
+    // =======================
+    // API FUNCTIONS
+    // =======================
+
     public function getByProductId()
     {
         $request = $this->request;

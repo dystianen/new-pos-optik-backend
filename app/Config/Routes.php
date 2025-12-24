@@ -27,6 +27,7 @@ $routes->group('api', ['filter' => 'cors'], function ($routes) {
   $routes->group('auth', function ($routes) {
     $routes->post('login', 'AuthController::login');
     $routes->post('register', 'AuthController::register');
+    $routes->post('refresh', 'AuthController::refresh');
   });
 
   // PRODUCTS

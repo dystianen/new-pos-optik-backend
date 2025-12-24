@@ -22,6 +22,10 @@ class OrderController extends BaseController
         $this->productModel = new ProductModel();
     }
 
+    // =======================
+    // API FUNCTIONS
+    // =======================
+
     public function orders()
     {
         $decoded = $this->decodedToken();
@@ -240,6 +244,10 @@ class OrderController extends BaseController
         ]);
     }
 
+    // =======================
+    // WEB DASHBOARD FUNCTIONS
+    // =======================
+
     public function index()
     {
         $page = $this->request->getVar('page') ?? 1;
@@ -271,7 +279,6 @@ class OrderController extends BaseController
             'search' => $search
         ]);
     }
-
 
     public function form()
     {

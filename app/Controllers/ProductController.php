@@ -449,7 +449,6 @@ class ProductController extends BaseController
     // WEB DASHBOARD FUNCTIONS
     // =======================
 
-    // GET /products
     public function webIndex()
     {
         $attributes = $this->attributeModel->findAll();

@@ -16,6 +16,10 @@ class UserController extends BaseController
         $this->roleModel = new RoleModel();
     }
 
+    // =======================
+    // WEB DASHBOARD FUNCTIONS
+    // =======================
+
     public function index()
     {
         $currentPage = $this->request->getVar('page') ? (int)$this->request->getVar('page') : 1;
@@ -100,7 +104,6 @@ class UserController extends BaseController
 
         return redirect()->to('/users')->with('success', $message);
     }
-
 
     public function delete($id)
     {

@@ -18,6 +18,10 @@ class InventoryTransactionsController extends BaseController
         $this->productVariantModel = new ProductVariantModel();
     }
 
+    // =======================
+    // WEB DASHBOARD FUNCTIONS
+    // =======================
+
     public function webIndex()
     {
         $currentPage = $this->request->getVar('page')
@@ -72,8 +76,6 @@ class InventoryTransactionsController extends BaseController
 
         return view('inventory_transactions/v_index', $data);
     }
-
-
 
     public function form()
     {
@@ -240,6 +242,7 @@ class InventoryTransactionsController extends BaseController
             return redirect()->back()->with('failed', $e->getMessage());
         }
     }
+
     public function delete($id)
     {
         $this->InventoryTransactionModel->delete($id);

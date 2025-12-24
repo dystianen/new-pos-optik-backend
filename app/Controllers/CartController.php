@@ -28,6 +28,11 @@ class CartController extends BaseController
         $this->cartItemPrescriptionModel = new CartItemPrescriptionModel();
     }
 
+    // =======================
+    // API FUNCTIONS
+    // =======================
+
+    // GET /api/cart/add-to-cart
     public function addToCart()
     {
         $db = db_connect();
@@ -158,7 +163,7 @@ class CartController extends BaseController
         }
     }
 
-
+    // GET /api/cart
     public function listCart()
     {
         try {
@@ -279,8 +284,7 @@ class CartController extends BaseController
         }
     }
 
-
-
+    // GET /api/cart/total-cart
     public function getTotalCart()
     {
         try {
@@ -331,6 +335,7 @@ class CartController extends BaseController
         }
     }
 
+    // GET /api/cart/delete/{id}
     public function deleteCartItem($cartItemId)
     {
         $db = db_connect();

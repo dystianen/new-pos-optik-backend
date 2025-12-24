@@ -14,6 +14,11 @@ class ProductCategoryController extends BaseController
         $this->categoryModel = new ProductCategoryModel();
     }
 
+    // =======================
+    // API FUNCTIONS
+    // =======================
+
+    // GET /api/products/categories
     public function apiListProductCategory()
     {
         $categories = $this->categoryModel->findAll();
@@ -26,7 +31,11 @@ class ProductCategoryController extends BaseController
         return $this->response->setJSON($response);
     }
 
-    // READ
+
+    // =======================
+    // WEB DASHBOARD FUNCTIONS
+    // =======================
+
     public function webIndex()
     {
         $page = $this->request->getVar('page') ?? 1;
@@ -89,7 +98,6 @@ class ProductCategoryController extends BaseController
         return redirect()->to('/product-category')->with('success', $message);
     }
 
-    // DELETE
     public function webDelete($id)
     {
         $this->categoryModel->delete($id);
