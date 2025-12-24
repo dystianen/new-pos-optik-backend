@@ -13,13 +13,16 @@ $routes->get('/', function () {
 $routes->get('signin', 'AuthController::signin');
 $routes->post('signin/store', 'AuthController::signinStore');
 $routes->get('logout', 'AuthController::logout');
-$routes->match(['options'], '(:any)', 'CorsController::handleOptions');
 $routes->get('/dashboard', 'DashboardController::index', ['filter' => 'authGuard']);
 
 /** ================================= 
  *             ENDPOINT
  * ================================== */
 $routes->group('api', ['filter' => 'cors'], function ($routes) {
+  $routes->options('(:any)', function () {
+    return service('response')->setStatusCode(200);
+  });
+
   // AUTH
   $routes->group('auth', function ($routes) {
     $routes->post('login', 'AuthController::login');
@@ -51,7 +54,7 @@ $routes->group('api', ['filter' => 'cors'], function ($routes) {
 
   // ORDER
   $routes->group('orders', ['filter' => 'authApi'], function ($routes) {
-    $routes->get('', 'OrderController::orders',  ['filter' => 'authApi']);
+    $routes->get('', 'OrderController::orders');
     $routes->post('checkout', 'OrderController::checkout');
     $routes->post('payment', 'OrderController::uploadPaymentProof');
     $routes->get('check-status', 'OrderController::checkIfPaid');
