@@ -26,9 +26,6 @@ class CreateOrderItemPrescriptions extends Migration
             'pd_left' => ['type' => 'DECIMAL', 'constraint' => '4,1', 'null' => true],
             'pd_right' => ['type' => 'DECIMAL', 'constraint' => '4,1', 'null' => true],
 
-            'lens_type' => ['type' => 'VARCHAR', 'constraint' => 50],
-            'upload_prescription' => ['type' => 'VARCHAR', 'constraint' => 255, 'null' => true],
-
             'created_at' => ['type' => 'DATETIME', 'null' => true],
         ]);
 

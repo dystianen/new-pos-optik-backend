@@ -35,18 +35,6 @@ class CreateCartItemPrescriptions extends Migration
             'pd_left'   => ['type' => 'DECIMAL', 'constraint' => '4,1', 'null' => true],
             'pd_right'  => ['type' => 'DECIMAL', 'constraint' => '4,1', 'null' => true],
 
-            // Metadata
-            'lens_type' => [
-                'type' => 'ENUM',
-                'constraint' => ['single_vision', 'bifocal', 'progressive'],
-                'default' => 'single_vision',
-            ],
-            'upload_prescription' => [
-                'type' => 'VARCHAR',
-                'constraint' => 255,
-                'null' => true,
-            ],
-
             'created_at' => ['type' => 'DATETIME', 'null' => true],
             'updated_at' => ['type' => 'DATETIME', 'null' => true],
         ]);

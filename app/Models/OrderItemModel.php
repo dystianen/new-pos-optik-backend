@@ -23,6 +23,7 @@ class OrderItemModel extends Model
         'order_item_id',
         'order_id',
         'product_id',
+        'variant_id',
         'quantity',
         'price',
     ];

@@ -21,6 +21,11 @@ class CreateOrderItemsTable extends Migration
                 'type' => 'CHAR',
                 'constraint' => 36,
             ],
+            'variant_id' => [
+                'type' => 'CHAR',
+                'constraint' => 36,
+                'null' => true,
+            ],
             'quantity' => [
                 'type' => 'INT',
                 'constraint' => 11
@@ -46,6 +51,7 @@ class CreateOrderItemsTable extends Migration
         $this->forge->addPrimaryKey('order_item_id');
         $this->forge->addForeignKey('order_id', 'orders', 'order_id', 'CASCADE', 'CASCADE');
         $this->forge->addForeignKey('product_id', 'products', 'product_id', 'CASCADE', 'CASCADE');
+        $this->forge->addForeignKey('variant_id', 'product_variants', 'variant_id', 'SET NULL', 'CASCADE');
         $this->forge->createTable('order_items');
     }
 
