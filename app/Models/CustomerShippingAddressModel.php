@@ -28,6 +28,16 @@ class CustomerShippingAddressModel extends Model
         'deleted_at',
     ];
 
+    protected $validationRules = [
+        'recipient_name' => 'required|min_length[1]',
+        'phone' => 'required|min_length[1]',
+        'address' => 'required|min_length[1]',
+        'city' => 'required|min_length[1]',
+        'province' => 'required|min_length[1]',
+        'postal_code' => 'required|min_length[1]',
+    ];
+
+
     protected $beforeInsert = ['generateUuid'];
 
     protected function generateUuid(array $data)

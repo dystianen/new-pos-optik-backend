@@ -3,16 +3,21 @@
 namespace App\Controllers;
 
 use App\Controllers\BaseController;
+use App\Models\CartItemModel;
+use App\Models\CartItemPrescriptionModel;
+use App\Models\CartModel;
+use App\Models\CustomerShippingAddressModel;
 use App\Models\InventoryTransactionModel;
 use App\Models\OrderItemModel;
 use App\Models\OrderModel;
 use App\Models\ProductModel;
+use App\Models\ShippingRateModel;
 use CodeIgniter\API\ResponseTrait;
 
 class OrderController extends BaseController
 {
     use ResponseTrait;
-    protected $orderModel, $orderItemModel, $InventoryTransactionModel, $productModel;
+    protected $orderModel, $orderItemModel, $InventoryTransactionModel, $productModel, $csaModel, $cartModel, $cartItemModel, $shippingRateModel, $cartItemPrescriptionModel;
 
     public function __construct()
     {
@@ -20,11 +25,204 @@ class OrderController extends BaseController
         $this->orderItemModel = new OrderItemModel();
         $this->InventoryTransactionModel = new InventoryTransactionModel();
         $this->productModel = new ProductModel();
+        $this->csaModel = new CustomerShippingAddressModel();
+        $this->cartModel = new CartModel();
+        $this->cartItemModel = new CartItemModel();
+        $this->shippingRateModel = new ShippingRateModel();
+        $this->cartItemPrescriptionModel = new CartItemPrescriptionModel();
     }
 
     // =======================
     // API FUNCTIONS
     // =======================
+
+    public function summaryOrders($addressId)
+    {
+        try {
+            // 🔐 AUTH
+            $jwtUser = getJWTUser();
+            if (!$jwtUser) {
+                return $this->response->setStatusCode(401)->setJSON([
+                    'message' => 'Unauthorized'
+                ]);
+            }
+
+            $customerId = $jwtUser->user_id;
+
+            // 📍 SHIPPING ADDRESS
+            $shippingAddress = $this->csaModel
+                ->where('customer_id', $customerId)
+                ->find($addressId);
+
+            if (!$shippingAddress) {
+                throw new \Exception('Shipping address not found');
+            }
+
+            // 🛒 CART
+            $cart = $this->cartModel
+                ->where('customer_id', $customerId)
+                ->where('deleted_at', null)
+                ->first();
+
+            if (!$cart) {
+                return $this->response->setJSON([
+                    'status' => 200,
+                    'data' => [
+                        'shipping_address' => $shippingAddress,
+                        'items' => [],
+                        'shipping' => null,
+                        'summary' => [
+                            'subtotal' => 0,
+                            'shipping_cost' => 0,
+                            'total' => 0
+                        ]
+                    ]
+                ]);
+            }
+
+            // 🛒 CART ITEMS
+            $items = $this->cartItemModel
+                ->select("
+                cart_items.cart_item_id,
+                cart_items.product_id,
+                cart_items.variant_id,
+                cart_items.quantity,
+                cart_items.price,
+
+                products.product_name,
+                product_variants.variant_name,
+
+                COALESCE(pvi_img.url, pi_img.url) AS image
+            ")
+                ->join('products', 'products.product_id = cart_items.product_id')
+                ->join('product_variants', 'product_variants.variant_id = cart_items.variant_id', 'left')
+                ->join(
+                    'product_variant_images pvi',
+                    'pvi.variant_id = cart_items.variant_id AND pvi.deleted_at IS NULL',
+                    'left'
+                )
+                ->join(
+                    'product_images pvi_img',
+                    'pvi_img.product_image_id = pvi.product_image_id AND pvi_img.deleted_at IS NULL',
+                    'left'
+                )
+                ->join(
+                    'product_images pi_img',
+                    'pi_img.product_id = products.product_id
+                 AND pi_img.is_primary = 1
+                 AND pi_img.deleted_at IS NULL',
+                    'left'
+                )
+                ->where('cart_items.cart_id', $cart['cart_id'])
+                ->where('cart_items.deleted_at', null)
+                ->findAll();
+
+            // 👓 PRESCRIPTIONS
+            $cartItemIds = array_column($items, 'cart_item_id');
+            $prescriptions = [];
+
+            if (!empty($cartItemIds)) {
+                $rows = $this->cartItemPrescriptionModel
+                    ->whereIn('cart_item_id', $cartItemIds)
+                    ->findAll();
+
+                foreach ($rows as $row) {
+                    $prescriptions[$row['cart_item_id']] = [
+                        'right' => [
+                            'sph'  => $row['right_sph'],
+                            'cyl'  => $row['right_cyl'],
+                            'axis' => $row['right_axis'],
+                            'add' => $row['right_add'],
+                            'pd'  => $row['pd_right'],
+                        ],
+                        'left' => [
+                            'sph'  => $row['left_sph'],
+                            'cyl'  => $row['left_cyl'],
+                            'axis' => $row['left_axis'],
+                            'add' => $row['left_add'],
+                            'pd'   => $row['pd_left'],
+                        ],
+                    ];
+                }
+            }
+
+            // 🧮 SUBTOTAL
+            $subtotal = 0;
+
+            $mappedItems = array_map(function ($item) use (&$subtotal, $prescriptions) {
+                $itemSubtotal = $item['price'] * $item['quantity'];
+                $subtotal += $itemSubtotal;
+
+                return [
+                    'cart_item_id' => $item['cart_item_id'],
+                    'product_id'   => $item['product_id'],
+                    'variant_id'   => $item['variant_id'],
+                    'product_name' => $item['product_name'],
+                    'variant_name' => $item['variant_name'],
+                    'image'        => $item['image'],
+                    'price'        => (int) $item['price'],
+                    'quantity'     => (int) $item['quantity'],
+                    'subtotal'     => (int) $itemSubtotal,
+                    'prescription' => $prescriptions[$item['cart_item_id']] ?? null
+                ];
+            }, $items);
+
+            // 🚚 SHIPPING COST
+            $destinationText = trim(
+                ($shippingAddress['city'] ?? '') . ' ' . ($shippingAddress['province'] ?? '')
+            );
+
+            $shippingRate = $this->shippingRateModel
+                ->where("'$destinationText' LIKE CONCAT('%', destination, '%')", null, false)
+                ->orderBy('LENGTH(destination)', 'DESC')
+                ->first();
+
+            if (!$shippingRate) {
+                $shippingRate = $this->shippingRateModel
+                    ->where('destination', 'Indonesia')
+                    ->first();
+            }
+
+            $shippingCost = $shippingRate['cost'] ?? 0;
+
+            // 💰 TOTAL
+            $total = $subtotal + $shippingCost;
+
+            // ✅ RESPONSE
+            return $this->response->setJSON([
+                'status' => 200,
+                'data' => [
+                    'shipping_address' => [
+                        'recipient_name' => $shippingAddress['recipient_name'],
+                        'phone'          => $shippingAddress['phone'],
+                        'address'        => $shippingAddress['address'],
+                        'city'           => $shippingAddress['city'],
+                        'province'       => $shippingAddress['province'],
+                        'postal_code'    => $shippingAddress['postal_code'],
+                    ],
+
+                    'items' => $mappedItems,
+
+                    'shipping' => [
+                        'service'     => 'regular',
+                        'destination' => $destinationText,
+                        'cost'        => (int) $shippingCost
+                    ],
+
+                    'summary' => [
+                        'subtotal'      => (int) $subtotal,
+                        'shipping_cost' => (int) $shippingCost,
+                        'total'         => (int) $total
+                    ]
+                ]
+            ]);
+        } catch (\Throwable $e) {
+            return $this->response->setStatusCode(400)->setJSON([
+                'message' => $e->getMessage()
+            ]);
+        }
+    }
+
 
     public function orders()
     {
