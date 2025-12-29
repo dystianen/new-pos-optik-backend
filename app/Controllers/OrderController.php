@@ -364,15 +364,10 @@ class OrderController extends BaseController
                 }
             }
 
-
-            $cart = array_map(function ($item) {
-                return [
-                    'cart_item_id' => $item['cart_item_id'],
-                    'deleted_at'   => date('Y-m-d H:i:s'),
-                ];
-            }, $summary['items']);
-
-            $this->cartItemModel->updateBatch($cart, 'cart_item_id');
+            $cartItemIds = array_column($summary['items'], 'cart_item_id');
+            $this->cartItemModel
+                ->whereIn('cart_item_id', $cartItemIds)
+                ->delete();
 
             $db->transComplete();
 
