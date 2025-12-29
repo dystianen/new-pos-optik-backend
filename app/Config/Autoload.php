@@ -95,5 +95,5 @@ class Autoload extends AutoloadConfig
      *
      * @var list<string>
      */
-    public $helpers = ['jwt'];
+    public $helpers = ['jwt', 'r2'];
 }

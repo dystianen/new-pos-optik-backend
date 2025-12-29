@@ -26,6 +26,9 @@ class OrderItemModel extends Model
         'variant_id',
         'quantity',
         'price',
+        'created_at',
+        'updated_at',
+        'deleted_at',
     ];
 
     protected $validationRules = [

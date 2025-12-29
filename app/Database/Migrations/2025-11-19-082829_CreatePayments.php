@@ -28,14 +28,9 @@ class CreatePayments extends Migration
                 'constraint' => '10,2',
                 'null' => false,
             ],
-            'status' => [
+            'proof' => [
                 'type' => 'VARCHAR',
-                'constraint' => 50,
-                'null' => false,
-            ],
-            'transaction_code' => [
-                'type' => 'VARCHAR',
-                'constraint' => 100,
+                'constraint' => 1024,
                 'null' => true,
             ],
             'paid_at' => [

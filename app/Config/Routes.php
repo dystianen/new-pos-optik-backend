@@ -57,9 +57,9 @@ $routes->group('api', ['filter' => 'cors'], function ($routes) {
   $routes->group('orders', ['filter' => 'authApi'], function ($routes) {
     $routes->get('', 'OrderController::orders');
     $routes->get('summary-orders/(:segment)', 'OrderController::summaryOrders/$1');
-    $routes->post('checkout', 'OrderController::checkout');
+    $routes->post('submit/(:segment)', 'OrderController::submitOrder/$1');
     $routes->post('payment', 'OrderController::uploadPaymentProof');
-    $routes->get('check-status', 'OrderController::checkIfPaid');
+    $routes->get('check-payment-status/(:segment)', 'OrderController::checkPaymentStatus/$1');
   });
 
   // SHIPPING ADDRESS

@@ -3,13 +3,17 @@
 namespace App\Controllers;
 
 use App\Controllers\BaseController;
+use App\Libraries\R2Storage;
 use App\Models\CartItemModel;
 use App\Models\CartItemPrescriptionModel;
 use App\Models\CartModel;
 use App\Models\CustomerShippingAddressModel;
 use App\Models\InventoryTransactionModel;
 use App\Models\OrderItemModel;
+use App\Models\OrderItemPrescriptionModel;
 use App\Models\OrderModel;
+use App\Models\OrderShippingAddressModel;
+use App\Models\PaymentModel;
 use App\Models\ProductModel;
 use App\Models\ShippingRateModel;
 use CodeIgniter\API\ResponseTrait;
@@ -17,7 +21,7 @@ use CodeIgniter\API\ResponseTrait;
 class OrderController extends BaseController
 {
     use ResponseTrait;
-    protected $orderModel, $orderItemModel, $InventoryTransactionModel, $productModel, $csaModel, $cartModel, $cartItemModel, $shippingRateModel, $cartItemPrescriptionModel;
+    protected $orderModel, $orderItemModel, $InventoryTransactionModel, $productModel, $csaModel, $cartModel, $cartItemModel, $shippingRateModel, $cartItemPrescriptionModel, $orderShippingAddressModel, $orderItemPrescriptionModel, $paymentModel, $r2;
 
     public function __construct()
     {
@@ -30,12 +34,17 @@ class OrderController extends BaseController
         $this->cartItemModel = new CartItemModel();
         $this->shippingRateModel = new ShippingRateModel();
         $this->cartItemPrescriptionModel = new CartItemPrescriptionModel();
+        $this->orderShippingAddressModel = new OrderShippingAddressModel();
+        $this->orderItemPrescriptionModel = new OrderItemPrescriptionModel();
+        $this->paymentModel = new PaymentModel();
+        $this->r2 = new R2Storage();
     }
 
     // =======================
     // API FUNCTIONS
     // =======================
 
+    // GET /api/summary-orders/(:segment)
     public function summaryOrders($addressId)
     {
         try {
@@ -223,7 +232,6 @@ class OrderController extends BaseController
         }
     }
 
-
     public function orders()
     {
         $decoded = $this->decodedToken();
@@ -263,184 +271,278 @@ class OrderController extends BaseController
         ]);
     }
 
-    public function checkout()
+    // POST /api/orders/submit/(:segment)
+    public function submitOrder($addressId)
     {
-        $decoded = $this->decodedToken();
-        $customerId = $decoded->user_id;
-
-        if (!$customerId) {
-            return $this->respond(['status' => 401, 'message' => 'Unauthorized'], 401);
-        }
-
-        $order = $this->orderModel
-            ->where('customer_id', $customerId)
-            ->where('status', 'cart')
-            ->first();
-
-        if (!$order) {
-            return $this->respond(['status' => 404, 'message' => 'Cart not found'], 404);
-        }
-
-        $shippingAddress = $this->request->getVar('shipping_address');
-        $shippingCost = 20000;
-
-        if (!$shippingAddress) {
-            return $this->respond(['status' => 400, 'message' => 'Incomplete checkout data'], 400);
-        }
-
-        // Start DB transaction
-        $this->db->transBegin();
+        $db = db_connect();
+        $db->transStart();
 
         try {
-            $orderDetails = $this->orderItemModel
-                ->where('order_id', $order['order_id'])
-                ->findAll();
-
-            // Validasi stok
-            foreach ($orderDetails as $item) {
-                $product = $this->productModel->find($item['product_id']);
-
-                if (!$product) {
-                    $this->db->transRollback();
-                    return $this->respond([
-                        'status' => 400,
-                        'message' => 'Product not found: ID ' . $item['product_id']
-                    ], 400);
-                }
-
-                $currentStock = (int)$product['product_stock'];
-                $requestedQty = (int)$item['quantity'];
-
-                if ($requestedQty <= 0) {
-                    $this->db->transRollback();
-                    return $this->respond([
-                        'status' => 400,
-                        'message' => 'Invalid quantity for product ID: ' . $item['product_id']
-                    ], 400);
-                }
-
-                if ($currentStock < $requestedQty) {
-                    $this->db->transRollback();
-                    return $this->respond([
-                        'status' => 400,
-                        'message' => 'Insufficient stock for product ID: ' . $item['product_id']
-                    ], 400);
-                }
+            // 🔐 AUTH
+            $jwtUser = getJWTUser();
+            if (!$jwtUser) {
+                return $this->response->setStatusCode(401)->setJSON([
+                    'message' => 'Unauthorized'
+                ]);
             }
 
-            $finalTotal = $order['total_price'] + $shippingCost;
+            log_message('debug', 'SUBMIT ORDER START');
 
-            // Update order
-            $this->orderModel->update($order['order_id'], [
-                'address' => $shippingAddress,
-                'proof_of_payment' => null,
-                'created_at' => date('Y-m-d H:i:s'),
-                'status' => 'pending',
-                'shipping_costs' => $shippingCost,
-                'grand_total' => $finalTotal,
-                'updated_at' => date('Y-m-d H:i:s')
+            log_message('debug', 'AUTH USER: ' . json_encode($jwtUser));
+
+            $customerId = $jwtUser->user_id;
+
+            // 🔁 Ambil snapshot summary
+            $summaryResponse = $this->summaryOrders($addressId);
+            $summary = json_decode($summaryResponse->getBody(), true)['data'];
+            log_message('debug', 'SUMMARY: ' . json_encode($summary));
+
+            if (empty($summary['items'])) {
+                throw new \Exception('Cart is empty');
+            }
+
+            log_message('debug', 'INSERT orders');
+            $this->orderModel->insert([
+                'customer_id'         => $customerId,
+                'status_id'           => '27b55f66-8dca-4863-a693-96b1159208c4',
+                'shipping_method_id'  => '3e08ee99-750a-4437-a3a9-922437410f6e',
+                'shipping_cost'       => $summary['shipping']['cost'],
+                'coupon_discount'     => 0,
+                'grand_total'         => $summary['summary']['total'],
             ]);
+            log_message('debug', 'ORDER QUERY: ' . $this->orderModel->getLastQuery());
 
-            // Proses inventory dan pengurangan stok
-            foreach ($orderDetails as $item) {
-                $this->InventoryTransactionModel->insert([
-                    'user_id' => 5,
-                    'product_id' => $item['product_id'],
-                    'quantity' => $item['quantity'],
-                    'transaction_type' => 'out',
-                    'description' => 'Checkout Order #' . $order['order_id'],
-                    'transaction_date' => date('Y-m-d H:i:s'),
-                    'created_at' => date('Y-m-d H:i:s'),
-                    'updated_at' => date('Y-m-d H:i:s')
+            $orderId = $this->orderModel->getInsertID();
+
+            log_message('debug', 'INSERT order_shipping_addresses');
+            // 📦 SHIPPING ADDRESS (snapshot)
+            $this->orderShippingAddressModel->insert([
+                'order_id'       => $orderId,
+                'recipient_name' => $summary['shipping_address']['recipient_name'],
+                'phone'          => $summary['shipping_address']['phone'],
+                'address'        => $summary['shipping_address']['address'],
+                'city'           => $summary['shipping_address']['city'],
+                'province'       => $summary['shipping_address']['province'],
+                'postal_code'    => $summary['shipping_address']['postal_code'],
+            ]);
+            log_message('debug', 'SHIPPING QUERY: ' . $this->orderShippingAddressModel->getLastQuery());
+
+            // 🛍 ORDER ITEMS
+            foreach ($summary['items'] as $item) {
+                log_message('debug', 'INSERT order_item');
+                $this->orderItemModel->insert([
+                    'order_id'      => $orderId,
+                    'product_id'    => $item['product_id'],
+                    'variant_id'    => $item['variant_id'],
+                    'quantity'      => $item['quantity'],
+                    'price'         => $item['price'],
                 ]);
+                log_message('debug', 'ORDER ITEM QUERY: ' . $this->orderItemModel->getLastQuery());
+                $orderItemId = $this->orderItemModel->getInsertID();
 
-                // Kurangi stok
-                $product = $this->productModel->find($item['product_id']);
-                $newStock = (int)$product['product_stock'] - (int)$item['quantity'];
+                // 👓 PRESCRIPTION (jika ada)
+                if (!empty($item['prescription'])) {
+                    $p = $item['prescription'];
 
-                $this->productModel->update($item['product_id'], [
-                    'product_stock' => $newStock
-                ]);
+                    log_message('debug', 'INSERT order_item_prescription');
+                    $this->orderItemPrescriptionModel->insert([
+                        'order_item_id' => $orderItemId,
+
+                        'right_sph'   => $p['right']['sph'],
+                        'right_cyl'   => $p['right']['cyl'],
+                        'right_axis'  => $p['right']['axis'],
+                        'right_add'   => $p['right']['add'],
+                        'pd_right'    => $p['right']['pd'],
+
+                        'left_sph'    => $p['left']['sph'],
+                        'left_cyl'    => $p['left']['cyl'],
+                        'left_axis'   => $p['left']['axis'],
+                        'left_add'    => $p['left']['add'],
+                        'pd_left'     => $p['left']['pd'],
+                    ]);
+                    log_message('debug', 'PRESCRIPTION QUERY: ' . $this->orderItemPrescriptionModel->getLastQuery());
+                }
             }
 
-            // Commit transaksi
-            if ($this->db->transStatus() === false) {
-                $this->db->transRollback();
-                return $this->respond(['status' => 500, 'message' => 'Checkout failed. Please try again.'], 500);
-            }
 
-            $this->db->transCommit();
+            $cart = array_map(function ($item) {
+                return [
+                    'cart_item_id' => $item['cart_item_id'],
+                    'deleted_at'   => date('Y-m-d H:i:s'),
+                ];
+            }, $summary['items']);
 
-            return $this->respond([
+            $this->cartItemModel->updateBatch($cart, 'cart_item_id');
+
+            $db->transComplete();
+
+            return $this->response->setJSON([
                 'status' => 200,
-                'message' => 'Checkout successful. Awaiting payment confirmation.',
+                'message' => 'Order submitted',
                 'data' => [
-                    'order_id' => $order['order_id'],
-                    'grand_total' => $finalTotal,
-                    'items' => $orderDetails
+                    'order_id' => $orderId,
+                    'grand_total' => $summary['summary']['total']
                 ]
             ]);
         } catch (\Throwable $e) {
-            $this->db->transRollback();
-            return $this->respond([
-                'status' => 500,
-                'message' => 'Server error: ' . $e->getMessage()
-            ], 500);
+            log_message('error', 'SUBMIT ORDER ERROR');
+            log_message('error', $e->getMessage());
+            log_message('error', $e->getTraceAsString());
+
+            if (method_exists($db, 'getLastQuery')) {
+                log_message('error', 'LAST QUERY: ' . $db->getLastQuery());
+            }
+
+            $db->transRollback();
+
+            return $this->response->setStatusCode(400)->setJSON([
+                'message' => $e->getMessage()
+            ]);
         }
     }
 
+    // POST /api/payment
     public function uploadPaymentProof()
     {
-        $decoded = $this->decodedToken();
-        $customerId = $decoded->user_id;
+        $db = db_connect();
+        $db->transStart();
 
-        if (!$customerId) {
-            return $this->respond(['status' => 401, 'message' => 'Unauthorized'], 401);
+        try {
+            log_message('debug', 'UPLOAD PAYMENT START');
+
+            // 🔐 AUTH
+            $jwtUser = getJWTUser();
+            if (!$jwtUser) {
+                throw new \Exception('Unauthorized');
+            }
+
+            $customerId = $jwtUser->user_id;
+
+            // 📥 INPUT
+            $orderId = $this->request->getVar('order_id');
+            $payment_method_id  = $this->request->getVar('payment_method_id');
+            $amount  = $this->request->getVar('amount');
+            $img     = $this->request->getFile('proof');
+
+            if (!$orderId || !$amount) {
+                throw new \Exception('Invalid payload');
+            }
+
+            if (!$img || !$img->isValid()) {
+                throw new \Exception('Invalid payment proof');
+            }
+
+            // 📦 VALIDATE ORDER OWNERSHIP
+            $order = $this->orderModel
+                ->where('order_id', $orderId)
+                ->where('customer_id', $customerId)
+                ->first();
+
+            if (!$order) {
+                throw new \Exception('Order not found');
+            }
+
+            // 🧪 FILE VALIDATION
+            $allowedMime = ['image/jpeg', 'image/png', 'image/webp'];
+            if (!in_array($img->getMimeType(), $allowedMime)) {
+                throw new \Exception('Invalid file type');
+            }
+
+            if ($img->getSizeByUnit('mb') > 5) {
+                throw new \Exception('Max file size is 5MB');
+            }
+
+            // ☁️ UPLOAD KE R2
+            $objectUrl = $this->r2->uploadFile(
+                $img->getTempName(),
+                'payments/' . $orderId . '/' . $img->getRandomName()
+            );
+
+            log_message('debug', 'UPLOAD SUCCESS: ' . $objectUrl);
+
+            // 💳 INSERT PAYMENT (TANPA STATUS)
+            $this->paymentModel->insert([
+                'order_id'           => $orderId,
+                'payment_method_id'  => $payment_method_id,
+                'amount'             => $amount,
+                'proof'              => $objectUrl,
+                'paid_at'            => date('Y-m-d H:i:s'),
+            ]);
+
+            // 🔁 UPDATE ORDER STATUS
+            $this->orderModel->update($orderId, [
+                'status_id' => 'b8a84f46-fce4-4126-a3fa-58342a548d48',
+                // contoh: WAITING_CONFIRMATION
+            ]);
+
+            $db->transComplete();
+
+            return $this->response->setJSON([
+                'status'  => 200,
+                'message' => 'Payment proof uploaded successfully',
+                'data' => [
+                    'order_id'  => $orderId,
+                    'proof_url' => $objectUrl,
+                ]
+            ]);
+        } catch (\Throwable $e) {
+            $db->transRollback();
+
+            log_message('error', 'UPLOAD PAYMENT ERROR');
+            log_message('error', $e->getMessage());
+
+            return $this->response->setStatusCode(400)->setJSON([
+                'message' => $e->getMessage()
+            ]);
         }
-        log_message('debug', print_r($_FILES, true));
+    }
 
-        // Cari order yang masih 'pending'
+    // GET /api/check-payment-status/(:segment)
+    public function checkPaymentStatus($orderId)
+    {
+        // 🔐 AUTH
+        $jwtUser = getJWTUser();
+        if (!$jwtUser) {
+            throw new \Exception('Unauthorized');
+        }
+
+        $customerId = $jwtUser->user_id;
+
+        if (!$orderId) {
+            return $this->respond([
+                'status' => 400,
+                'message' => 'Order ID is required'
+            ], 400);
+        }
+
         $order = $this->orderModel
+            ->where('order_id', $orderId)
             ->where('customer_id', $customerId)
-            ->where('status', 'pending')
             ->first();
 
         if (!$order) {
             return $this->respond([
                 'status' => 404,
-                'message' => 'No pending order found'
+                'message' => 'Order not found'
             ], 404);
         }
 
-        $file = $this->request->getFile('proof_of_payment');
+        // 🔑 status_id = PAID
+        $isPaid = $order['status_id'] === 'fcc3b365-f6c9-4352-8c80-c0fb17ed340f';
 
-        if (!$file || !$file->isValid()) {
-            return $this->respond([
-                'status' => 400,
-                'message' => 'Proof of payment file is required'
-            ], 400);
-        }
-
-        // Simpan file ke folder uploads/payments/
-        $newName = $file->getRandomName();
-        $file->move(FCPATH . 'uploads/payments', $newName);
-
-        // Update order
-        $this->orderModel->update($order['order_id'], [
-            'proof_of_payment' => 'uploads/payments/' . $newName,
-            'status' => 'waiting_confirmation',
-            'updated_at' => date('Y-m-d H:i:s')
-        ]);
 
         return $this->respond([
             'status' => 200,
-            'message' => 'Payment proof uploaded successfully',
+            'message' => $isPaid ? 'Order already paid' : 'Order not paid yet',
             'data' => [
-                'order_id' => $order['order_id'],
-                'proof_of_payment' => base_url('uploads/payments/' . $newName)
+                'order_id' => $orderId,
+                'status_id' => $order['status_id'],
+                'is_paid' => $isPaid
             ]
         ]);
     }
+
+
 
     // =======================
     // WEB DASHBOARD FUNCTIONS
@@ -510,42 +612,12 @@ class OrderController extends BaseController
     {
         $id = $this->request->getVar('id');
         $data = [
-            'status' => $this->request->getPost('status'),
+            'status' => $this->request->getVar('status'),
         ];
 
         $this->orderModel->update($id, $data);
         $message = 'Order updated successfully!';
 
         return redirect()->to('/orders')->with('success', $message);
-    }
-
-    public function checkIfPaid()
-    {
-        $decoded = $this->decodedToken();
-        $customerId = $decoded->user_id;
-
-        if (!$customerId) {
-            return $this->respond(['status' => 401, 'message' => 'Unauthorized'], 401);
-        }
-
-        // Ambil order terakhir (atau bisa disesuaikan)
-        $order = $this->orderModel
-            ->where('customer_id', $customerId)
-            ->orderBy('created_at', 'DESC')
-            ->first();
-
-        if (!$order) {
-            return $this->respond(['status' => 404, 'message' => 'Order not found'], 404);
-        }
-
-        $isShipped = $order['status'] === 'paid';
-
-        return $this->respond([
-            'status' => 200,
-            'message' => $isShipped ? 'Order has been shipped' : 'Order not yet shipped',
-            'data' => [
-                'isShipped' => $isShipped
-            ]
-        ]);
     }
 }

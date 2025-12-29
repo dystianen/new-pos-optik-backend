@@ -27,6 +27,8 @@ class CreateOrderItemPrescriptions extends Migration
             'pd_right' => ['type' => 'DECIMAL', 'constraint' => '4,1', 'null' => true],
 
             'created_at' => ['type' => 'DATETIME', 'null' => true],
+            'updated_at' => ['type' => 'DATETIME', 'null' => true],
+            'deleted_at' => ['type' => 'DATETIME', 'null' => true],
         ]);
 
         $this->forge->addKey('order_item_prescription_id', true);

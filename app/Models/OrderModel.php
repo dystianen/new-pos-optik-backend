@@ -28,6 +28,9 @@ class OrderModel extends Model
         'shipping_discount',
         'coupon_discount',
         'grand_total',
+        'created_at',
+        'updated_at',
+        'deleted_at',
     ];
 
     protected $validationRules = [

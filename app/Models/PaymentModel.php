@@ -23,8 +23,7 @@ class PaymentModel extends Model
         'order_id',
         'payment_method_id',
         'amount',
-        'status',
-        'transaction_code',
+        'proof',
         'paid_at',
     ];
 
@@ -32,8 +31,7 @@ class PaymentModel extends Model
         'order_id'           => 'required',
         'payment_method_id'  => 'required',
         'amount'             => 'required|decimal',
-        'status'             => 'permit_empty|max_length[50]',
-        'transaction_code'   => 'permit_empty|max_length[100]',
+        'proof'              => 'permit_empty',
         'paid_at'            => 'permit_empty|valid_date',
     ];
 
