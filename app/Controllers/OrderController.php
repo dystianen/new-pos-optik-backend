@@ -304,7 +304,7 @@ class OrderController extends BaseController
             log_message('debug', 'INSERT orders');
             $this->orderModel->insert([
                 'customer_id'         => $customerId,
-                'status_id'           => '27b55f66-8dca-4863-a693-96b1159208c4',
+                'status_id'           => '2aa5c9be-906c-402c-a5fc-a16663125c3a',
                 'shipping_method_id'  => '3e08ee99-750a-4437-a3a9-922437410f6e',
                 'shipping_cost'       => $summary['shipping']['cost'],
                 'coupon_discount'     => 0,
@@ -466,7 +466,7 @@ class OrderController extends BaseController
 
             // 🔁 UPDATE ORDER STATUS
             $this->orderModel->update($orderId, [
-                'status_id' => 'b8a84f46-fce4-4126-a3fa-58342a548d48',
+                'status_id' => '7f39039d-d2ef-46d1-93f5-8dbc0b5211fe',
                 // contoh: WAITING_CONFIRMATION
             ]);
 
@@ -523,7 +523,7 @@ class OrderController extends BaseController
         }
 
         // 🔑 status_id = PAID
-        $isPaid = $order['status_id'] === 'fcc3b365-f6c9-4352-8c80-c0fb17ed340f';
+        $isPaid = $order['status_id'] === '96755dec-2e2c-4d17-b21c-a71be60ecd91';
 
 
         return $this->respond([

@@ -58,6 +58,7 @@ class CreateOrdersTable extends Migration
         $this->forge->addPrimaryKey('order_id');
         $this->forge->addForeignKey('customer_id', 'customers', 'customer_id', 'CASCADE', 'CASCADE');
         $this->forge->addForeignKey('status_id', 'order_statuses', 'status_id', 'CASCADE', 'CASCADE');
+        $this->forge->addForeignKey('shipping_method_id', 'shipping_methods', 'shipping_method_id', 'CASCADE', 'CASCADE');
         $this->forge->createTable('orders');
     }
 
