@@ -13,12 +13,8 @@ class ProductCategorySeeder extends Seeder
 
         $data = [
             [
-                'category_name' => 'Frame Kacamata',
-                'category_description' => 'Berbagai macam frame kacamata pria dan wanita'
-            ],
-            [
-                'category_name' => 'Lensa Kacamata',
-                'category_description' => 'Lensa dengan berbagai jenis dan indeks'
+                'category_name' => 'Kacamata',
+                'category_description' => 'Berbagai macam kacamata pria dan wanita'
             ],
             [
                 'category_name' => 'Softlens',
