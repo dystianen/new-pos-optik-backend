@@ -26,7 +26,7 @@ class CreateOrdersTable extends Migration
                 'type' => 'CHAR',
                 'constraint' => 36,
             ],
-            'shipping_costs' => [
+            'shipping_cost' => [
                 'type' => 'DECIMAL',
                 'constraint' => '10,2',
                 'null' => true
@@ -57,6 +57,7 @@ class CreateOrdersTable extends Migration
 
         $this->forge->addPrimaryKey('order_id');
         $this->forge->addForeignKey('customer_id', 'customers', 'customer_id', 'CASCADE', 'CASCADE');
+        $this->forge->addForeignKey('status_id', 'order_statuses', 'status_id', 'CASCADE', 'CASCADE');
         $this->forge->createTable('orders');
     }
 

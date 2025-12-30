@@ -17,5 +17,6 @@ class DataSeeder extends Seeder
         $this->call('OrderStatusSeeder');
         $this->call('ShippingMethodSeeder');
         $this->call('ShippingRateSeeder');
+        $this->call('PaymentMethodSeeder');
     }
 }
