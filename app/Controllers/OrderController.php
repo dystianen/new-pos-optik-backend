@@ -458,8 +458,8 @@ class OrderController extends BaseController
 
             // 🔁 UPDATE ORDER STATUS
             $this->orderModel->update($orderId, [
-                'status_id' => '7f39039d-d2ef-46d1-93f5-8dbc0b5211fe',
-                // contoh: WAITING_CONFIRMATION
+                'status_id' => '96755dec-2e2c-4d17-b21c-a71be60ecd91',
+                // contoh: PAID
             ]);
 
             $db->transComplete();
@@ -514,8 +514,8 @@ class OrderController extends BaseController
             ], 404);
         }
 
-        // 🔑 status_id = PAID
-        $isPaid = $order['status_id'] === '96755dec-2e2c-4d17-b21c-a71be60ecd91';
+        // 🔑 status_id = SHIPPED
+        $isPaid = $order['status_id'] === '4d609622-8392-469b-acd1-c7859424633a';
 
 
         return $this->respond([
