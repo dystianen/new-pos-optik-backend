@@ -15,13 +15,14 @@ use App\Models\OrderModel;
 use App\Models\OrderShippingAddressModel;
 use App\Models\PaymentModel;
 use App\Models\ProductModel;
+use App\Models\ProductVariantModel;
 use App\Models\ShippingRateModel;
 use CodeIgniter\API\ResponseTrait;
 
 class OrderController extends BaseController
 {
     use ResponseTrait;
-    protected $orderModel, $orderItemModel, $InventoryTransactionModel, $productModel, $csaModel, $cartModel, $cartItemModel, $shippingRateModel, $cartItemPrescriptionModel, $orderShippingAddressModel, $orderItemPrescriptionModel, $paymentModel, $r2;
+    protected $orderModel, $orderItemModel, $InventoryTransactionModel, $productModel, $productVariantModel, $csaModel, $cartModel, $cartItemModel, $shippingRateModel, $cartItemPrescriptionModel, $orderShippingAddressModel, $orderItemPrescriptionModel, $paymentModel, $r2;
 
     public function __construct()
     {
@@ -29,6 +30,7 @@ class OrderController extends BaseController
         $this->orderItemModel = new OrderItemModel();
         $this->InventoryTransactionModel = new InventoryTransactionModel();
         $this->productModel = new ProductModel();
+        $this->productVariantModel = new ProductVariantModel();
         $this->csaModel = new CustomerShippingAddressModel();
         $this->cartModel = new CartModel();
         $this->cartItemModel = new CartItemModel();
@@ -300,6 +302,35 @@ class OrderController extends BaseController
                 ]);
                 log_message('debug', 'ORDER ITEM QUERY: ' . $this->orderItemModel->getLastQuery());
                 $orderItemId = $this->orderItemModel->getInsertID();
+
+                // ⚡ KURANGI STOK
+                if ($item['variant_id']) {
+                    // Jika ada varian, kurangi stok di product_variants
+                    log_message('debug', 'REDUCE variant stock');
+                    $this->productVariantModel
+                        ->where('variant_id', $item['variant_id'])
+                        ->set('stock', 'stock - ' . (int)$item['quantity'], false)
+                        ->update();
+
+                    // Kalkulasi ulang total stok product dari semua variantnya
+                    log_message('debug', 'RECALCULATE product total stock');
+                    $db->query("
+                        UPDATE products p
+                        SET p.product_stock = (
+                            SELECT COALESCE(SUM(pv.stock), 0)
+                            FROM product_variants pv
+                            WHERE pv.product_id = p.product_id
+                        )
+                        WHERE p.product_id = ?
+                    ", [$item['product_id']]);
+                } else {
+                    // Jika tidak ada varian, kurangi stok di products langsung
+                    log_message('debug', 'REDUCE product stock');
+                    $this->productModel
+                        ->where('product_id', $item['product_id'])
+                        ->set('stock', 'stock - ' . (int)$item['quantity'], false)
+                        ->update();
+                }
 
                 // 👓 PRESCRIPTION (jika ada)
                 if (!empty($item['prescription'])) {
