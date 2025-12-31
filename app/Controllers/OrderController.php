@@ -232,45 +232,6 @@ class OrderController extends BaseController
         }
     }
 
-    public function orders()
-    {
-        $decoded = $this->decodedToken();
-        $customerId = $decoded->user_id;
-
-        if (!$customerId) {
-            return $this->respond(['status' => 401, 'message' => 'Unauthorized'], 401);
-        }
-
-        $orders = $this->orderModel
-            ->where('customer_id', $customerId)
-            ->whereNotIn('status', ['cart'])
-            ->orderBy('created_at', 'DESC')
-            ->findAll();
-
-        if (!$orders) {
-            return $this->respond(['status' => 404, 'message' => 'No orders found'], 404);
-        }
-
-        // Ambil semua orderItems untuk setiap order
-        $orderData = [];
-
-        foreach ($orders as $order) {
-            $items = $this->orderItemModel
-                ->join('products', 'products.product_id = order_items.product_id')
-                ->where('order_id', $order['order_id'])
-                ->findAll();
-
-            $order['items'] = $items;
-            $orderData[] = $order;
-        }
-
-        return $this->respond([
-            'status' => 200,
-            'message' => 'Orders retrieved successfully',
-            'data' => $orderData
-        ]);
-    }
-
     // POST /api/orders/submit/(:segment)
     public function submitOrder($addressId)
     {
@@ -537,6 +498,367 @@ class OrderController extends BaseController
         ]);
     }
 
+    // GET /api/orders
+    public function listOrders()
+    {
+        try {
+            $jwtUser = getJWTUser();
+            if (!$jwtUser) {
+                return $this->response->setStatusCode(401)->setJSON([
+                    'message' => 'Unauthorized'
+                ]);
+            }
+
+            $customerId = $jwtUser->user_id;
+
+            // Get filters from query params
+            $statusId = $this->request->getVar('statusId');
+            $limit = $this->request->getVar('limit') ?? 20;
+            $page = $this->request->getVar('page') ?? 1;
+            $offset = ($page - 1) * $limit;
+
+            // Query orders dengan join
+            $builder = $this->orderModel
+                ->select("
+                    orders.order_id,
+                    orders.created_at AS order_date,
+                    orders.grand_total,
+                    orders.shipping_cost,
+                    
+                    order_statuses.status_name,
+                    
+                    shipping_methods.name AS shipping_method,
+                    shipping_methods.estimated_days,
+                    
+                    payment_methods.method_name AS payment_method,
+                    payments.paid_at
+                ")
+                ->join('order_statuses', 'order_statuses.status_id = orders.status_id', 'left')
+                ->join('shipping_methods', 'shipping_methods.shipping_method_id = orders.shipping_method_id', 'left')
+                ->join('payments', 'payments.order_id = orders.order_id', 'left')
+                ->join('payment_methods', 'payment_methods.payment_method_id = payments.payment_method_id', 'left')
+                ->where('orders.customer_id', $customerId)
+                ->where('orders.deleted_at', null);
+
+            if ($statusId) {
+                $builder->where('orders.status_id', $statusId);
+            }
+
+            $orders = $builder
+                ->orderBy('orders.created_at', 'DESC')
+                ->limit($limit, $offset)
+                ->findAll();
+
+            if (empty($orders)) {
+                return $this->response->setJSON([
+                    'status' => 200,
+                    'data' => []
+                ]);
+            }
+
+            // Get order IDs
+            $orderIds = array_column($orders, 'order_id');
+
+            // 📦 Get items untuk setiap order
+            $itemsGrouped = $this->getOrderItemsGrouped($orderIds);
+
+            // 📍 Get shipping addresses
+            $addressesGrouped = $this->getShippingAddressesGrouped($orderIds);
+
+            // Map orders dengan items
+            $mappedOrders = array_map(function ($order) use ($itemsGrouped, $addressesGrouped) {
+                $orderId = $order['order_id'];
+
+                return [
+                    'order_id' => $orderId,
+                    'order_date' => $order['order_date'],
+                    'status' => $order['status_name'],
+                    'items' => $itemsGrouped[$orderId] ?? [],
+                    'summary' => [
+                        'grand_total' => (int) $order['grand_total'],
+                        'shipping_cost' => (int) $order['shipping_cost'],
+                        'total_items' => count($itemsGrouped[$orderId] ?? [])
+                    ],
+                    'shipping' => [
+                        'method' => $order['shipping_method'],
+                        'rate' => (int) $order['shipping_cost'],
+                        'estimated_days' => $order['estimated_days'],
+                        'address' => $addressesGrouped[$orderId] ?? null
+                    ],
+                    'payment' => [
+                        'method' => $order['payment_method'],
+                        'date' => $order['paid_at']
+                    ],
+                ];
+            }, $orders);
+
+            return $this->response->setJSON([
+                'status' => 200,
+                'data' => $mappedOrders
+            ]);
+        } catch (\Throwable $e) {
+            return $this->response->setStatusCode(400)->setJSON([
+                'message' => $e->getMessage()
+            ]);
+        }
+    }
+
+    // GET /api/orders/{order_id}
+    public function getOrderDetail($orderId)
+    {
+        try {
+            $jwtUser = getJWTUser();
+            if (!$jwtUser) {
+                return $this->response->setStatusCode(401)->setJSON([
+                    'message' => 'Unauthorized'
+                ]);
+            }
+
+            $customerId = $jwtUser->user_id;
+
+            // Get order detail
+            $order = $this->orderModel
+                ->select("
+                    orders.*,
+                    order_statuses.status_name,
+                    shipping_methods.name AS shipping_method,
+                    shipping_methods.estimated_days,
+                    payment_methods.method_name AS payment_method,
+                    payments.paid_at,
+                    payments.proof
+                ")
+                ->join('order_statuses', 'order_statuses.status_id = orders.status_id', 'left')
+                ->join('shipping_methods', 'shipping_methods.shipping_method_id = orders.shipping_method_id', 'left')
+                ->join('payments', 'payments.order_id = orders.order_id', 'left')
+                ->join('payment_methods', 'payment_methods.payment_method_id = payments.payment_method_id', 'left')
+                ->where('orders.order_id', $orderId)
+                ->where('orders.customer_id', $customerId)
+                ->where('orders.deleted_at', null)
+                ->first();
+
+            if (!$order) {
+                return $this->response->setStatusCode(404)->setJSON([
+                    'message' => 'Order not found'
+                ]);
+            }
+
+            /**
+             * 🔥 GET ITEMS WITH LOGIC IMAGE
+             * - Variant → product_variant_images
+             * - Non Variant → product_images (is_primary)
+             */
+            $items = $this->orderItemModel
+                ->select("
+                    order_items.order_item_id,
+                    order_items.product_id,
+                    order_items.variant_id,
+                    order_items.quantity,
+                    order_items.price,
+                    
+                    products.product_name,
+                    product_variants.variant_name,
+                    
+                    COALESCE(pvi_img.url, pi_img.url) AS image
+                ")
+                ->join('products', 'products.product_id = order_items.product_id')
+                ->join('product_variants', 'product_variants.variant_id = order_items.variant_id', 'left')
+
+                // 🔥 VARIANT IMAGE
+                ->join(
+                    'product_variant_images pvi',
+                    'pvi.variant_id = order_items.variant_id AND pvi.deleted_at IS NULL',
+                    'left'
+                )
+                ->join(
+                    'product_images pvi_img',
+                    'pvi_img.product_image_id = pvi.product_image_id AND pvi_img.deleted_at IS NULL',
+                    'left'
+                )
+
+                // 🔥 PRODUCT PRIMARY IMAGE
+                ->join(
+                    'product_images pi_img',
+                    'pi_img.product_id = products.product_id 
+                     AND pi_img.is_primary = 1 
+                     AND pi_img.deleted_at IS NULL',
+                    'left'
+                )
+                ->where('order_items.order_id', $orderId)
+                ->where('order_items.deleted_at', null)
+                ->findAll();
+
+            // 👓 GET PRESCRIPTIONS
+            $orderItemIds = array_column($items, 'order_item_id');
+            $prescriptions = [];
+
+            if (!empty($orderItemIds)) {
+                $rows = $this->orderItemPrescriptionModel
+                    ->whereIn('order_item_id', $orderItemIds)
+                    ->findAll();
+
+                foreach ($rows as $row) {
+                    $prescriptions[$row['order_item_id']] = [
+                        'right' => [
+                            'sph'  => $row['right_sph'],
+                            'cyl'  => $row['right_cyl'],
+                            'axis' => $row['right_axis'],
+                            'add'  => $row['right_add'],
+                            'pd'   => $row['pd_right'],
+                        ],
+                        'left' => [
+                            'sph'  => $row['left_sph'],
+                            'cyl'  => $row['left_cyl'],
+                            'axis' => $row['left_axis'],
+                            'add'  => $row['left_add'],
+                            'pd'   => $row['pd_left'],
+                        ],
+                    ];
+                }
+            }
+
+            // Map items dengan prescription
+            $mappedItems = array_map(function ($item) use ($prescriptions) {
+                return [
+                    'order_item_id' => $item['order_item_id'],
+                    'product_id' => $item['product_id'],
+                    'variant_id' => $item['variant_id'],
+                    'product_name' => $item['product_name'],
+                    'variant_name' => $item['variant_name'],
+                    'image' => $item['image'],
+                    'price' => (int) $item['price'],
+                    'quantity' => (int) $item['quantity'],
+                    'subtotal' => (int) ($item['price'] * $item['quantity']),
+                    'prescription' => $prescriptions[$item['order_item_id']] ?? null
+                ];
+            }, $items);
+
+            // 📍 Get shipping address
+            $shippingAddress = $this->orderShippingAddressModel
+                ->where('order_id', $orderId)
+                ->first();
+
+            return $this->response->setJSON([
+                'status' => 200,
+                'data' => [
+                    'order_id' => $order['order_id'],
+                    'order_date' => $order['created_at'],
+                    'status' => $order['status_name'],
+                    'items' => $mappedItems,
+                    'summary' => [
+                        'shipping_cost' => (int) $order['shipping_cost'],
+                        'grand_total' => (int) $order['grand_total']
+                    ],
+                    'shipping' => [
+                        'method' => $order['shipping_method'],
+                        'rate' => (int) $order['shipping_cost'],
+                        'estimated_days' => $order['estimated_days'],
+                        'address' => $shippingAddress ? [
+                            'recipient_name' => $shippingAddress['recipient_name'],
+                            'phone' => $shippingAddress['phone'],
+                            'address' => $shippingAddress['address'],
+                            'city' => $shippingAddress['city'],
+                            'province' => $shippingAddress['province'],
+                            'postal_code' => $shippingAddress['postal_code']
+                        ] : null
+                    ],
+                    'payment' => [
+                        'method' => $order['payment_method'],
+                        'proof' => $order['proof'],
+                        'date' => $order['paid_at']
+                    ],
+                    // 'notes' => $order['notes']
+                ]
+            ]);
+        } catch (\Throwable $e) {
+            return $this->response->setStatusCode(400)->setJSON([
+                'message' => $e->getMessage()
+            ]);
+        }
+    }
+
+    // Helper: Get items grouped by order_id
+    private function getOrderItemsGrouped($orderIds)
+    {
+        $items = $this->orderItemModel
+            ->select("
+                order_items.order_id,
+                order_items.order_item_id,
+                order_items.product_id,
+                order_items.variant_id,
+                order_items.quantity,
+                order_items.price,
+                
+                products.product_name,
+                product_variants.variant_name,
+                
+                COALESCE(pvi_img.url, pi_img.url) AS image
+            ")
+            ->join('products', 'products.product_id = order_items.product_id')
+            ->join('product_variants', 'product_variants.variant_id = order_items.variant_id', 'left')
+            ->join(
+                'product_variant_images pvi',
+                'pvi.variant_id = order_items.variant_id AND pvi.deleted_at IS NULL',
+                'left'
+            )
+            ->join(
+                'product_images pvi_img',
+                'pvi_img.product_image_id = pvi.product_image_id AND pvi_img.deleted_at IS NULL',
+                'left'
+            )
+            ->join(
+                'product_images pi_img',
+                'pi_img.product_id = products.product_id 
+                 AND pi_img.is_primary = 1 
+                 AND pi_img.deleted_at IS NULL',
+                'left'
+            )
+            ->whereIn('order_items.order_id', $orderIds)
+            ->where('order_items.deleted_at', null)
+            ->findAll();
+
+        $grouped = [];
+        foreach ($items as $item) {
+            $orderId = $item['order_id'];
+            if (!isset($grouped[$orderId])) {
+                $grouped[$orderId] = [];
+            }
+
+            $grouped[$orderId][] = [
+                'order_item_id' => $item['order_item_id'],
+                'product_id' => $item['product_id'],
+                'product_name' => $item['product_name'],
+                'variant_name' => $item['variant_name'],
+                'image' => $item['image'],
+                'price' => (int) $item['price'],
+                'quantity' => (int) $item['quantity'],
+                'subtotal' => (int) ($item['price'] * $item['quantity'])
+            ];
+        }
+
+        return $grouped;
+    }
+
+    // Helper: Get shipping addresses grouped
+    private function getShippingAddressesGrouped($orderIds)
+    {
+        $addresses = $this->orderShippingAddressModel
+            ->whereIn('order_id', $orderIds)
+            ->findAll();
+
+        $grouped = [];
+        foreach ($addresses as $addr) {
+            $grouped[$addr['order_id']] = [
+                'recipient_name' => $addr['recipient_name'],
+                'phone' => $addr['phone'],
+                'address' => $addr['address'],
+                'city' => $addr['city'],
+                'province' => $addr['province'],
+                'postal_code' => $addr['postal_code']
+            ];
+        }
+
+        return $grouped;
+    }
 
 
     // =======================

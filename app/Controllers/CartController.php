@@ -244,11 +244,40 @@ class CartController extends BaseController
                 ->where('cart_items.deleted_at', null)
                 ->findAll();
 
+            // 👓 PRESCRIPTIONS
+            $cartItemIds = array_column($items, 'cart_item_id');
+            $prescriptions = [];
+
+            if (!empty($cartItemIds)) {
+                $rows = $this->cartItemPrescriptionModel
+                    ->whereIn('cart_item_id', $cartItemIds)
+                    ->findAll();
+
+                foreach ($rows as $row) {
+                    $prescriptions[$row['cart_item_id']] = [
+                        'right' => [
+                            'sph'  => $row['right_sph'],
+                            'cyl'  => $row['right_cyl'],
+                            'axis' => $row['right_axis'],
+                            'add' => $row['right_add'],
+                            'pd'  => $row['pd_right'],
+                        ],
+                        'left' => [
+                            'sph'  => $row['left_sph'],
+                            'cyl'  => $row['left_cyl'],
+                            'axis' => $row['left_axis'],
+                            'add' => $row['left_add'],
+                            'pd'   => $row['pd_left'],
+                        ],
+                    ];
+                }
+            }
+
             // 🧮 Summary
             $totalQty = 0;
             $totalPrice = 0;
 
-            $mappedItems = array_map(function ($item) use (&$totalQty, &$totalPrice) {
+            $mappedItems = array_map(function ($item) use (&$totalQty, &$totalPrice, $prescriptions) {
                 $subtotal = $item['price'] * $item['quantity'];
 
                 $totalQty += $item['quantity'];
@@ -263,7 +292,8 @@ class CartController extends BaseController
                     'image'        => $item['image'],
                     'price'        => (int) $item['price'],
                     'quantity'     => (int) $item['quantity'],
-                    'subtotal'     => (int) $subtotal
+                    'subtotal'     => (int) $subtotal,
+                    'prescription' => $prescriptions[$item['cart_item_id']] ?? null
                 ];
             }, $items);
 

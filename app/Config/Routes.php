@@ -55,7 +55,8 @@ $routes->group('api', ['filter' => 'cors'], function ($routes) {
 
   // ORDER
   $routes->group('orders', ['filter' => 'authApi'], function ($routes) {
-    $routes->get('', 'OrderController::orders');
+    $routes->get('', 'OrderController::listOrders');
+    $routes->get('(:segment)', 'OrderController::getOrderDetail/$1');
     $routes->get('summary-orders/(:segment)', 'OrderController::summaryOrders/$1');
     $routes->post('submit/(:segment)', 'OrderController::submitOrder/$1');
     $routes->post('payment', 'OrderController::uploadPaymentProof');
