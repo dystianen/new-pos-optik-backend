@@ -55,4 +55,29 @@ class OrderModel extends Model
         $data['data']['order_id'] = service('uuid')->uuid4()->toString();
         return $data;
     }
+
+    public function getOrderItems($orderId)
+    {
+        return $this->db->table('order_items')
+            ->select('
+            products.product_name,
+            order_items.quantity AS qty,
+            order_items.price
+        ')
+            ->join('products', 'products.product_id = order_items.product_id')
+            ->where('order_items.order_id', $orderId)
+            ->get()
+            ->getResultArray();
+    }
+
+    /**
+     * Shipping address (1 order = 1 address)
+     */
+    public function getShippingAddress($orderId)
+    {
+        return $this->db->table('order_shipping_addresses')
+            ->where('order_id', $orderId)
+            ->get()
+            ->getRowArray();
+    }
 }

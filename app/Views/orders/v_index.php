@@ -1,89 +1,102 @@
 <?= $this->extend('layouts/l_dashboard.php') ?>
 <?= $this->section('content') ?>
+
+<?php
+function orderStatusBadge($status)
+{
+  return match (strtolower($status)) {
+    'pending'    => 'badge bg-warning',
+    'paid'       => 'badge bg-info',
+    'processing' => 'badge bg-primary',
+    'shipped'    => 'badge bg-secondary',
+    'completed'  => 'badge bg-success',
+    'cancelled'  => 'badge bg-danger',
+    default      => 'badge bg-light text-dark',
+  };
+}
+?>
+
 <div class="container-fluid card">
   <div class="card-header mb-4 pb-0 d-flex align-items-center justify-content-between">
     <h4>Order List</h4>
-
-    <form action="<?= base_url('/orders') ?>" method="get" class="d-flex align-items-center">
-      <input
-        type="text"
-        name="search"
-        class="form-control form-control-sm me-2"
-        placeholder="Search..."
-        value="<?= esc($search ?? '') ?>"
-        style="min-width: 200px;">
-      <button type="submit" class="btn btn-sm btn-secondary">
-        <i class="fa-solid fa-magnifying-glass"></i>
-      </button>
-    </form>
   </div>
 
   <div class="card-body px-0 pt-0 pb-2">
     <div class="table-responsive px-4">
       <table class="table align-items-center mb-0">
-        <thead>
+        <thead class="thead-light">
           <tr>
-            <th>No</th>
-            <th>Customer</th>
-            <th>Email</th>
-            <th>Phone</th>
+            <th>Order ID</th>
             <th>Order Date</th>
-            <th>Total Price</th>
-            <th>Proof of Payment</th>
+            <th>Customer</th>
             <th>Status</th>
-            <th>Actions</th>
+            <th>Total</th>
+            <th class="text-center">Action</th>
           </tr>
         </thead>
         <tbody>
-          <?php $startIndex = ($pager["currentPage"] - 1) * $pager["limit"] + 1; ?>
-
-          <?php if (empty($orders)): ?>
+          <?php foreach ($orders as $order): ?>
             <tr>
-              <td colspan="12" class="text-center text-muted">No user data available.</td>
+              <td>
+                <strong>#<?= $order['order_id'] ?></strong>
+              </td>
+
+              <td>
+                <?= date('d M Y', strtotime($order['created_at'])) ?>
+              </td>
+
+              <td>
+                <div class="d-flex flex-column">
+                  <span><?= esc($order['customer_name']) ?></span>
+                  <small class="text-muted"><?= esc($order['customer_email']) ?></small>
+                </div>
+              </td>
+
+              <td>
+                <span class="<?= orderStatusBadge($order['status_name']) ?>">
+                  <?= strtoupper($order['status_name']) ?>
+                </span>
+              </td>
+
+              <td>
+                <strong>Rp <?= number_format($order['grand_total']) ?></strong>
+              </td>
+
+              <td class="text-center">
+                <a href="<?= base_url('/online-sales/' . $order['order_id']) ?>"
+                  class="btn btn-sm btn-info">
+                  Detail
+                </a>
+
+                <?php if ($order['status_name'] === 'pending'): ?>
+                  <form action="<?= base_url('/online-sales/' . $order['order_id'] . '/approve') ?>"
+                    method="post"
+                    style="display:inline-block;">
+                    <?= csrf_field() ?>
+                    <button type="submit"
+                      class="btn btn-sm btn-success"
+                      onclick="return confirm('Approve payment for this order?')">
+                      Approve
+                    </button>
+                  </form>
+
+                  <form action="<?= base_url('/online-sales/' . $order['order_id'] . '/reject') ?>"
+                    method="post"
+                    style="display:inline-block;">
+                    <?= csrf_field() ?>
+                    <button type="submit"
+                      class="btn btn-sm btn-danger"
+                      onclick="return confirm('Reject this payment?')">
+                      Reject
+                    </button>
+                  </form>
+                <?php endif ?>
+              </td>
             </tr>
-          <?php else: ?>
-            <?php foreach ($orders as $order): ?>
-              <tr>
-                <td><?= $startIndex++ ?></td>
-                <td><?= $order['customer_name'] ?></td>
-                <td><?= $order['customer_email'] ?></td>
-                <td><?= $order['customer_phone'] ?></td>
-                <td><?= date('d/m/Y H:i', strtotime($order['created_at'])) ?></td>
-                <td><?= number_format($order['total_price'], 0, ',', '.') ?></td>
-                <td>
-                  <?php if (!empty($order['proof_of_payment'])): ?>
-                    <img src="<?= base_url(esc($order['proof_of_payment'])) ?>" alt="image" width="70" height="70" style="border-radius: 15px">
-                  <?php else: ?>
-                    -
-                  <?php endif; ?>
-                </td>
-                <td>
-                  <?php
-                  $status = $order['status'];
-                  $badgeClass = match ($status) {
-                    'cart' => 'secondary',
-                    'pending' => 'warning',
-                    'waiting_confirmation' => 'info',
-                    'paid' => 'primary',
-                    'shipped' => 'dark',
-                    'done' => 'success',
-                    'cancelled' => 'danger',
-                    default => 'secondary',
-                  };
-
-                  $label = ucwords(str_replace('_', ' ', $status));
-                  ?>
-                  <span class="badge bg-<?= $badgeClass ?>"><?= $label ?></span>
-                </td>
-                <td>
-                  <a href="<?= base_url('/orders/form?id=' . $order['order_id']) ?>" class="btn btn-sm btn-warning">Edit</a>
-                </td>
-              </tr>
-            <?php endforeach; ?>
-          <?php endif; ?>
+          <?php endforeach ?>
         </tbody>
-
       </table>
+
     </div>
 
     <nav aria-label="Page navigation example" class="mt-4 mx-4">

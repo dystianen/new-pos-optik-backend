@@ -107,7 +107,7 @@
             </a>
           </li>
           <li class="nav-item">
-            <a class="nav-link <?= $currentURI === 'online-sales' ? 'active' : '' ?>" href="online-sales">
+            <a class="nav-link <?= $currentURI === 'online-sales' ? 'active' : '' ?>" href="/online-sales">
               <div class="me-2 d-flex align-items-center justify-content-center">
                 <i class="fa-solid fa-bag-shopping"></i>
               </div>

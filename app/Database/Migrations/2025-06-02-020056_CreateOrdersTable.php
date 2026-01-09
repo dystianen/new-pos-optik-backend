@@ -31,6 +31,20 @@ class CreateOrdersTable extends Migration
                 'constraint' => '10,2',
                 'null' => true
             ],
+            'tracking_number' => [
+                'type' => 'VARCHAR',
+                'constraint' => '100',
+                'null' => true
+            ],
+            'courier' => [
+                'type' => 'VARCHAR',
+                'constraint' => '50',
+                'null' => true
+            ],
+            'shipped_at' => [
+                'type'    => 'DATETIME',
+                'null'    => true,
+            ],
             'coupon_discount' => [
                 'type' => 'DECIMAL',
                 'constraint' => '10,2',

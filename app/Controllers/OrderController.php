@@ -458,7 +458,7 @@ class OrderController extends BaseController
 
             // 🔁 UPDATE ORDER STATUS
             $this->orderModel->update($orderId, [
-                'status_id' => '96755dec-2e2c-4d17-b21c-a71be60ecd91',
+                'status_id' => '7f39039d-d2ef-46d1-93f5-8dbc0b5211fe',
                 // contoh: PAID
             ]);
 
@@ -898,14 +898,36 @@ class OrderController extends BaseController
 
     public function index()
     {
-        $page = $this->request->getVar('page') ?? 1;
+        $page    = $this->request->getVar('page') ?? 1;
         $perPage = 10;
-        $search = $this->request->getVar('search');
+        $search  = $this->request->getVar('search');
+        $statusId = $this->request->getVar('status_id');
+        $paymentStatus = $this->request->getVar('payment_status');
 
         $builder = $this->orderModel
-            ->join('customers', 'customers.customer_id = orders.customer_id')
+            ->select("
+                orders.order_id,
+                orders.created_at,
+                orders.grand_total,
+                orders.status_id,
+
+                order_statuses.status_name,
+
+                customers.customer_name,
+                customers.customer_email,
+
+                payments.paid_at,
+
+                payment_methods.method_name
+            ")
+            ->join('customers', 'customers.customer_id = orders.customer_id', 'left')
+            ->join('order_statuses', 'order_statuses.status_id = orders.status_id', 'left')
+            ->join('payments', 'payments.order_id = orders.order_id', 'left')
+            ->join('payment_methods', 'payment_methods.payment_method_id = payments.payment_method_id', 'left')
+            ->where('orders.deleted_at', null)
             ->orderBy('orders.created_at', 'DESC');
 
+        // 🔍 Search customer
         if (!empty($search)) {
             $builder->groupStart()
                 ->like('customers.customer_name', $search)
@@ -913,59 +935,149 @@ class OrderController extends BaseController
                 ->groupEnd();
         }
 
+        // 🔎 Filter status order
+        if (!empty($statusId)) {
+            $builder->where('orders.status_id', $statusId);
+        }
+
+        // 💳 Filter payment status
+        if (!empty($paymentStatus)) {
+            $builder->where('payments.payment_status', $paymentStatus);
+        }
+
+        // 📄 Pagination
         $orders = $builder->paginate($perPage, 'default', $page);
 
         $pager = [
             'currentPage' => $this->orderModel->pager->getCurrentPage('default'),
-            'totalPages' => $this->orderModel->pager->getPageCount('default'),
-            'limit' => $perPage
+            'totalPages'  => $this->orderModel->pager->getPageCount('default'),
+            'limit'       => $perPage,
         ];
 
         return view('orders/v_index', [
             'orders' => $orders,
-            'pager' => $pager,
-            'search' => $search
+            'pager'  => $pager,
+            'search' => $search,
         ]);
     }
 
-    public function form()
+    /**
+     * DETAIL ORDER
+     * GET /admin/orders/{id}
+     */
+    public function detail($orderId)
     {
-        $id = $this->request->getVar('id');
-
-        if (!$id) {
-            return view('orders/v_form');
-        }
-
         $order = $this->orderModel
-            ->join('customers', 'customers.customer_id = orders.customer_id')
-            ->find($id);
+            ->select('
+            orders.order_id,
+            orders.created_at AS order_date,
+            orders.grand_total,
+            orders.shipping_cost,
+            orders.status_id,
+
+            customers.customer_name,
+            customers.customer_email,
+
+            order_statuses.status_name,
+            order_statuses.status_code,
+
+            shipping_methods.name AS shipping_method,
+            shipping_methods.estimated_days
+        ')
+            ->join('customers', 'customers.customer_id = orders.customer_id', 'left')
+            ->join('order_statuses', 'order_statuses.status_id = orders.status_id', 'left')
+            ->join('shipping_methods', 'shipping_methods.shipping_method_id = orders.shipping_method_id', 'left')
+            ->where('orders.order_id', $orderId)
+            ->where('orders.deleted_at', null)
+            ->first();
 
         if (!$order) {
-            return redirect()->to('/orders')->with('failed', 'Order not found.');
+            throw new \CodeIgniter\Exceptions\PageNotFoundException('Order not found');
         }
 
-        $orderItems = $this->orderItemModel
-            ->join('products', 'products.product_id = order_items.product_id')
-            ->where('order_id', $id)
-            ->findAll();
+        // 📦 Order items
+        $items = $this->orderModel->getOrderItems($orderId);
 
+        // 💳 Payment
+        $payment = $this->paymentModel
+            ->select('
+                payments.proof,
+                payments.amount,
+                payments.paid_at,
+                payment_methods.method_name
+            ')
+            ->join('payment_methods', 'payment_methods.payment_method_id = payments.payment_method_id', 'left')
+            ->where('payments.order_id', $orderId)
+            ->first();
 
-        return view('orders/v_form', [
-            'order' => $order,
-            'orderItems' => $orderItems,
-        ]);
-    }
+        // 📍 Shipping address
+        $shippingAddress = $this->orderModel->getShippingAddress($orderId);
 
-    public function save()
-    {
-        $id = $this->request->getVar('id');
         $data = [
-            'status' => $this->request->getVar('status'),
+            'order'           => $order,
+            'items'           => $items,
+            'payment'         => $payment,
+            'shippingAddress' => $shippingAddress
         ];
 
-        $this->orderModel->update($id, $data);
-        $message = 'Order updated successfully!';
+        return view('orders/v_detail', $data);
+    }
 
-        return redirect()->to('/orders')->with('success', $message);
+
+    /**
+     * APPROVE PAYMENT
+     * POST /admin/orders/{id}/approve
+     */
+    public function approvePayment($orderId)
+    {
+        // Update order status → PAID
+        $this->orderModel->update($orderId, [
+            'status_id' => 'cc46d2a8-436c-42fc-96a1-ffb537dbabed' // PROCESSING ID STATUS
+        ]);
+
+        return redirect()->back()->with('success', 'Payment approved');
+    }
+
+    /**
+     * REJECT PAYMENT
+     */
+    public function rejectPayment($orderId)
+    {
+        $this->paymentModel
+            ->where('order_id', $orderId)
+            ->set([
+                'payment_status' => 'rejected'
+            ])
+            ->update();
+
+        return redirect()->back()->with('success', 'Payment rejected');
+    }
+
+    public function shipOrder($orderId)
+    {
+        $data = [
+            'status_id'        => '4d609622-8392-469b-acd1-c7859424633a', // SHIPPED ID STATUS
+            'tracking_number'   => $this->request->getVar('tracking_number'),
+            'shipped_at'       => date('Y-m-d H:i:s'),
+            'updated_at'       => date('Y-m-d H:i:s')
+        ];
+
+        $this->orderModel->update($orderId, $data);
+        return redirect()->back()->with('success', 'Shipping added');
+    }
+
+
+    /**
+     * UPDATE ORDER STATUS
+     */
+    public function updateStatus($orderId)
+    {
+        $statusId = $this->request->getPost('status_id');
+
+        $this->orderModel->update($orderId, [
+            'status_id' => $statusId
+        ]);
+
+        return redirect()->back()->with('success', 'Order status updated');
     }
 }

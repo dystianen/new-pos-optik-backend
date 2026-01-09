@@ -134,9 +134,11 @@ $routes->group('in-store-sales', ['filter' => 'authGuard'], function ($routes) {
 
 $routes->group('online-sales', ['filter' => 'authGuard'], function ($routes) {
   $routes->get('', 'OrderController::index');
-  $routes->get('form', 'OrderController::form');
-  $routes->post('save', 'OrderController::save');
-  $routes->post('delete/(:any)', 'OrderController::delete/$1');
+  $routes->get('(:segment)', 'OrderController::detail/$1');
+  $routes->post('(:segment)/approve', 'OrderController::approvePayment/$1');
+  $routes->post('(:segment)/reject', 'OrderController::rejectPayment/$1');
+  $routes->post('(:segment)/status', 'OrderController::updateStatus/$1');
+  $routes->post('(:segment)/ship', 'OrderController::shipOrder/$1');
 });
 
 $routes->group('roles', ['filter' => 'authGuard'], function ($routes) {
