@@ -26,19 +26,27 @@ class DashboardController extends BaseController
         $totalCustomers = $this->customerModel->countAllResults();
 
         // Total Selling dari Inventory Transactions (unit)
-        $totalSellingUnits = $this->InventoryTransactionModel
-            ->selectSum('quantity')
-            ->where('transaction_type', 'out')
-            ->first()['quantity'] ?? 0;
+        $totalSellingUnits = (int) (
+            $this->db->table('order_items oi')
+            ->selectSum('oi.quantity', 'total_units')
+            ->join('orders o', 'oi.order_id = o.order_id')
+            ->join('order_statuses os', 'o.status_id = os.status_id')
+            ->whereIn('os.status_code', ['processing', 'shipped', 'completed'])
+            ->get()
+            ->getRow()
+            ->total_units
+            ?? 0
+        );
 
         // Total Selling dari Orders (rupiah)
-        $totalSellingRupiah = $this->ordersModel
-            ->selectSum('o.grand_total')
-            ->from('orders o')
-            ->join('order_statuses os', 'o.status_id = os.status_id')
-            ->whereIn('os.status_name', ['paid', 'shipped'])
-            ->first()['grand_total'] ?? 0;
-
+        $totalSellingRupiah = (float) (
+            $this->ordersModel
+                ->selectSum('grand_total', 'total_rupiah')
+                ->join('order_statuses os', 'orders.status_id = os.status_id')
+                ->whereIn('os.status_code', ['processing', 'shipped', 'completed'])
+                ->first()['total_rupiah']
+            ?? 0
+        );
 
         // Monthly Sales (Units)
         $monthlySalesUnits = $this->InventoryTransactionModel
