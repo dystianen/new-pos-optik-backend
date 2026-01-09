@@ -328,7 +328,7 @@ class OrderController extends BaseController
                     log_message('debug', 'REDUCE product stock');
                     $this->productModel
                         ->where('product_id', $item['product_id'])
-                        ->set('stock', 'stock - ' . (int)$item['quantity'], false)
+                        ->set('product_stock', 'product_stock - ' . (int)$item['quantity'], false)
                         ->update();
                 }
 
@@ -898,66 +898,50 @@ class OrderController extends BaseController
 
     public function index()
     {
-        $page    = $this->request->getVar('page') ?? 1;
-        $perPage = 10;
-        $search  = $this->request->getVar('search');
-        $statusId = $this->request->getVar('status_id');
-        $paymentStatus = $this->request->getVar('payment_status');
+        $currentPage = $this->request->getVar('page')
+            ? (int) $this->request->getVar('page')
+            : 1;
 
-        $builder = $this->orderModel
-            ->select("
+        $limit  = 10;
+        $offset = ($currentPage - 1) * $limit;
+
+        $orders = $this->orderModel
+            ->select('
                 orders.order_id,
                 orders.created_at,
                 orders.grand_total,
-                orders.status_id,
-
-                order_statuses.status_name,
-
                 customers.customer_name,
                 customers.customer_email,
+                order_statuses.status_name,
+                COUNT(order_items.order_item_id) as total_items
+            ')
+            ->where('order_type', 'offline')
+            ->join('customers', 'customers.customer_id = orders.customer_id')
+            ->join('order_statuses', 'order_statuses.status_id = orders.status_id')
+            ->join('order_items', 'order_items.order_id = orders.order_id', 'left')
+            ->groupBy('orders.order_id')
+            ->orderBy('orders.created_at', 'DESC')
+            ->findAll($limit, $offset);
 
-                payments.paid_at,
 
-                payment_methods.method_name
-            ")
-            ->join('customers', 'customers.customer_id = orders.customer_id', 'left')
-            ->join('order_statuses', 'order_statuses.status_id = orders.status_id', 'left')
-            ->join('payments', 'payments.order_id = orders.order_id', 'left')
-            ->join('payment_methods', 'payment_methods.payment_method_id = payments.payment_method_id', 'left')
-            ->where('orders.deleted_at', null)
-            ->orderBy('orders.created_at', 'DESC');
+        // ============================
+        // TOTAL ROWS
+        // ============================
+        $totalRows = $this->orderModel
+            ->countAllResults();
 
-        // 🔍 Search customer
-        if (!empty($search)) {
-            $builder->groupStart()
-                ->like('customers.customer_name', $search)
-                ->orLike('customers.customer_email', $search)
-                ->groupEnd();
-        }
+        $totalPages = ceil($totalRows / $limit);
 
-        // 🔎 Filter status order
-        if (!empty($statusId)) {
-            $builder->where('orders.status_id', $statusId);
-        }
-
-        // 💳 Filter payment status
-        if (!empty($paymentStatus)) {
-            $builder->where('payments.payment_status', $paymentStatus);
-        }
-
-        // 📄 Pagination
-        $orders = $builder->paginate($perPage, 'default', $page);
-
-        $pager = [
-            'currentPage' => $this->orderModel->pager->getCurrentPage('default'),
-            'totalPages'  => $this->orderModel->pager->getPageCount('default'),
-            'limit'       => $perPage,
-        ];
-
+        // ============================
+        // DATA TO VIEW
+        // ============================
         return view('orders/v_index', [
             'orders' => $orders,
-            'pager'  => $pager,
-            'search' => $search,
+            'pager'  => [
+                'totalPages'  => $totalPages,
+                'currentPage' => $currentPage,
+                'limit'       => $limit,
+            ],
         ]);
     }
 

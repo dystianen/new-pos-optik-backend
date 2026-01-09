@@ -29,8 +29,9 @@ function orderStatusBadge($status)
             <th>Order ID</th>
             <th>Order Date</th>
             <th>Customer</th>
+            <th>Total Item</th>
+            <th>Grand Total</th>
             <th>Status</th>
-            <th>Total</th>
             <th class="text-center">Action</th>
           </tr>
         </thead>
@@ -52,14 +53,16 @@ function orderStatusBadge($status)
                 </div>
               </td>
 
+              <td><?= $order['total_items'] ?></td>
+
+              <td>
+                <strong>Rp <?= number_format($order['grand_total']) ?></strong>
+              </td>
+
               <td>
                 <span class="<?= orderStatusBadge($order['status_name']) ?>">
                   <?= strtoupper($order['status_name']) ?>
                 </span>
-              </td>
-
-              <td>
-                <strong>Rp <?= number_format($order['grand_total']) ?></strong>
               </td>
 
               <td class="text-center">
@@ -67,30 +70,6 @@ function orderStatusBadge($status)
                   class="btn btn-sm btn-info">
                   Detail
                 </a>
-
-                <?php if ($order['status_name'] === 'pending'): ?>
-                  <form action="<?= base_url('/online-sales/' . $order['order_id'] . '/approve') ?>"
-                    method="post"
-                    style="display:inline-block;">
-                    <?= csrf_field() ?>
-                    <button type="submit"
-                      class="btn btn-sm btn-success"
-                      onclick="return confirm('Approve payment for this order?')">
-                      Approve
-                    </button>
-                  </form>
-
-                  <form action="<?= base_url('/online-sales/' . $order['order_id'] . '/reject') ?>"
-                    method="post"
-                    style="display:inline-block;">
-                    <?= csrf_field() ?>
-                    <button type="submit"
-                      class="btn btn-sm btn-danger"
-                      onclick="return confirm('Reject this payment?')">
-                      Reject
-                    </button>
-                  </form>
-                <?php endif ?>
               </td>
             </tr>
           <?php endforeach ?>

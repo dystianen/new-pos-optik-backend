@@ -55,6 +55,12 @@ class CreateOrdersTable extends Migration
                 'constraint' => 255,
                 'null' => true,
             ],
+            'order_type' => [
+                'type'       => 'ENUM',
+                'constraint' => ['online', 'offline'],
+                'default'    => 'online',
+                'null'       => false,
+            ],
             'created_at' => [
                 'type'    => 'DATETIME',
                 'null'    => true,
