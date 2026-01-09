@@ -133,20 +133,19 @@
         <!-- Admin (1) dan Inventory (4) -->
         <?php if (in_array($roleName, ['admin', 'inventory'])) : ?>
           <li class="nav-item">
-            <a class="nav-link <?= $currentURI === 'inventory' ? 'active' : '' ?>" href="/inventory">
-              <div class="me-2 d-flex align-items-center justify-content-center">
-                <i class="fas fa-truck-loading"></i>
-              </div>
-              <span class="nav-link-text ms-1">Inventory</span>
-            </a>
-          </li>
-
-          <li class="nav-item">
             <a class="nav-link <?= $currentURI === 'products' ? 'active' : '' ?>" href="/products">
               <div class="me-2 d-flex align-items-center justify-content-center">
                 <i class="fas fa-shopping-basket"></i>
               </div>
               <span class="nav-link-text ms-1">Products</span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link <?= $currentURI === 'inventory' ? 'active' : '' ?>" href="/inventory">
+              <div class="me-2 d-flex align-items-center justify-content-center">
+                <i class="fas fa-truck-loading"></i>
+              </div>
+              <span class="nav-link-text ms-1">Inventory</span>
             </a>
           </li>
           <li class="nav-item">
