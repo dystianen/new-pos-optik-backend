@@ -28,6 +28,8 @@ class OrderModel extends Model
         'shipping_discount',
         'coupon_discount',
         'grand_total',
+        'tracking_number',
+        'courier',
         'created_at',
         'updated_at',
         'deleted_at',

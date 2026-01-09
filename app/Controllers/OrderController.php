@@ -974,6 +974,8 @@ class OrderController extends BaseController
             orders.grand_total,
             orders.shipping_cost,
             orders.status_id,
+            orders.tracking_number,
+            orders.courier,
 
             customers.customer_name,
             customers.customer_email,
@@ -1057,7 +1059,8 @@ class OrderController extends BaseController
     {
         $data = [
             'status_id'        => '4d609622-8392-469b-acd1-c7859424633a', // SHIPPED ID STATUS
-            'tracking_number'   => $this->request->getVar('tracking_number'),
+            'courier'          => $this->request->getVar('courier'),
+            'tracking_number'  => $this->request->getVar('tracking_number'),
             'shipped_at'       => date('Y-m-d H:i:s'),
             'updated_at'       => date('Y-m-d H:i:s')
         ];

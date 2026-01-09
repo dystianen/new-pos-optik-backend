@@ -107,6 +107,8 @@ function badgeStatus($status)
           <div class="mt-2">
             <p class="mb-1">Method: <strong><?= $order['shipping_method'] ?></strong></p>
             <p class="mb-1">Estimated: <?= $order['estimated_days'] ?> days</p>
+            <p class="mb-1">Courier: <strong><?= $order['courier'] ?></strong></p>
+            <p class="mb-1">Tracking Number: <strong><?= $order['tracking_number'] ?></strong></p>
             <p class="mb-0"><?= $shippingAddress['address'] ?? '-' ?></p>
           </div>
         </div>
@@ -189,11 +191,11 @@ function badgeStatus($status)
                     <label class="form-label">Courier</label>
                     <select name="courier" class="form-select" required>
                       <option value="">-- Select Courier --</option>
-                      <option value="jne">JNE</option>
-                      <option value="jnt">J&T</option>
-                      <option value="sicepat">SiCepat</option>
-                      <option value="anteraja">AnterAja</option>
-                      <option value="pos">POS Indonesia</option>
+                      <option value="JNE">JNE</option>
+                      <option value="J&T">J&T</option>
+                      <option value="SiCepat">SiCepat</option>
+                      <option value="AnterAja">AnterAja</option>
+                      <option value="POS Indonesia">POS Indonesia</option>
                     </select>
                   </div>
 
