@@ -515,7 +515,7 @@ class OrderController extends BaseController
         }
 
         // 🔑 status_id = SHIPPED
-        $isPaid = $order['status_id'] === '4d609622-8392-469b-acd1-c7859424633a';
+        $isPaid = $order['status_id'] === 'cc46d2a8-436c-42fc-96a1-ffb537dbabed';
 
 
         return $this->respond([

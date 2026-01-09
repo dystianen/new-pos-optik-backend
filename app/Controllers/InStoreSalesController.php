@@ -212,9 +212,9 @@ class InStoreSalesController extends BaseController
 
             $db->transComplete();
 
-            // return redirect()
-            //     ->to(site_url('in-store-sales'))
-            //     ->with('success', 'Transaksi berhasil disimpan');
+            return redirect()
+                ->to(site_url('in-store-sales'))
+                ->with('success', 'Transaksi berhasil disimpan');
         } catch (\Throwable $e) {
             $db->transRollback();
 

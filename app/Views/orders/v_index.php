@@ -48,7 +48,7 @@ function orderStatusBadge($status)
 
               <td>
                 <div class="d-flex flex-column">
-                  <span><?= esc($order['customer_name']) ?></span>
+                  <strong><?= esc($order['customer_name']) ?></strong>
                   <small class="text-muted"><?= esc($order['customer_email']) ?></small>
                 </div>
               </td>
@@ -93,35 +93,29 @@ function orderStatusBadge($status)
   var pageParam = urlParams.get('page');
 
   // PAGINATION
-  function handlePagination(pageNumber) {
-    const params = new URLSearchParams(window.location.search);
-    params.set('page', pageNumber);
-    window.location.replace(`<?php echo base_url(); ?>orders?${params.toString()}`);
+  function handlePagination(page) {
+    window.location.href =
+      "<?= base_url('/orders') ?>?page=" + page;
   }
 
-  var paginationContainer = document.getElementById('pagination');
-  var totalPages = <?= $pager["totalPages"] ?>;
-  if (totalPages >= 1) {
-    for (var i = 1; i <= totalPages; i++) {
-      var pageItem = document.createElement('li');
-      pageItem.classList.add('page-item');
-      pageItem.classList.add('primary');
-      if (i === <?= $pager["currentPage"] ?>) {
-        pageItem.classList.add('active');
-      }
+  const paginationContainer = document.getElementById('pagination');
+  const totalPages = <?= (int) $pager['totalPages'] ?>;
+  const currentPage = <?= (int) $pager['currentPage'] ?>;
 
-      var pageLink = document.createElement('a');
-      pageLink.classList.add('page-link');
-      pageLink.href = 'javascript:void(0);'
-      pageLink.textContent = i;
+  if (totalPages > 1) {
+    for (let i = 1; i <= totalPages; i++) {
+      const li = document.createElement('li');
+      li.className = 'page-item' + (i === currentPage ? ' active' : '');
 
-      pageLink.addEventListener('click', function() {
-        var pageNumber = parseInt(this.textContent);
-        handlePagination(pageNumber);
-      });
+      const a = document.createElement('a');
+      a.className = 'page-link';
+      a.href = 'javascript:void(0)';
+      a.innerText = i;
 
-      pageItem.appendChild(pageLink);
-      paginationContainer.appendChild(pageItem);
+      a.onclick = () => handlePagination(i);
+
+      li.appendChild(a);
+      paginationContainer.appendChild(li);
     }
   }
 </script>

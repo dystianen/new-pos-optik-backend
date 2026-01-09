@@ -4,7 +4,7 @@
 <div class="container-fluid card">
   <div class="card-header mb-4 pb-0 d-flex align-items-center justify-content-between">
     <h4>In Store Sales</h4>
-    <a href="<?= base_url('/in-store-sales/form') ?>"
+    <a href="<?= base_url('/in-store-sales/create') ?>"
       class="btn btn-primary btn-sm">
       Add Sales
     </a>
@@ -47,7 +47,7 @@
                 </td>
                 <td>
                   <div class="d-flex flex-column">
-                    <span><?= esc($order['customer_name']) ?></span>
+                    <strong><?= esc($order['customer_name']) ?></strong>
                     <small class="text-muted"><?= esc($order['customer_email']) ?></small>
                   </div>
                 </td>
