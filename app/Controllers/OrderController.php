@@ -915,7 +915,7 @@ class OrderController extends BaseController
                 order_statuses.status_name,
                 COUNT(order_items.order_item_id) as total_items
             ')
-            ->where('order_type', 'offline')
+            ->where('order_type', 'online')
             ->join('customers', 'customers.customer_id = orders.customer_id')
             ->join('order_statuses', 'order_statuses.status_id = orders.status_id')
             ->join('order_items', 'order_items.order_id = orders.order_id', 'left')
