@@ -9,6 +9,7 @@ use App\Models\CartItemPrescriptionModel;
 use App\Models\CartModel;
 use App\Models\CustomerShippingAddressModel;
 use App\Models\InventoryTransactionModel;
+use App\Models\NotificationModel;
 use App\Models\OrderItemModel;
 use App\Models\OrderItemPrescriptionModel;
 use App\Models\OrderModel;
@@ -22,7 +23,7 @@ use CodeIgniter\API\ResponseTrait;
 class OnlineSalesController extends BaseController
 {
     use ResponseTrait;
-    protected $orderModel, $orderItemModel, $InventoryTransactionModel, $productModel, $productVariantModel, $csaModel, $cartModel, $cartItemModel, $shippingRateModel, $cartItemPrescriptionModel, $orderShippingAddressModel, $orderItemPrescriptionModel, $paymentModel, $r2;
+    protected $orderModel, $orderItemModel, $InventoryTransactionModel, $productModel, $productVariantModel, $csaModel, $cartModel, $cartItemModel, $shippingRateModel, $cartItemPrescriptionModel, $orderShippingAddressModel, $orderItemPrescriptionModel, $paymentModel, $notificationModel, $r2;
 
     public function __construct()
     {
@@ -39,6 +40,7 @@ class OnlineSalesController extends BaseController
         $this->orderShippingAddressModel = new OrderShippingAddressModel();
         $this->orderItemPrescriptionModel = new OrderItemPrescriptionModel();
         $this->paymentModel = new PaymentModel();
+        $this->notificationModel = new NotificationModel();
         $this->r2 = new R2Storage();
     }
 
@@ -254,6 +256,7 @@ class OnlineSalesController extends BaseController
             log_message('debug', 'AUTH USER: ' . json_encode($jwtUser));
 
             $customerId = $jwtUser->user_id;
+            $customerName = $jwtUser->user_name;
 
             // 🔁 Ambil snapshot summary
             $summaryResponse = $this->summaryOrders($addressId);
@@ -273,11 +276,13 @@ class OnlineSalesController extends BaseController
                 'coupon_discount'     => 0,
                 'grand_total'         => $summary['summary']['total'],
             ]);
-            log_message('debug', 'ORDER QUERY: ' . $this->orderModel->getLastQuery());
-
             $orderId = $this->orderModel->getInsertID();
 
+            $this->notificationModel->addNotification('new_order', "Pesanan baru dari {$customerName}", $orderId);
+            log_message('debug', 'ORDER QUERY: ' . $this->orderModel->getLastQuery());
+
             log_message('debug', 'INSERT order_shipping_addresses');
+
             // 📦 SHIPPING ADDRESS (snapshot)
             $this->orderShippingAddressModel->insert([
                 'order_id'       => $orderId,
@@ -375,6 +380,7 @@ class OnlineSalesController extends BaseController
             }
 
             $customerId = $jwtUser->user_id;
+            $customerName = $jwtUser->user_name;
 
             // 📥 INPUT
             $orderId = $this->request->getVar('order_id');
@@ -429,9 +435,10 @@ class OnlineSalesController extends BaseController
 
             // 🔁 UPDATE ORDER STATUS
             $this->orderModel->update($orderId, [
-                'status_id' => '7f39039d-d2ef-46d1-93f5-8dbc0b5211fe',
-                // contoh: PAID
+                'status_id' => '7f39039d-d2ef-46d1-93f5-8dbc0b5211fe', // contoh: WAITING_CONFIRMATION
             ]);
+
+            $this->notificationModel->addNotification('new_order', "Pembayaran baru dari {$customerName}", $orderId);
 
             $db->transComplete();
 
@@ -896,7 +903,7 @@ class OnlineSalesController extends BaseController
     public function approvePayment($orderId)
     {
         $this->db->transBegin();
-        $session = Session();
+        $session = session();
 
         try {
             // 1️⃣ Cegah double approve
@@ -924,15 +931,15 @@ class OnlineSalesController extends BaseController
                 // 4️⃣ Insert inventory OUT
                 $this->InventoryTransactionModel->insert([
                     'inventory_transaction_id' => service('uuid')->uuid4()->toString(),
-                    'user_id'               => $session->get('id'), // admin yg approve
-                    'product_id'            => $item['product_id'],
-                    'variant_id'            => $item['variant_id'],
-                    'transaction_type'      => 'out',
-                    'reference_type'        => 'order',
-                    'reference_id'          => $orderId,
-                    'quantity'              => (int)$item['quantity'],
-                    'transaction_date'      => date('Y-m-d H:i:s'),
-                    'description'           => 'Order payment approved'
+                    'user_id'                  => $session->get('id'),
+                    'product_id'               => $item['product_id'],
+                    'variant_id'               => $item['variant_id'],
+                    'transaction_type'         => 'out',
+                    'reference_type'           => 'order',
+                    'reference_id'             => $orderId,
+                    'quantity'                 => (int)$item['quantity'],
+                    'transaction_date'         => date('Y-m-d H:i:s'),
+                    'description'              => 'Order payment approved'
                 ]);
 
                 // 5️⃣ Reduce stock
@@ -952,11 +959,31 @@ class OnlineSalesController extends BaseController
                         )
                         WHERE p.product_id = ?
                     ", [$item['product_id']]);
+
+                    // ✅ Cek stok variant, buat notifikasi jika kurang dari 5
+                    $variant = $this->productVariantModel->find($item['variant_id']);
+                    if ($variant['stock'] < 5) {
+                        $this->notificationModel->addNotification(
+                            'low_stock',
+                            "Stok barang '{$variant['variant_name']}' tinggal {$variant['stock']}",
+                            $variant['variant_id']
+                        );
+                    }
                 } else {
                     $this->productModel
                         ->where('product_id', $item['product_id'])
                         ->set('product_stock', 'product_stock - ' . (int)$item['quantity'], false)
                         ->update();
+
+                    // ✅ Cek stok product, buat notifikasi jika kurang dari 5
+                    $product = $this->productModel->find($item['product_id']);
+                    if ($product['product_stock'] < 5) {
+                        $this->notificationModel->addNotification(
+                            'low_stock',
+                            "Stok barang '{$product['product_name']}' tinggal {$product['product_stock']}",
+                            $product['product_id']
+                        );
+                    }
                 }
             }
 
@@ -968,6 +995,7 @@ class OnlineSalesController extends BaseController
             return redirect()->back()->with('error', $e->getMessage());
         }
     }
+
 
     // POST /admin/orders/{id}/reject
     public function rejectPayment($orderId)
