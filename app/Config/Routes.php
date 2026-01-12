@@ -56,12 +56,14 @@ $routes->group('api', ['filter' => 'cors'], function ($routes) {
   // ORDER
   $routes->group('orders', ['filter' => 'authApi'], function ($routes) {
     $routes->get('', 'OrderController::listOrders');
-    $routes->get('(:segment)', 'OrderController::getOrderDetail/$1');
     $routes->get('summary-orders/(:segment)', 'OrderController::summaryOrders/$1');
     $routes->post('submit/(:segment)', 'OrderController::submitOrder/$1');
     $routes->post('payment', 'OrderController::uploadPaymentProof');
     $routes->get('check-payment-status/(:segment)', 'OrderController::checkPaymentStatus/$1');
+    $routes->post('(:segment)/status', 'OrderController::updateStatus/$1');
+    $routes->get('(:segment)', 'OrderController::getOrderDetail/$1');
   });
+
 
   // SHIPPING ADDRESS
   $routes->group('shipping', ['filter' => 'authApi'], function ($routes) {

@@ -462,14 +462,17 @@ class OrderController extends BaseController
         // 🔐 AUTH
         $jwtUser = getJWTUser();
         if (!$jwtUser) {
-            throw new \Exception('Unauthorized');
+            return $this->respond([
+                'status'  => 401,
+                'message' => 'Unauthorized'
+            ], 401);
         }
 
         $customerId = $jwtUser->user_id;
 
         if (!$orderId) {
             return $this->respond([
-                'status' => 400,
+                'status'  => 400,
                 'message' => 'Order ID is required'
             ], 400);
         }
@@ -481,22 +484,35 @@ class OrderController extends BaseController
 
         if (!$order) {
             return $this->respond([
-                'status' => 404,
+                'status'  => 404,
                 'message' => 'Order not found'
             ], 404);
         }
 
-        // 🔑 status_id = SHIPPED
-        $isPaid = $order['status_id'] === 'cc46d2a8-436c-42fc-96a1-ffb537dbabed';
+        // ============================
+        // STATUS ID (SESUIKAN)
+        // ============================
+        $STATUS_APPROVED = 'cc46d2a8-436c-42fc-96a1-ffb537dbabed'; // PAID / APPROVED
+        $STATUS_REJECTED = 'f1a3c2b4-9e77-4e8d-9b12-2c5a7e8f91ab'; // PAYMENT REJECTED
 
+        $paymentStatus = 'pending';
+        $message       = 'Payment is waiting for verification';
+
+        if ($order['status_id'] === $STATUS_APPROVED) {
+            $paymentStatus = 'approved';
+            $message       = 'Payment approved';
+        } elseif ($order['status_id'] === $STATUS_REJECTED) {
+            $paymentStatus = 'rejected';
+            $message       = 'Payment rejected';
+        }
 
         return $this->respond([
-            'status' => 200,
-            'message' => $isPaid ? 'Order already paid' : 'Order not paid yet',
-            'data' => [
-                'order_id' => $orderId,
-                'status_id' => $order['status_id'],
-                'is_paid' => $isPaid
+            'status'  => 200,
+            'message' => $message,
+            'data'    => [
+                'order_id'       => $orderId,
+                'status_id'      => $order['status_id'],
+                'payment_status' => $paymentStatus,
             ]
         ]);
     }
@@ -520,26 +536,38 @@ class OrderController extends BaseController
             $page = $this->request->getVar('page') ?? 1;
             $offset = ($page - 1) * $limit;
 
-            // Query orders dengan join
             $builder = $this->orderModel
                 ->select("
                     orders.order_id,
                     orders.created_at AS order_date,
                     orders.grand_total,
                     orders.shipping_cost,
-                    
+
                     order_statuses.status_name,
-                    
+
                     shipping_methods.name AS shipping_method,
                     shipping_methods.estimated_days,
-                    
-                    payment_methods.method_name AS payment_method,
-                    payments.paid_at
+
+                    pm.method_name AS payment_method,
+                    p.paid_at
                 ")
                 ->join('order_statuses', 'order_statuses.status_id = orders.status_id', 'left')
                 ->join('shipping_methods', 'shipping_methods.shipping_method_id = orders.shipping_method_id', 'left')
-                ->join('payments', 'payments.order_id = orders.order_id', 'left')
-                ->join('payment_methods', 'payment_methods.payment_method_id = payments.payment_method_id', 'left')
+                ->join(
+                    '(SELECT p1.*
+                    FROM payments p1
+                    INNER JOIN (
+                        SELECT order_id, MAX(paid_at) AS latest_paid
+                        FROM payments
+                        GROUP BY order_id
+                    ) p2
+                    ON p1.order_id = p2.order_id AND p1.paid_at = p2.latest_paid
+                    ) p',
+                    'p.order_id = orders.order_id',
+                    'left'
+                )
+
+                ->join('payment_methods pm', 'pm.payment_method_id = p.payment_method_id', 'left')
                 ->where('orders.customer_id', $customerId)
                 ->where('orders.deleted_at', null);
 
@@ -997,7 +1025,6 @@ class OrderController extends BaseController
         return view('orders/v_detail', $data);
     }
 
-
     /**
      * APPROVE PAYMENT
      * POST /admin/orders/{id}/approve
@@ -1078,18 +1105,14 @@ class OrderController extends BaseController
         }
     }
 
-
     /**
      * REJECT PAYMENT
      */
     public function rejectPayment($orderId)
     {
-        $this->paymentModel
-            ->where('order_id', $orderId)
-            ->set([
-                'payment_status' => 'rejected'
-            ])
-            ->update();
+        $this->orderModel->update($orderId, [
+            'status_id' => 'f1a3c2b4-9e77-4e8d-9b12-2c5a7e8f91ab'
+        ]);
 
         return redirect()->back()->with('success', 'Payment rejected');
     }
@@ -1114,12 +1137,35 @@ class OrderController extends BaseController
      */
     public function updateStatus($orderId)
     {
-        $statusId = $this->request->getPost('status_id');
+        $statusId = $this->request->getVar('status_id');
+
+        if (!$statusId) {
+            return $this->respond([
+                'status'  => 400,
+                'message' => 'status_id is required'
+            ], 400);
+        }
+
+        $order = $this->orderModel->find($orderId);
+
+        if (!$order) {
+            return $this->respond([
+                'status'  => 404,
+                'message' => 'Order not found'
+            ], 404);
+        }
 
         $this->orderModel->update($orderId, [
             'status_id' => $statusId
         ]);
 
-        return redirect()->back()->with('success', 'Order status updated');
+        return $this->respond([
+            'status'  => 200,
+            'message' => 'Order status updated successfully',
+            'data'    => [
+                'order_id' => $orderId,
+                'status_id' => $statusId
+            ]
+        ]);
     }
 }

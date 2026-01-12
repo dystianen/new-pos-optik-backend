@@ -47,6 +47,11 @@ class OrderStatusSeeder extends Seeder
                 'status_code' => 'refunded',
                 'status_name' => 'Order Refunded',
             ],
+            [
+                'status_id'   => 'f1a3c2b4-9e77-4e8d-9b12-2c5a7e8f91ab',
+                'status_code' => 'rejected',
+                'status_name' => 'Payment Rejected',
+            ],
         ];
 
 
