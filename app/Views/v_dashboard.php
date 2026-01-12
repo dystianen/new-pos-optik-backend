@@ -23,7 +23,7 @@
         'color' => 'primary'
       ],
       [
-        'title' => 'POS Sales',
+        'title' => 'In Store Sales',
         'value' => 'Rp ' . number_format($posSales, 0, ',', '.'),
         'icon'  => 'ni ni-shop',
         'color' => 'warning'
