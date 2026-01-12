@@ -32,8 +32,8 @@
             <th>Category</th>
             <th>Name</th>
             <th>Brand</th>
-            <th>Price</th>
             <th>Stock</th>
+            <th>Total Variants</th>
             <th class="sticky-action text-center">Actions</th>
           </tr>
         </thead>
@@ -51,8 +51,8 @@
                 <td><?= $product['category_name'] ?></td>
                 <td><?= $product['product_name'] ?></td>
                 <td><?= $product['product_brand'] ?></td>
-                <td><?= $product['product_price'] ?></td>
                 <td><?= $product['product_stock'] ?></td>
+                <td><?= $product['total_variants'] ?></td>
                 <td class="sticky-action text-center">
                   <a href="<?= base_url('/products/form?id=' . $product['product_id']) ?>" class="btn btn-sm btn-warning">
                     <i class="fa-solid fa-pen-to-square"></i>

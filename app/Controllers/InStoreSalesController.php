@@ -27,47 +27,61 @@ class InStoreSalesController extends BaseController
 
     public function index()
     {
-        $currentPage = $this->request->getVar('page')
-            ? (int) $this->request->getVar('page')
-            : 1;
+        $currentPage = (int) ($this->request->getVar('page') ?? 1);
+        $search      = $this->request->getVar('q');
 
         $limit  = 10;
         $offset = ($currentPage - 1) * $limit;
 
         // ============================
-        // LIST DATA (WITH PAGINATION)
+        // BASE QUERY
         // ============================
-        $orders = $this->orderModel
+        $builder = $this->orderModel
             ->select('
-                orders.order_id,
-                orders.created_at,
-                orders.grand_total,
-                customers.customer_name,
-                customers.customer_email,
-                order_statuses.status_name,
-                COUNT(order_items.order_item_id) as total_items
-            ')
-            ->where('order_type', 'offline')
+            orders.order_id,
+            orders.created_at,
+            orders.grand_total,
+            customers.customer_name,
+            customers.customer_email,
+            order_statuses.status_name,
+            COUNT(order_items.order_item_id) as total_items
+        ')
             ->join('customers', 'customers.customer_id = orders.customer_id')
             ->join('order_statuses', 'order_statuses.status_id = orders.status_id')
             ->join('order_items', 'order_items.order_id = orders.order_id', 'left')
+            ->where('orders.order_type', 'offline');
+
+        // ============================
+        // SEARCH FILTER
+        // ============================
+        if (!empty($search)) {
+            $builder->groupStart()
+                ->like('orders.order_id', $search)
+                ->orLike('customers.customer_name', $search)
+                ->orLike('customers.customer_email', $search)
+                ->orLike('order_statuses.status_name', $search)
+                ->groupEnd();
+        }
+
+        // ============================
+        // DATA
+        // ============================
+        $orders = $builder
             ->groupBy('orders.order_id')
             ->orderBy('orders.created_at', 'DESC')
             ->findAll($limit, $offset);
 
         // ============================
-        // TOTAL ROWS
+        // TOTAL ROWS (CLONE BUILDER)
         // ============================
-        $totalRows = $this->orderModel
-            ->countAllResults();
+        $countBuilder = clone $builder;
+        $totalRows    = $countBuilder->countAllResults(false);
 
         $totalPages = ceil($totalRows / $limit);
 
-        // ============================
-        // DATA TO VIEW
-        // ============================
         return view('in_store_sales/v_index', [
             'orders' => $orders,
+            'search' => $search,
             'pager'  => [
                 'totalPages'  => $totalPages,
                 'currentPage' => $currentPage,
@@ -75,6 +89,7 @@ class InStoreSalesController extends BaseController
             ],
         ]);
     }
+
 
     public function create()
     {

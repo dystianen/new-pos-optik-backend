@@ -460,7 +460,18 @@ class ProductController extends BaseController
         $search = $this->request->getGet('search');
 
         $builder = $this->productModel
+            ->select('
+                products.*,
+                product_categories.category_name,
+                COUNT(product_variants.variant_id) AS total_variants
+            ')
             ->join('product_categories', 'product_categories.category_id = products.category_id')
+            ->join(
+                'product_variants',
+                'product_variants.product_id = products.product_id AND product_variants.deleted_at IS NULL',
+                'left'
+            )
+            ->groupBy('products.product_id')
             ->orderBy('products.created_at', 'DESC');
 
         // Tambahkan filter pencarian jika ada keyword

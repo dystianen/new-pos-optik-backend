@@ -19,6 +19,21 @@ function orderStatusBadge($status)
 <div class="container-fluid card">
   <div class="card-header mb-4 pb-0 d-flex align-items-center justify-content-between">
     <h4>Order List</h4>
+
+    <div class="d-flex align-items-center gap-2">
+      <form action="<?= base_url('/online-sales') ?>" method="get" class="d-flex align-items-center">
+        <input
+          type="text"
+          name="q"
+          class="form-control form-control-sm me-2"
+          placeholder="Search..."
+          value="<?= esc($search ?? '') ?>"
+          style="min-width: 200px;">
+        <button type="submit" class="btn btn-sm btn-secondary">
+          <i class="fa-solid fa-magnifying-glass"></i>
+        </button>
+      </form>
+    </div>
   </div>
 
   <div class="card-body pt-0 pb-2">
@@ -95,7 +110,7 @@ function orderStatusBadge($status)
   // PAGINATION
   function handlePagination(page) {
     window.location.href =
-      "<?= base_url('/orders') ?>?page=" + page;
+      `<?= base_url('/orders') ?>?page=${page}&q=<?= esc($search) ?>`;
   }
 
   const paginationContainer = document.getElementById('pagination');

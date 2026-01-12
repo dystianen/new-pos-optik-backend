@@ -246,9 +246,9 @@ class AuthController extends BaseController
         $password = $this->request->getVar('password');
 
         $data = $this->userModel->where('user_email', $email)->first();
-        $role = $this->roleModel->where('role_id', $data['role_id'])->first();
 
         if ($data) {
+            $role = $this->roleModel->where('role_id', $data['role_id'])->first();
             $pass = $data['password'];
             $authenticatePassword = password_verify($password, $pass);
             if ($authenticatePassword) {

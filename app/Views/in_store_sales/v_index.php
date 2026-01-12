@@ -4,10 +4,24 @@
 <div class="container-fluid card">
   <div class="card-header mb-4 pb-0 d-flex align-items-center justify-content-between">
     <h4>In Store Sales</h4>
-    <a href="<?= base_url('/in-store-sales/create') ?>"
-      class="btn btn-primary btn-sm">
-      Add Sales
-    </a>
+    <div class="d-flex align-items-center gap-2">
+      <form action="<?= base_url('/in-store-sales') ?>" method="get" class="d-flex align-items-center">
+        <input
+          type="text"
+          name="q"
+          class="form-control form-control-sm me-2"
+          placeholder="Search..."
+          value="<?= esc($search ?? '') ?>"
+          style="min-width: 200px;">
+        <button type="submit" class="btn btn-sm btn-secondary">
+          <i class="fa-solid fa-magnifying-glass"></i>
+        </button>
+      </form>
+      <a href="<?= base_url('/in-store-sales/create') ?>"
+        class="btn btn-primary btn-sm">
+        Add Sales
+      </a>
+    </div>
   </div>
 
   <div class="card-body pt-0 pb-2">
@@ -87,7 +101,7 @@
 <script>
   function handlePagination(page) {
     window.location.href =
-      "<?= base_url('/in-store-sales') ?>?page=" + page;
+      `<?= base_url('/in-store-sales') ?>?page=${page}&q=<?= esc($search) ?>`;
   }
 
   const paginationContainer = document.getElementById('pagination');

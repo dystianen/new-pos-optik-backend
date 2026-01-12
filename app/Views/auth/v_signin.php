@@ -1,34 +1,37 @@
 <?= $this->extend('layouts/l_auth.php') ?>
 <?= $this->section('content') ?>
-<div id="auth">
-  <div class="row">
-    <div class="col-lg-5 col-12" style="align-self: center">
-      <div id="auth-left">
-        <h1>OPTIKERS <span color="#7048E8">.</span></h1>
 
-        <p class="auth-subtitle mb-5">Log in with your data that the admin entered.</p>
+<div class="d-flex align-items-center justify-content-center min-vh-90">
+  <div class="col-lg-4 col-md-6 col-12">
+    <div class="card shadow-lg border-0">
+      <div class="card-body p-5">
 
-        <form action="<?php echo base_url(); ?>signin/store" method="post">
-          <div class="form-group position-relative has-icon-left mb-4">
-            <input name="email" type="text" class="form-control form-control-xl" placeholder="Email">
-            <div class="form-control-icon">
-              <i class="bi bi-person"></i>
-            </div>
+        <h2 class="text-center mb-2">OPTIKERS<span class="text-primary">.</span></h2>
+        <p class="text-center text-muted mb-4">
+          Log in with your admin account
+        </p>
+
+        <form action="<?= base_url('signin/store') ?>" method="post">
+
+          <div class="form-group mb-3">
+            <label>Email</label>
+            <input name="email" type="email" class="form-control form-control-lg" placeholder="Email" required>
           </div>
-          <div class="form-group position-relative has-icon-left mb-4">
-            <input name="password" type="password" class="form-control form-control-xl" placeholder="Password">
-            <div class="form-control-icon">
-              <i class="bi bi-shield-lock"></i>
-            </div>
+
+          <div class="form-group mb-4">
+            <label>Password</label>
+            <input name="password" type="password" class="form-control form-control-lg" placeholder="Password" required>
           </div>
-          <button type="submit" class="btn btn-primary btn-block btn-lg shadow-lg mt-2 w-100">Log in</button>
+
+          <button type="submit" class="btn btn-primary btn-lg w-100 shadow">
+            Log in
           </button>
+
         </form>
+
       </div>
-    </div>
-    <div class="col-lg-7 d-none d-lg-block">
-      <img src="/assets/img/optik.jpeg" style="width: 100%; height: 90vh; border-radius: 10px">
     </div>
   </div>
 </div>
+
 <?= $this->endSection() ?>
