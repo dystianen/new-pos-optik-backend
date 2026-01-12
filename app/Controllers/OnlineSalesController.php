@@ -781,6 +781,8 @@ class OnlineSalesController extends BaseController
                     'shipping' => [
                         'method' => $order['shipping_method'],
                         'rate' => (int) $order['shipping_cost'],
+                        'courier' => $order['courier'],
+                        'tracking_number' => $order['tracking_number'],
                         'estimated_days' => $order['estimated_days'],
                         'address' => $shippingAddress ? [
                             'recipient_name' => $shippingAddress['recipient_name'],
