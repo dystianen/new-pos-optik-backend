@@ -132,12 +132,6 @@ function badgeStatus($status)
             <p class="mb-1">
               Method: <strong><?= $payment['method_name'] ?? '-' ?></strong>
             </p>
-            <p class="mb-1">
-              Status:
-              <span class="<?= badgeStatus($order['status_code']) ?>">
-                <?= strtoupper($order['status_name']) ?>
-              </span>
-            </p>
             <p class="mb-0">
               Paid At: <?= $payment['paid_at'] ?? '-' ?>
             </p>
