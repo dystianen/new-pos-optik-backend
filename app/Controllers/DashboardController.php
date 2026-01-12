@@ -3,144 +3,120 @@
 namespace App\Controllers;
 
 use App\Controllers\BaseController;
-use App\Models\CustomerModel;
-use App\Models\InventoryTransactionModel;
 use App\Models\OrderModel;
 use App\Models\ProductModel;
+use App\Models\CustomerModel;
+use App\Models\InventoryTransactionModel;
 
 class DashboardController extends BaseController
 {
-    protected $customerModel, $productModel, $InventoryTransactionModel, $ordersModel;
+    protected $orderModel, $productModel, $customerModel, $inventoryModel;
 
     public function __construct()
     {
-        $this->customerModel = new CustomerModel();
-        $this->productModel = new ProductModel();
-        $this->InventoryTransactionModel = new InventoryTransactionModel();
-        $this->ordersModel = new OrderModel();
+        $this->orderModel     = new OrderModel();
+        $this->productModel   = new ProductModel();
+        $this->customerModel  = new CustomerModel();
+        $this->inventoryModel = new InventoryTransactionModel();
     }
 
     public function index()
     {
-        $totalProducts = $this->productModel->countAllResults();
+        /** =======================
+         * CARD SUMMARY
+         * ======================= */
+
+        // TOTAL REVENUE
+        $totalRevenue = $this->orderModel
+            ->selectSum('orders.grand_total', 'total')
+            ->join('order_statuses os', 'orders.status_id = os.status_id')
+            ->whereIn('os.status_code', ['paid', 'shipped', 'completed'])
+            ->first()['total'] ?? 0;
+
+        // TOTAL ORDERS TODAY
+        $totalOrdersToday = $this->orderModel
+            ->where('DATE(orders.created_at)', date('Y-m-d'))
+            ->countAllResults();
+
+        // ONLINE SALES
+        $onlineSales = $this->orderModel
+            ->selectSum('orders.grand_total', 'total')
+            ->join('order_statuses os', 'orders.status_id = os.status_id')
+            ->where('orders.order_type', 'online')
+            ->whereIn('os.status_code', ['paid', 'shipped', 'completed'])
+            ->first()['total'] ?? 0;
+
+        // POS SALES
+        $posSales = $this->orderModel
+            ->selectSum('orders.grand_total', 'total')
+            ->join('order_statuses os', 'orders.status_id = os.status_id')
+            ->where('orders.order_type', 'pos')
+            ->whereIn('os.status_code', ['paid', 'completed'])
+            ->first()['total'] ?? 0;
+
+        // TOTAL CUSTOMERS
         $totalCustomers = $this->customerModel->countAllResults();
 
-        // Total Selling dari Inventory Transactions (unit)
-        $totalSellingUnits = (int) (
-            $this->InventoryTransactionModel
-                ->selectSum('quantity', 'total_units')
-                ->where('transaction_type', 'out')
-                ->where('reference_type', 'order')
-                ->first()['total_units']
-            ?? 0
-        );
+        // LOW STOCK
+        $lowStockCount = $this->productModel
+            ->where('product_stock <= 5')
+            ->countAllResults();
 
-        // Total Selling dari Orders (rupiah)
-        $totalSellingRupiah = (float) (
-            $this->ordersModel
-                ->selectSum('grand_total', 'total_rupiah')
-                ->join('order_statuses os', 'orders.status_id = os.status_id')
-                ->whereIn('os.status_code', ['processing', 'shipped', 'completed'])
-                ->first()['total_rupiah']
-            ?? 0
-        );
-
-        // Monthly Sales (Units)
-        $monthlySalesUnits = $this->InventoryTransactionModel
-            ->select("MONTH(transaction_date) AS month, SUM(quantity) AS total")
-            ->where('transaction_type', 'out')
-            ->where('reference_type', 'order')
-            ->where('YEAR(transaction_date)', date('Y'))
+        /** =======================
+         * MONTHLY SALES CHART
+         * ======================= */
+        $monthly = $this->orderModel
+            ->select("MONTH(orders.created_at) AS month, SUM(orders.grand_total) AS total")
+            ->join('order_statuses os', 'orders.status_id = os.status_id')
+            ->where('YEAR(orders.created_at)', date('Y'))
+            ->whereIn('os.status_code', ['paid', 'shipped', 'completed'])
             ->groupBy('month')
             ->orderBy('month', 'ASC')
             ->findAll();
-
-        // Monthly Sales (Rupiah)
-        $monthlySalesRupiah = $this->ordersModel
-            ->select("MONTH(o.created_at) AS month, SUM(o.grand_total) AS total")
-            ->from('orders o')
-            ->join('order_statuses os', 'o.status_id = os.status_id')
-            ->whereIn('os.status_name', ['paid', 'shipped'])
-            ->where('YEAR(o.created_at)', date('Y'))
-            ->groupBy('month')
-            ->orderBy('month', 'ASC')
-            ->findAll();
-
-        $unitsMap = [];
-        foreach ($monthlySalesUnits as $row) {
-            $unitsMap[(int)$row['month']] = (int)$row['total'];
-        }
-
-        $rupiahMap = [];
-        foreach ($monthlySalesRupiah as $row) {
-            $rupiahMap[(int)$row['month']] = (int)$row['total'];
-        }
 
         $months = [];
-        $unitTotals = [];
-        $rupiahTotals = [];
+        $revenues = array_fill(0, 12, 0);
+
         for ($i = 1; $i <= 12; $i++) {
             $months[] = date('F', mktime(0, 0, 0, $i, 1));
-            $unitTotals[] = $unitsMap[$i] ?? 0;
-            $rupiahTotals[] = $rupiahMap[$i] ?? 0;
         }
 
-        // Total Barang Masuk dan Keluar
-        $totalIn = $this->InventoryTransactionModel
-            ->selectSum('quantity')
-            ->where('transaction_type', 'in')
-            ->first()['quantity'] ?? 0;
+        foreach ($monthly as $row) {
+            $revenues[$row['month'] - 1] = (int)$row['total'];
+        }
 
-        $totalOut = $this->InventoryTransactionModel
-            ->selectSum('quantity')
-            ->where('transaction_type', 'out')
-            ->first()['quantity'] ?? 0;
-
-        // Chart Barang Masuk / Keluar per bulan (6 bulan terakhir)
-        $monthlyInOutRaw = $this->InventoryTransactionModel
-            ->select("MONTH(transaction_date) AS month, 
-              SUM(CASE WHEN transaction_type = 'in' THEN quantity ELSE 0 END) AS total_in, 
-              SUM(CASE WHEN transaction_type = 'out' THEN quantity ELSE 0 END) AS total_out")
-            ->where('YEAR(transaction_date)', date('Y'))
-            ->groupBy('month')
-            ->orderBy('month', 'ASC')
+        /** =======================
+         * TOP 5 PRODUCTS
+         * ======================= */
+        $topProducts = $this->inventoryModel
+            ->select('products.product_name, SUM(inventory_transactions.quantity) AS sold')
+            ->join('products', 'products.product_id = inventory_transactions.product_id')
+            ->where('inventory_transactions.transaction_type', 'out')
+            ->groupBy('products.product_id')
+            ->orderBy('sold', 'DESC')
+            ->limit(5)
             ->findAll();
 
+        /** =======================
+         * ORDER STATUS SUMMARY
+         * ======================= */
+        $orderStatuses = $this->orderModel
+            ->select('os.status_code AS status, COUNT(orders.order_id) AS total')
+            ->join('order_statuses os', 'orders.status_id = os.status_id')
+            ->groupBy('os.status_code')
+            ->findAll();
 
-        $inMap = [];
-        $outMap = [];
-
-        foreach ($monthlyInOutRaw as $row) {
-            $inMap[(int)$row['month']] = (int)$row['total_in'];
-            $outMap[(int)$row['month']] = (int)$row['total_out'];
-        }
-
-        $monthsIO = [];
-        $inQuantities = [];
-        $outQuantities = [];
-
-        for ($i = 1; $i <= 12; $i++) {
-            $monthsIO[] = date('F', mktime(0, 0, 0, $i, 1));
-            $inQuantities[] = $inMap[$i] ?? 0;
-            $outQuantities[] = $outMap[$i] ?? 0;
-        }
-
-        $data = [
-            'totalProducts' => $totalProducts,
-            'totalCustomers' => $totalCustomers,
-            'totalSellingUnits' => $totalSellingUnits,
-            'totalSellingRupiah' => $totalSellingRupiah,
-            'months' => json_encode($months),
-            'unitTotals' => json_encode($unitTotals),
-            'rupiahTotals' => json_encode($rupiahTotals),
-
-            'totalIn' => $totalIn,
-            'totalOut' => $totalOut,
-            'monthsIO' => json_encode($monthsIO),
-            'inQuantities' => json_encode($inQuantities),
-            'outQuantities' => json_encode($outQuantities),
-        ];
-
-        return view('v_dashboard', $data);
+        return view('v_dashboard', [
+            'totalRevenue'      => $totalRevenue,
+            'totalOrdersToday'  => $totalOrdersToday,
+            'onlineSales'       => $onlineSales,
+            'posSales'          => $posSales,
+            'totalCustomers'    => $totalCustomers,
+            'lowStockCount'     => $lowStockCount,
+            'months'            => json_encode($months),
+            'revenues'          => json_encode($revenues),
+            'topProducts'       => $topProducts,
+            'orderStatuses'     => $orderStatuses,
+        ]);
     }
 }
