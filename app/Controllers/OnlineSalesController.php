@@ -18,9 +18,8 @@ use App\Models\ProductModel;
 use App\Models\ProductVariantModel;
 use App\Models\ShippingRateModel;
 use CodeIgniter\API\ResponseTrait;
-use Config\Session;
 
-class OrderController extends BaseController
+class OnlineSalesController extends BaseController
 {
     use ResponseTrait;
     protected $orderModel, $orderItemModel, $InventoryTransactionModel, $productModel, $productVariantModel, $csaModel, $cartModel, $cartItemModel, $shippingRateModel, $cartItemPrescriptionModel, $orderShippingAddressModel, $orderItemPrescriptionModel, $paymentModel, $r2;
@@ -47,7 +46,7 @@ class OrderController extends BaseController
     // API FUNCTIONS
     // =======================
 
-    // GET /api/summary-orders/(:segment)
+    // GET /api/orders/summary-orders/(:segment)
     public function summaryOrders($addressId)
     {
         try {
@@ -891,144 +890,7 @@ class OrderController extends BaseController
         return $grouped;
     }
 
-
-    // =======================
-    // WEB DASHBOARD FUNCTIONS
-    // =======================
-
-    public function index()
-    {
-        $currentPage = (int) ($this->request->getVar('page') ?? 1);
-        $search      = $this->request->getVar('q'); // keyword search
-
-        $limit  = 10;
-        $offset = ($currentPage - 1) * $limit;
-
-        // ============================
-        // BASE QUERY
-        // ============================
-        $builder = $this->orderModel
-            ->select('
-            orders.order_id,
-            orders.created_at,
-            orders.grand_total,
-            customers.customer_name,
-            customers.customer_email,
-            order_statuses.status_name,
-            COUNT(order_items.order_item_id) as total_items
-        ')
-            ->join('customers', 'customers.customer_id = orders.customer_id')
-            ->join('order_statuses', 'order_statuses.status_id = orders.status_id')
-            ->join('order_items', 'order_items.order_id = orders.order_id', 'left')
-            ->where('orders.order_type', 'online');
-
-        // ============================
-        // SEARCH FILTER
-        // ============================
-        if (!empty($search)) {
-            $builder->groupStart()
-                ->like('orders.order_id', $search)
-                ->orLike('customers.customer_name', $search)
-                ->orLike('customers.customer_email', $search)
-                ->orLike('order_statuses.status_name', $search)
-                ->groupEnd();
-        }
-
-        // ============================
-        // DATA
-        // ============================
-        $orders = $builder
-            ->groupBy('orders.order_id')
-            ->orderBy('orders.created_at', 'DESC')
-            ->findAll($limit, $offset);
-
-        // ============================
-        // TOTAL ROWS (HARUS CLONE!)
-        // ============================
-        $totalRows = clone $builder;
-        $totalRows = $totalRows->countAllResults(false);
-
-        $totalPages = ceil($totalRows / $limit);
-
-        return view('orders/v_index', [
-            'orders' => $orders,
-            'search' => $search,
-            'pager'  => [
-                'totalPages'  => $totalPages,
-                'currentPage' => $currentPage,
-                'limit'       => $limit,
-            ],
-        ]);
-    }
-
-    /**
-     * DETAIL ORDER
-     * GET /admin/orders/{id}
-     */
-    public function detail($orderId)
-    {
-        $order = $this->orderModel
-            ->select('
-            orders.order_id,
-            orders.created_at AS order_date,
-            orders.grand_total,
-            orders.shipping_cost,
-            orders.status_id,
-            orders.tracking_number,
-            orders.courier,
-
-            customers.customer_name,
-            customers.customer_email,
-
-            order_statuses.status_name,
-            order_statuses.status_code,
-
-            shipping_methods.name AS shipping_method,
-            shipping_methods.estimated_days
-        ')
-            ->join('customers', 'customers.customer_id = orders.customer_id', 'left')
-            ->join('order_statuses', 'order_statuses.status_id = orders.status_id', 'left')
-            ->join('shipping_methods', 'shipping_methods.shipping_method_id = orders.shipping_method_id', 'left')
-            ->where('orders.order_id', $orderId)
-            ->where('orders.deleted_at', null)
-            ->first();
-
-        if (!$order) {
-            throw new \CodeIgniter\Exceptions\PageNotFoundException('Order not found');
-        }
-
-        // 📦 Order items
-        $items = $this->orderModel->getOrderItems($orderId);
-
-        // 💳 Payment
-        $payment = $this->paymentModel
-            ->select('
-                payments.proof,
-                payments.amount,
-                payments.paid_at,
-                payment_methods.method_name
-            ')
-            ->join('payment_methods', 'payment_methods.payment_method_id = payments.payment_method_id', 'left')
-            ->where('payments.order_id', $orderId)
-            ->first();
-
-        // 📍 Shipping address
-        $shippingAddress = $this->orderModel->getShippingAddress($orderId);
-
-        $data = [
-            'order'           => $order,
-            'items'           => $items,
-            'payment'         => $payment,
-            'shippingAddress' => $shippingAddress
-        ];
-
-        return view('orders/v_detail', $data);
-    }
-
-    /**
-     * APPROVE PAYMENT
-     * POST /admin/orders/{id}/approve
-     */
+    // POST /admin/orders/{id}/approve
     public function approvePayment($orderId)
     {
         $this->db->transBegin();
@@ -1105,9 +967,7 @@ class OrderController extends BaseController
         }
     }
 
-    /**
-     * REJECT PAYMENT
-     */
+    // POST /admin/orders/{id}/reject
     public function rejectPayment($orderId)
     {
         $this->orderModel->update($orderId, [
@@ -1117,6 +977,7 @@ class OrderController extends BaseController
         return redirect()->back()->with('success', 'Payment rejected');
     }
 
+    // POST /admin/orders/{id}/ship
     public function shipOrder($orderId)
     {
         $data = [
@@ -1131,10 +992,7 @@ class OrderController extends BaseController
         return redirect()->back()->with('success', 'Shipping added');
     }
 
-
-    /**
-     * UPDATE ORDER STATUS
-     */
+    // POST /admin/orders/{id}/status
     public function updateStatus($orderId)
     {
         $statusId = $this->request->getVar('status_id');
@@ -1167,5 +1025,135 @@ class OrderController extends BaseController
                 'status_id' => $statusId
             ]
         ]);
+    }
+
+
+    // =======================
+    // WEB DASHBOARD FUNCTIONS
+    // =======================
+
+    public function index()
+    {
+        $currentPage = (int) ($this->request->getVar('page') ?? 1);
+        $search      = $this->request->getVar('q'); // keyword search
+
+        $limit  = 10;
+        $offset = ($currentPage - 1) * $limit;
+
+        // ============================
+        // BASE QUERY
+        // ============================
+        $builder = $this->orderModel
+            ->select('
+            orders.order_id,
+            orders.created_at,
+            orders.grand_total,
+            customers.customer_name,
+            customers.customer_email,
+            order_statuses.status_name,
+            COUNT(order_items.order_item_id) as total_items
+        ')
+            ->join('customers', 'customers.customer_id = orders.customer_id')
+            ->join('order_statuses', 'order_statuses.status_id = orders.status_id')
+            ->join('order_items', 'order_items.order_id = orders.order_id', 'left')
+            ->where('orders.order_type', 'online');
+
+        // ============================
+        // SEARCH FILTER
+        // ============================
+        if (!empty($search)) {
+            $builder->groupStart()
+                ->like('orders.order_id', $search)
+                ->orLike('customers.customer_name', $search)
+                ->orLike('customers.customer_email', $search)
+                ->orLike('order_statuses.status_name', $search)
+                ->groupEnd();
+        }
+
+        // ============================
+        // DATA
+        // ============================
+        $orders = $builder
+            ->groupBy('orders.order_id')
+            ->orderBy('orders.created_at', 'DESC')
+            ->findAll($limit, $offset);
+
+        // ============================
+        // TOTAL ROWS (HARUS CLONE!)
+        // ============================
+        $totalRows = clone $builder;
+        $totalRows = $totalRows->countAllResults(false);
+
+        $totalPages = ceil($totalRows / $limit);
+
+        return view('online_sales/v_index', [
+            'orders' => $orders,
+            'search' => $search,
+            'pager'  => [
+                'totalPages'  => $totalPages,
+                'currentPage' => $currentPage,
+                'limit'       => $limit,
+            ],
+        ]);
+    }
+
+    public function detail($orderId)
+    {
+        $order = $this->orderModel
+            ->select('
+            orders.order_id,
+            orders.created_at AS order_date,
+            orders.grand_total,
+            orders.shipping_cost,
+            orders.status_id,
+            orders.tracking_number,
+            orders.courier,
+
+            customers.customer_name,
+            customers.customer_email,
+
+            order_statuses.status_name,
+            order_statuses.status_code,
+
+            shipping_methods.name AS shipping_method,
+            shipping_methods.estimated_days
+        ')
+            ->join('customers', 'customers.customer_id = orders.customer_id', 'left')
+            ->join('order_statuses', 'order_statuses.status_id = orders.status_id', 'left')
+            ->join('shipping_methods', 'shipping_methods.shipping_method_id = orders.shipping_method_id', 'left')
+            ->where('orders.order_id', $orderId)
+            ->where('orders.deleted_at', null)
+            ->first();
+
+        if (!$order) {
+            throw new \CodeIgniter\Exceptions\PageNotFoundException('Order not found');
+        }
+
+        // 📦 Order items
+        $items = $this->orderModel->getOrderItems($orderId);
+
+        // 💳 Payment
+        $payment = $this->paymentModel
+            ->select('
+                payments.proof,
+                payments.amount,
+                payments.paid_at,
+                payment_methods.method_name
+            ')
+            ->join('payment_methods', 'payment_methods.payment_method_id = payments.payment_method_id', 'left')
+            ->where('payments.order_id', $orderId)
+            ->first();
+
+        // 📍 Shipping address
+        $shippingAddress = $this->orderModel->getShippingAddress($orderId);
+
+        $data = [
+            'order'           => $order,
+            'items'           => $items,
+            'payment'         => $payment,
+            'shippingAddress' => $shippingAddress
+        ];
+
+        return view('online_sales/v_detail', $data);
     }
 }

@@ -55,13 +55,13 @@ $routes->group('api', ['filter' => 'cors'], function ($routes) {
 
   // ORDER
   $routes->group('orders', ['filter' => 'authApi'], function ($routes) {
-    $routes->get('', 'OrderController::listOrders');
-    $routes->get('summary-orders/(:segment)', 'OrderController::summaryOrders/$1');
-    $routes->post('submit/(:segment)', 'OrderController::submitOrder/$1');
-    $routes->post('payment', 'OrderController::uploadPaymentProof');
-    $routes->get('check-payment-status/(:segment)', 'OrderController::checkPaymentStatus/$1');
-    $routes->post('(:segment)/status', 'OrderController::updateStatus/$1');
-    $routes->get('(:segment)', 'OrderController::getOrderDetail/$1');
+    $routes->get('', 'OnlineSalesController::listOrders');
+    $routes->get('summary/(:segment)', 'OnlineSalesController::summaryOrders/$1');
+    $routes->post('submit/(:segment)', 'OnlineSalesController::submitOrder/$1');
+    $routes->post('payment', 'OnlineSalesController::uploadPaymentProof');
+    $routes->get('check-payment-status/(:segment)', 'OnlineSalesController::checkPaymentStatus/$1');
+    $routes->post('(:segment)/status', 'OnlineSalesController::updateStatus/$1');
+    $routes->get('(:segment)', 'OnlineSalesController::getOrderDetail/$1');
   });
 
 
@@ -135,12 +135,12 @@ $routes->group('in-store-sales', ['filter' => 'authGuard'], function ($routes) {
 });
 
 $routes->group('online-sales', ['filter' => 'authGuard'], function ($routes) {
-  $routes->get('', 'OrderController::index');
-  $routes->get('(:segment)', 'OrderController::detail/$1');
-  $routes->post('(:segment)/approve', 'OrderController::approvePayment/$1');
-  $routes->post('(:segment)/reject', 'OrderController::rejectPayment/$1');
-  $routes->post('(:segment)/status', 'OrderController::updateStatus/$1');
-  $routes->post('(:segment)/ship', 'OrderController::shipOrder/$1');
+  $routes->get('', 'OnlineSalesController::index');
+  $routes->get('(:segment)', 'OnlineSalesController::detail/$1');
+  $routes->post('(:segment)/approve', 'OnlineSalesController::approvePayment/$1');
+  $routes->post('(:segment)/reject', 'OnlineSalesController::rejectPayment/$1');
+  $routes->post('(:segment)/status', 'OnlineSalesController::updateStatus/$1');
+  $routes->post('(:segment)/ship', 'OnlineSalesController::shipOrder/$1');
 });
 
 $routes->group('roles', ['filter' => 'authGuard'], function ($routes) {
