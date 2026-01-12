@@ -35,8 +35,13 @@ class DashboardController extends BaseController
 
         // TOTAL ORDERS TODAY
         $totalOrdersToday = $this->orderModel
+            ->selectSum('order_items.quantity', 'total_quantity')
+            ->join('order_items', 'order_items.order_id = orders.order_id')
             ->where('DATE(orders.created_at)', date('Y-m-d'))
-            ->countAllResults();
+            ->get()
+            ->getRow()
+            ->total_quantity;
+
 
         // ONLINE SALES
         $onlineSales = $this->orderModel
@@ -50,7 +55,7 @@ class DashboardController extends BaseController
         $posSales = $this->orderModel
             ->selectSum('orders.grand_total', 'total')
             ->join('order_statuses os', 'orders.status_id = os.status_id')
-            ->where('orders.order_type', 'pos')
+            ->where('orders.order_type', 'offline')
             ->whereIn('os.status_code', ['paid', 'completed'])
             ->first()['total'] ?? 0;
 
