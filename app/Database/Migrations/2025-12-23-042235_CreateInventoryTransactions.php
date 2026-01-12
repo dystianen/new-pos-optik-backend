@@ -29,6 +29,15 @@ class CreateInventoryTransactions extends Migration
                 'type' => 'ENUM',
                 'constraint' => ['in', 'out'],
             ],
+            'reference_type' => [
+                'type' => 'ENUM',
+                'constraint' => ['order', 'adjustment', 'return', 'transfer', 'initial'],
+                'null' => false,
+            ],
+            'reference_id' => [
+                'type' => 'CHAR',
+                'constraint' => 36,
+            ],
             'quantity' => [
                 'type' => 'INT',
                 'unsigned' => true,

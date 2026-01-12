@@ -10,9 +10,9 @@
     </a>
   </div>
 
-  <div class="card-body px-0 pt-0 pb-2">
-    <div class="table-responsive px-4">
-      <table class="table align-items-center mb-0">
+  <div class="card-body pt-0 pb-2">
+    <div class="table-responsive">
+      <table class="table align-items-center mb-0 table-bordered">
         <thead>
           <tr>
             <th>Order ID</th>
@@ -21,7 +21,7 @@
             <th>Total Item</th>
             <th>Grand Total</th>
             <th>Status</th>
-            <th>Action</th>
+            <th class="text-center">Action</th>
           </tr>
         </thead>
         <tbody>
@@ -60,10 +60,10 @@
                     <?= esc($order['status_name']) ?>
                   </span>
                 </td>
-                <td>
+                <td class="sticky-action text-center">
                   <a href="<?= base_url('/in-store-sales/' . $order['order_id']) ?>"
                     class="btn btn-sm btn-info">
-                    Detail
+                    <i class="fa-solid fa-eye"></i>
                   </a>
                 </td>
               </tr>
@@ -75,7 +75,7 @@
     </div>
 
     <!-- PAGINATION -->
-    <nav aria-label="Page navigation" class="mt-4 mx-4">
+    <nav aria-label="Page navigation" class="mt-4">
       <ul class="pagination justify-content-end" id="pagination"></ul>
     </nav>
   </div>

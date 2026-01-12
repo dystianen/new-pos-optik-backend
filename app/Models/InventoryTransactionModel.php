@@ -24,6 +24,8 @@ class InventoryTransactionModel extends Model
         'product_id',
         'variant_id',
         'transaction_type',
+        'reference_type',
+        'reference_id',
         'quantity',
         'transaction_date',
         'description',

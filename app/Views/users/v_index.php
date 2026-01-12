@@ -6,16 +6,16 @@
     <a href="<?= base_url('/users/form') ?>" class="btn btn-primary btn-sm">Add User</a>
   </div>
 
-  <div class="card-body px-0 pt-0 pb-2">
-    <div class="table-responsive px-4">
-      <table class="table align-items-center mb-0">
+  <div class="card-body pt-0 pb-2">
+    <div class="table-responsive">
+      <table class="table align-items-center mb-0 table-bordered">
         <thead>
           <tr>
             <th>No</th>
             <th>Username</th>
             <th>Email</th>
             <th>Role</th>
-            <th>Actions</th>
+            <th class="sticky-action text-center">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -32,11 +32,11 @@
                 <td><?= $user['user_name'] ?></td>
                 <td><?= $user['user_email'] ?></td>
                 <td><?= $user['role_name'] ?></td>
-                <td>
-                  <a href="<?= base_url('/users/form?id=' . $user['user_id']) ?>" class="btn btn-sm btn-warning">Edit</a>
+                <td class="sticky-action text-center">
+                  <a href="<?= base_url('/users/form?id=' . $user['user_id']) ?>" class="btn btn-sm btn-warning"><i class="fa-solid fa-pen-to-square"></i></a>
                   <form action="<?= base_url('/users/delete/' . $user['user_id']) ?>" method="post" style="display:inline-block;">
                     <?= csrf_field() ?>
-                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?')">Delete</button>
+                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?')"><i class="fa-solid fa-trash"></i></button>
                   </form>
                 </td>
               </tr>
@@ -47,7 +47,7 @@
       </table>
     </div>
 
-    <nav aria-label="Page navigation example" class="mt-4 mx-4">
+    <nav aria-label="Page navigation example" class="mt-4">
       <ul class="pagination" id="pagination">
       </ul>
     </nav>
@@ -68,7 +68,7 @@
 
   var paginationContainer = document.getElementById('pagination');
   var totalPages = <?= $pager["totalPages"] ?>;
-  if (totalPages >= 1) {
+  if (totalPages > 1) {
     for (var i = 1; i <= totalPages; i++) {
       var pageItem = document.createElement('li');
       pageItem.classList.add('page-item');

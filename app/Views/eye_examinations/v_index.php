@@ -22,9 +22,9 @@
     </div>
   </div>
 
-  <div class="card-body px-0 pt-0 pb-2">
-    <div class="table-responsive px-4">
-      <table class="table align-items-center mb-0">
+  <div class="card-body pt-0 pb-2">
+    <div class="table-responsive">
+      <table class="table align-items-center mb-0 table-bordered">
         <thead>
           <tr>
             <th>No</th>
@@ -32,7 +32,7 @@
             <th>Symptomps</th>
             <th>Diagnosis</th>
             <th>Inspection Date</th>
-            <th>Actions</th>
+            <th class="sticky-action text-center">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -49,7 +49,7 @@
                 <td><?= esc($eyeExamination['symptoms']) ?></td>
                 <td><?= esc($eyeExamination['diagnosis']) ?></td>
                 <td><?= date('d/m/Y H:i', strtotime($eyeExamination['created_at'])) ?></td>
-                <td>
+                <td class="sticky-action text-center">
                   <a href="<?= base_url('/eye-examinations/form?id=' . $eyeExamination['eye_examination_id']) ?>" class="btn btn-sm btn-warning">Edit</a>
                   <form action="<?= base_url('/eye-examinations/delete/' . $eyeExamination['eye_examination_id']) ?>" method="post" style="display:inline-block;">
                     <?= csrf_field() ?>
@@ -64,7 +64,7 @@
       </table>
     </div>
 
-    <nav aria-label="Page navigation example" class="mt-4 mx-4">
+    <nav aria-label="Page navigation example" class="mt-4">
       <ul class="pagination" id="pagination">
       </ul>
     </nav>
@@ -87,7 +87,7 @@
 
   var paginationContainer = document.getElementById('pagination');
   var totalPages = <?= $pager["totalPages"] ?>;
-  if (totalPages >= 1) {
+  if (totalPages > 1) {
     for (var i = 1; i <= totalPages; i++) {
       var pageItem = document.createElement('li');
       pageItem.classList.add('page-item');

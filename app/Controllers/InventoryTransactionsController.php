@@ -171,6 +171,8 @@ class InventoryTransactionsController extends BaseController
         $productId = $this->request->getVar('product_id');
         $variantId = $this->request->getVar('variant_id');
         $type      = $this->request->getVar('transaction_type');
+        $reference_type      = $this->request->getVar('reference_type');
+        $reference_id      = $this->request->getVar('reference_id');
         $qty       = (int) $this->request->getVar('quantity');
 
         $variant = $this->productVariantModel->find($variantId);
@@ -183,6 +185,8 @@ class InventoryTransactionsController extends BaseController
             'product_id' => $productId,
             'variant_id' => $variantId,
             'transaction_type' => $type,
+            'reference_type' => $reference_type,
+            'reference_id' => $reference_id,
             'quantity' => $qty,
             'description' => $this->request->getVar('description'),
             'user_id' => $session->get('id'),

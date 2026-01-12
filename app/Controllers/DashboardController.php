@@ -27,14 +27,11 @@ class DashboardController extends BaseController
 
         // Total Selling dari Inventory Transactions (unit)
         $totalSellingUnits = (int) (
-            $this->db->table('order_items oi')
-            ->selectSum('oi.quantity', 'total_units')
-            ->join('orders o', 'oi.order_id = o.order_id')
-            ->join('order_statuses os', 'o.status_id = os.status_id')
-            ->whereIn('os.status_code', ['processing', 'shipped', 'completed'])
-            ->get()
-            ->getRow()
-            ->total_units
+            $this->InventoryTransactionModel
+                ->selectSum('quantity', 'total_units')
+                ->where('transaction_type', 'out')
+                ->where('reference_type', 'order')
+                ->first()['total_units']
             ?? 0
         );
 
@@ -50,9 +47,10 @@ class DashboardController extends BaseController
 
         // Monthly Sales (Units)
         $monthlySalesUnits = $this->InventoryTransactionModel
-            ->select("MONTH(created_at) AS month, SUM(quantity) AS total")
+            ->select("MONTH(transaction_date) AS month, SUM(quantity) AS total")
             ->where('transaction_type', 'out')
-            ->where('YEAR(created_at)', date('Y'))
+            ->where('reference_type', 'order')
+            ->where('YEAR(transaction_date)', date('Y'))
             ->groupBy('month')
             ->orderBy('month', 'ASC')
             ->findAll();

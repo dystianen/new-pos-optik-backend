@@ -1,5 +1,16 @@
 <?= $this->extend('layouts/l_dashboard.php') ?>
 <?= $this->section('content') ?>
+
+<?php
+$referenceBadges = [
+  'order'      => 'primary',
+  'adjustment' => 'warning',
+  'return'     => 'info',
+  'transfer'   => 'secondary',
+  'initial'    => 'dark',
+];
+?>
+
 <div class="container-fluid card">
   <div class="card-header mb-4 pb-0 d-flex align-items-center justify-content-between">
     <h4>Inventory Transactions List</h4>
@@ -22,19 +33,21 @@
     </div>
   </div>
 
-  <div class="card-body px-0 pt-0 pb-2">
-    <div class="table-responsive px-4">
-      <table class="table align-items-center mb-0">
+  <div class="card-body pt-0 pb-2">
+    <div class="table-responsive">
+      <table class="table align-items-center mb-0 table-bordered">
         <thead>
           <tr>
             <th>No</th>
-            <th>Category</th>
             <th>Product</th>
             <th>Variant</th>
-            <th>Description</th>
+            <th>Transaction Type</th>
+            <th>Reference Type</th>
+            <th>Reference Id</th>
             <th>Quantity</th>
-            <th>Date</th>
-            <th>Actions</th>
+            <th>Description</th>
+            <th>Transaction Date</th>
+            <th class="sticky-action text-center">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -48,6 +61,8 @@
             <?php foreach ($inventory_transactions as $inventory_transaction): ?>
               <tr>
                 <td><?= $startIndex++ ?></td>
+                <td><?= esc($inventory_transaction['product_name']) ?></td>
+                <td><?= esc($inventory_transaction['variant_name']) ?></td>
                 <td>
                   <?php if (strtolower($inventory_transaction['transaction_type']) === 'in') : ?>
                     <span class="badge bg-success">IN</span>
@@ -55,27 +70,48 @@
                     <span class="badge bg-danger">OUT</span>
                   <?php endif; ?>
                 </td>
-                <td><?= esc($inventory_transaction['product_name']) ?></td>
-                <td><?= esc($inventory_transaction['variant_name']) ?></td>
-                <td><?= esc($inventory_transaction['description']) ?></td>
-                <td><?= esc($inventory_transaction['quantity']) ?></td>
-                <td><?= date('d/m/Y H:i', strtotime($inventory_transaction['transaction_date'])) ?></td>
                 <td>
-                  <a href="<?= base_url('/inventory/form?id=' . $inventory_transaction['inventory_transaction_id']) ?>" class="btn btn-sm btn-warning">Edit</a>
-                  <form action="<?= base_url('/inventory/delete/' . $inventory_transaction['inventory_transaction_id']) ?>" method="post" style="display:inline-block;">
+                  <?php
+                  $refType  = strtolower($inventory_transaction['reference_type'] ?? '');
+                  $badgeCls = $referenceBadges[$refType] ?? 'light';
+                  ?>
+                  <span class="badge bg-<?= $badgeCls ?>">
+                    <?= strtoupper(esc($refType ?: 'N/A')) ?>
+                  </span>
+                </td>
+                <td>
+                  <?= esc($inventory_transaction['reference_id'] ?: '-') ?>
+                </td>
+                <td><?= esc($inventory_transaction['quantity']) ?></td>
+                <td><?= esc($inventory_transaction['description']) ?></td>
+                <td><?= date('d/m/Y H:i', strtotime($inventory_transaction['transaction_date'])) ?></td>
+                <td class="sticky-action text-center">
+                  <a href="<?= base_url('/inventory/form?id=' . $inventory_transaction['inventory_transaction_id']) ?>"
+                    class="btn btn-sm btn-warning"
+                    title="Edit">
+                    <i class="fa-solid fa-pen-to-square"></i>
+                  </a>
+
+                  <form action="<?= base_url('/inventory/delete/' . $inventory_transaction['inventory_transaction_id']) ?>"
+                    method="post"
+                    class="d-inline">
                     <?= csrf_field() ?>
-                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?')">Delete</button>
+                    <button type="submit"
+                      class="btn btn-sm btn-danger"
+                      title="Delete"
+                      onclick="return confirm('Are you sure?')">
+                      <i class="fa-solid fa-trash"></i>
+                    </button>
                   </form>
                 </td>
               </tr>
             <?php endforeach; ?>
           <?php endif; ?>
         </tbody>
-
       </table>
     </div>
 
-    <nav aria-label="Page navigation example" class="mt-4 mx-4">
+    <nav aria-label="Page navigation example" class="mt-4">
       <ul class="pagination" id="pagination">
       </ul>
     </nav>
@@ -98,7 +134,7 @@
 
   var paginationContainer = document.getElementById('pagination');
   var totalPages = <?= $pager["totalPages"] ?>;
-  if (totalPages >= 1) {
+  if (totalPages > 1) {
     for (var i = 1; i <= totalPages; i++) {
       var pageItem = document.createElement('li');
       pageItem.classList.add('page-item');

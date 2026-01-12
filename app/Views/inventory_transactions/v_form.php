@@ -50,12 +50,49 @@
 
         <!-- TYPE -->
         <div class="col-12 col-md-6 mb-3">
-          <label for="transaction_type">Transaction Type</label>
+          <label for="transaction_type" class="form-label">Transaction Type</label>
           <select class="form-control" name="transaction_type" id="transaction_type" required>
-            <option value="in" <?= isset($transaction) && $transaction['transaction_type'] == 'in' ? 'selected' : '' ?>>IN</option>
-            <option value="out" <?= isset($transaction) && $transaction['transaction_type'] == 'out' ? 'selected' : '' ?>>OUT</option>
+            <option value="">-- Select Type --</option>
+            <option value="in" <?= isset($transaction) && $transaction['transaction_type'] === 'in' ? 'selected' : '' ?>>IN</option>
+            <option value="out" <?= isset($transaction) && $transaction['transaction_type'] === 'out' ? 'selected' : '' ?>>OUT</option>
           </select>
         </div>
+
+        <div class="col-12 col-md-6 mb-3">
+          <label for="reference_type" class="form-label">Reference Type</label>
+          <select class="form-control" name="reference_type" id="reference_type">
+            <option value="">-- No Reference --</option>
+            <?php
+            $referenceTypes = [
+              'order'       => 'Order',
+              'adjustment'  => 'Adjustment',
+              'return'      => 'Return',
+              'transfer'    => 'Transfer',
+              'initial'     => 'Initial Stock'
+            ];
+            foreach ($referenceTypes as $key => $label):
+            ?>
+              <option value="<?= $key ?>" <?= isset($transaction) && $transaction['reference_type'] === $key ? 'selected' : '' ?>>
+                <?= $label ?>
+              </option>
+            <?php endforeach; ?>
+          </select>
+        </div>
+
+        <div class="col-12 col-md-6 mb-3">
+          <label for="reference_id" class="form-label">Reference ID</label>
+          <input
+            type="text"
+            class="form-control"
+            name="reference_id"
+            id="reference_id"
+            placeholder="e.g. ORDER-UUID / TRANSFER-ID"
+            value="<?= esc($transaction['reference_id'] ?? '') ?>">
+          <small class="text-muted">
+            Optional. Fill if transaction relates to an order or process.
+          </small>
+        </div>
+
 
         <!-- QTY -->
         <div class="col-12 col-md-6 mb-3">

@@ -216,7 +216,7 @@
                   <th>Price</th>
                   <th>Stock</th>
                   <th>Image</th>
-                  <th>Actions</th>
+                  <th class="sticky-action text-center">Actions</th>
                 </tr>
               </thead>
               <tbody></tbody>

@@ -18,6 +18,7 @@ use App\Models\ProductModel;
 use App\Models\ProductVariantModel;
 use App\Models\ShippingRateModel;
 use CodeIgniter\API\ResponseTrait;
+use Config\Session;
 
 class OrderController extends BaseController
 {
@@ -302,35 +303,6 @@ class OrderController extends BaseController
                 ]);
                 log_message('debug', 'ORDER ITEM QUERY: ' . $this->orderItemModel->getLastQuery());
                 $orderItemId = $this->orderItemModel->getInsertID();
-
-                // ⚡ KURANGI STOK
-                if ($item['variant_id']) {
-                    // Jika ada varian, kurangi stok di product_variants
-                    log_message('debug', 'REDUCE variant stock');
-                    $this->productVariantModel
-                        ->where('variant_id', $item['variant_id'])
-                        ->set('stock', 'stock - ' . (int)$item['quantity'], false)
-                        ->update();
-
-                    // Kalkulasi ulang total stok product dari semua variantnya
-                    log_message('debug', 'RECALCULATE product total stock');
-                    $db->query("
-                        UPDATE products p
-                        SET p.product_stock = (
-                            SELECT COALESCE(SUM(pv.stock), 0)
-                            FROM product_variants pv
-                            WHERE pv.product_id = p.product_id
-                        )
-                        WHERE p.product_id = ?
-                    ", [$item['product_id']]);
-                } else {
-                    // Jika tidak ada varian, kurangi stok di products langsung
-                    log_message('debug', 'REDUCE product stock');
-                    $this->productModel
-                        ->where('product_id', $item['product_id'])
-                        ->set('product_stock', 'product_stock - ' . (int)$item['quantity'], false)
-                        ->update();
-                }
 
                 // 👓 PRESCRIPTION (jika ada)
                 if (!empty($item['prescription'])) {
@@ -1016,13 +988,80 @@ class OrderController extends BaseController
      */
     public function approvePayment($orderId)
     {
-        // Update order status → PAID
-        $this->orderModel->update($orderId, [
-            'status_id' => 'cc46d2a8-436c-42fc-96a1-ffb537dbabed' // PROCESSING ID STATUS
-        ]);
+        $this->db->transBegin();
+        $session = Session();
 
-        return redirect()->back()->with('success', 'Payment approved');
+        try {
+            // 1️⃣ Cegah double approve
+            $order = $this->orderModel->find($orderId);
+
+            if (!$order) {
+                throw new \Exception('Order tidak ditemukan');
+            }
+
+            if ($order['status_id'] === 'cc46d2a8-436c-42fc-96a1-ffb537dbabed') {
+                throw new \Exception('Order sudah diproses');
+            }
+
+            // 2️⃣ Update status → PAID / PROCESSING
+            $this->orderModel->update($orderId, [
+                'status_id' => 'cc46d2a8-436c-42fc-96a1-ffb537dbabed'
+            ]);
+
+            // 3️⃣ Ambil item order
+            $items = $this->orderItemModel
+                ->where('order_id', $orderId)
+                ->findAll();
+
+            foreach ($items as $item) {
+                // 4️⃣ Insert inventory OUT
+                $this->InventoryTransactionModel->insert([
+                    'inventory_transaction_id' => service('uuid')->uuid4()->toString(),
+                    'user_id'               => $session->get('id'), // admin yg approve
+                    'product_id'            => $item['product_id'],
+                    'variant_id'            => $item['variant_id'],
+                    'transaction_type'      => 'out',
+                    'reference_type'        => 'order',
+                    'reference_id'          => $orderId,
+                    'quantity'              => (int)$item['quantity'],
+                    'transaction_date'      => date('Y-m-d H:i:s'),
+                    'description'           => 'Order payment approved'
+                ]);
+
+                // 5️⃣ Reduce stock
+                if ($item['variant_id']) {
+                    $this->productVariantModel
+                        ->where('variant_id', $item['variant_id'])
+                        ->set('stock', 'stock - ' . (int)$item['quantity'], false)
+                        ->update();
+
+                    // sync total product stock
+                    $this->db->query("
+                        UPDATE products p
+                        SET product_stock = (
+                            SELECT COALESCE(SUM(stock), 0)
+                            FROM product_variants
+                            WHERE product_id = p.product_id
+                        )
+                        WHERE p.product_id = ?
+                    ", [$item['product_id']]);
+                } else {
+                    $this->productModel
+                        ->where('product_id', $item['product_id'])
+                        ->set('product_stock', 'product_stock - ' . (int)$item['quantity'], false)
+                        ->update();
+                }
+            }
+
+            $this->db->transCommit();
+
+            return redirect()->back()->with('success', 'Payment approved & stock updated');
+        } catch (\Throwable $e) {
+            $this->db->transRollback();
+            return redirect()->back()->with('error', $e->getMessage());
+        }
     }
+
 
     /**
      * REJECT PAYMENT

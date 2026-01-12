@@ -6,16 +6,16 @@
     <a href="<?= base_url('/product-attribute/form') ?>" class="btn btn-primary btn-sm">Add Attribute</a>
   </div>
 
-  <div class="card-body px-0 pt-0 pb-2">
-    <div class="table-responsive px-4">
-      <table class="table align-items-center mb-0">
+  <div class="card-body pt-0 pb-2">
+    <div class="table-responsive">
+      <table class="table align-items-center mb-0 table-bordered">
         <thead>
           <tr>
             <th>No</th>
             <th>Name</th>
             <th>Type</th>
             <th>Values</th>
-            <th>Actions</th>
+            <th class="sticky-action text-center">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -32,11 +32,13 @@
                 <td><?= $attribute['attribute_name'] ?></td>
                 <td><?= $attribute['attribute_type'] ?></td>
                 <td><?= !empty($attribute['master_values']) ? esc($attribute['master_values']) : '-' ?></td>
-                <td>
-                  <a href="<?= base_url('/product-attribute/form?id=' . $attribute['attribute_id']) ?>" class="btn btn-sm btn-warning">Edit</a>
+                <td class="sticky-action text-center">
+                  <a href="<?= base_url('/product-attribute/form?id=' . $attribute['attribute_id']) ?>" class="btn btn-sm btn-warning">
+                    <i class="fa-solid fa-pen-to-square"></i>
+                  </a>
                   <form action="<?= base_url('/product-attribute/delete/' . $attribute['attribute_id']) ?>" method="post" style="display:inline-block;">
                     <?= csrf_field() ?>
-                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?')">Delete</button>
+                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?')"><i class="fa-solid fa-trash"></i></button>
                   </form>
                 </td>
               </tr>
@@ -47,7 +49,7 @@
       </table>
     </div>
 
-    <nav aria-label="Page navigation example" class="mt-4 mx-4">
+    <nav aria-label="Page navigation example" class="mt-4">
       <ul class="pagination" id="pagination">
       </ul>
     </nav>
@@ -68,7 +70,7 @@
 
   var paginationContainer = document.getElementById('pagination');
   var totalPages = <?= $pager["totalPages"] ?>;
-  if (totalPages >= 1) {
+  if (totalPages > 1) {
     for (var i = 1; i <= totalPages; i++) {
       var pageItem = document.createElement('li');
       pageItem.classList.add('page-item');
