@@ -45,6 +45,7 @@ function orderStatusBadge($status)
       <table class="table align-items-center mb-0 table-bordered">
         <thead class="thead-light">
           <tr>
+            <th class="text-center">No</th>
             <th>Order ID</th>
             <th>Order Date</th>
             <th>Customer</th>
@@ -55,8 +56,12 @@ function orderStatusBadge($status)
           </tr>
         </thead>
         <tbody>
+          <?php
+          $startIndex = ($pager['currentPage'] - 1) * $pager['limit'] + 1;
+          ?>
           <?php foreach ($orders as $order): ?>
             <tr>
+              <td class="text-center"><?= $startIndex++ ?></td>
               <td>
                 <strong>#<?= $order['order_id'] ?></strong>
               </td>
