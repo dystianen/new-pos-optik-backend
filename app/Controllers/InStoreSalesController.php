@@ -246,7 +246,7 @@ class InStoreSalesController extends BaseController
                         $this->notificationModel->addNotification(
                             'stock_empty',
                             'Stok variant "' . $updatedVariant['variant_name'] . '" telah habis',
-                            $variantId
+                            $productId
                         );
                     }
                 } else {

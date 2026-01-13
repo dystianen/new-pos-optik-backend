@@ -626,6 +626,8 @@
     function getNotifLink(notif) {
       if (notif.type === 'new_order') {
         return `/online-sales/${notif.related_id}`;
+      } else if (['low_stock', 'stock_empty'].includes(notif.type)) {
+        return `/products/form?id=${notif.related_id}`;
       }
       return '#';
     }
