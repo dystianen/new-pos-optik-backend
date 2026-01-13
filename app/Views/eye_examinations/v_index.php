@@ -18,7 +18,7 @@
         </button>
       </form>
 
-      <a href="<?= base_url('/eye-examinations/form') ?>" class="btn btn-sm btn-primary">Add</a>
+      <a href="<?= base_url('/eye-examinations/form') ?>" class="btn btn-sm btn-primary"><i class="fas fa-plus"></i> Add</a>
     </div>
   </div>
 

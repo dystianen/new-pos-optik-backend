@@ -13,6 +13,7 @@
         "php": "^7.4 || ^8.0",
         "agungsugiarto/codeigniter4-cors": "^3.0",
         "aws/aws-sdk-php": "^3.363",
+        "box/spout": "^3.3",
         "codeigniter4/framework": "^4.0",
         "firebase/php-jwt": "^6.11",
         "ramsey/uuid": "^4.9"

@@ -29,7 +29,7 @@ $referenceBadges = [
         </button>
       </form>
 
-      <a href="<?= base_url('/inventory/form') ?>" class="btn btn-sm btn-primary">Add Inventory</a>
+      <a href="<?= base_url('/inventory/form') ?>" class="btn btn-sm btn-primary"> <i class="fas fa-plus"></i> Add Inventory</a>
     </div>
   </div>
 

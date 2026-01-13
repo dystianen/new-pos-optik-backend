@@ -131,14 +131,17 @@ $routes->group('in-store-sales', ['filter' => 'authGuard'], function ($routes) {
   $routes->get('', 'InStoreSalesController::index');
   $routes->get('create', 'InStoreSalesController::create');
   $routes->post('store', 'InStoreSalesController::store');
+  $routes->get('export', 'InStoreSalesController::export');
+
   $routes->get('success/(:segment)', 'InStoreSalesController::success/$1');
   $routes->get('print/(:segment)', 'InStoreSalesController::print/$1');
-
   $routes->get('(:segment)', 'InStoreSalesController::detail/$1');
 });
 
 $routes->group('online-sales', ['filter' => 'authGuard'], function ($routes) {
   $routes->get('', 'OnlineSalesController::index');
+  $routes->get('export', 'OnlineSalesController::export');
+
   $routes->get('(:segment)', 'OnlineSalesController::detail/$1');
   $routes->post('(:segment)/approve', 'OnlineSalesController::approvePayment/$1');
   $routes->post('(:segment)/reject', 'OnlineSalesController::rejectPayment/$1');

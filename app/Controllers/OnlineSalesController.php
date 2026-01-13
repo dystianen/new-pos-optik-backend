@@ -1218,4 +1218,42 @@ class OnlineSalesController extends BaseController
 
         return view('online_sales/v_detail', $data);
     }
+
+    public function export()
+    {
+        $search = $this->request->getVar('q');
+
+        $builder = $this->orderModel
+            ->select('
+                orders.order_id,
+                orders.created_at,
+                orders.grand_total,
+                customers.customer_name,
+                customers.customer_email,
+                order_statuses.status_name,
+                COUNT(order_items.order_item_id) as total_items
+            ')
+            ->join('customers', 'customers.customer_id = orders.customer_id')
+            ->join('order_statuses', 'order_statuses.status_id = orders.status_id')
+            ->join('order_items', 'order_items.order_id = orders.order_id', 'left')
+            ->where('orders.order_type', 'online');
+
+        if (!empty($search)) {
+            $builder->groupStart()
+                ->like('orders.order_id', $search)
+                ->orLike('customers.customer_name', $search)
+                ->orLike('customers.customer_email', $search)
+                ->orLike('order_statuses.status_name', $search)
+                ->groupEnd();
+        }
+
+        $orders = $builder
+            ->groupBy('orders.order_id')
+            ->orderBy('orders.created_at', 'DESC')
+            ->findAll();
+
+        // Export using helper
+        $filename = 'Online-Sales_' . date('Y-m-d_His') . '.xlsx';
+        return exportSalesExcelSpout($orders, $filename, 'online');
+    }
 }

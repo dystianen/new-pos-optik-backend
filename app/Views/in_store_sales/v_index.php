@@ -19,7 +19,11 @@
       </form>
       <a href="<?= base_url('/in-store-sales/create') ?>"
         class="btn btn-primary btn-sm">
-        Add Sales
+        <i class="fas fa-plus"></i> Add Sales
+      </a>
+      <a href="<?= base_url('in-store-sales/export' . (!empty($search) ? '?q=' . $search : '')) ?>"
+        class="btn btn-success btn-sm">
+        <i class="fas fa-file-excel"></i> Export Excel
       </a>
     </div>
   </div>

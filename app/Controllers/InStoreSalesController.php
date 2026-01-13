@@ -3,6 +3,10 @@
 namespace App\Controllers;
 
 use App\Controllers\BaseController;
+use Box\Spout\Writer\Common\Creator\WriterEntityFactory;
+use Box\Spout\Common\Entity\Style\Style;
+use Box\Spout\Common\Entity\Style\Color;
+use Box\Spout\Writer\Common\Creator\Style\StyleBuilder;
 
 class InStoreSalesController extends BaseController
 {
@@ -394,5 +398,44 @@ class InStoreSalesController extends BaseController
             'order' => $order,
             'items' => $items
         ]);
+    }
+
+    public function export()
+    {
+        $search = $this->request->getVar('q');
+
+        // Get all data
+        $builder = $this->orderModel
+            ->select('
+                orders.order_id,
+                orders.created_at,
+                orders.grand_total,
+                customers.customer_name,
+                customers.customer_email,
+                order_statuses.status_name,
+                COUNT(order_items.order_item_id) as total_items
+            ')
+            ->join('customers', 'customers.customer_id = orders.customer_id')
+            ->join('order_statuses', 'order_statuses.status_id = orders.status_id')
+            ->join('order_items', 'order_items.order_id = orders.order_id', 'left')
+            ->where('orders.order_type', 'offline');
+
+        if (!empty($search)) {
+            $builder->groupStart()
+                ->like('orders.order_id', $search)
+                ->orLike('customers.customer_name', $search)
+                ->orLike('customers.customer_email', $search)
+                ->orLike('order_statuses.status_name', $search)
+                ->groupEnd();
+        }
+
+        $orders = $builder
+            ->groupBy('orders.order_id')
+            ->orderBy('orders.created_at', 'DESC')
+            ->findAll();
+
+        // Export using helper
+        $filename = 'In-Store-Sales_' . date('Y-m-d_His') . '.xlsx';
+        return exportSalesExcelSpout($orders, $filename, 'in-store');
     }
 }

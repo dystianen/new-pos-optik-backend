@@ -33,6 +33,10 @@ function orderStatusBadge($status)
           <i class="fa-solid fa-magnifying-glass"></i>
         </button>
       </form>
+      <a href="<?= base_url('online-sales/export' . (!empty($search) ? '?q=' . $search : '')) ?>"
+        class="btn btn-success btn-sm">
+        <i class="fas fa-file-excel"></i> Export Excel
+      </a>
     </div>
   </div>
 

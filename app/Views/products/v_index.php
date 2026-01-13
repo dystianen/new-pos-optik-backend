@@ -18,7 +18,7 @@
         </button>
       </form>
 
-      <a href="<?= base_url('/products/form') ?>" class="btn btn-primary btn-sm">Add Product</a>
+      <a href="<?= base_url('/products/form') ?>" class="btn btn-primary btn-sm"> <i class="fas fa-plus"></i> Add Product</a>
     </div>
   </div>
 

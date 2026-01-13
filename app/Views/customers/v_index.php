@@ -3,7 +3,7 @@
 <div class="container-fluid card">
   <div class="card-header mb-4 pb-0 d-flex align-items-center justify-content-between">
     <h4>Customers List</h4>
-    <a href="<?= base_url('/customers/form') ?>" class="btn btn-primary btn-sm">Add Customer</a>
+    <a href="<?= base_url('/customers/form') ?>" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> Add Customer</a>
   </div>
 
   <div class="card-body pt-0 pb-2">

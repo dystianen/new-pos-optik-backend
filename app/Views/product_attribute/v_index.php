@@ -3,7 +3,7 @@
 <div class="container-fluid card">
   <div class="card-header mb-4 pb-0 d-flex align-items-center justify-content-between">
     <h4>Product Attribute List</h4>
-    <a href="<?= base_url('/product-attribute/form') ?>" class="btn btn-primary btn-sm">Add Attribute</a>
+    <a href="<?= base_url('/product-attribute/form') ?>" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> Add Attribute</a>
   </div>
 
   <div class="card-body pt-0 pb-2">
