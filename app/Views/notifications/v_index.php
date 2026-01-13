@@ -44,7 +44,7 @@ function notifTypeBadge($type)
 
           <?php if (empty($data)): ?>
             <tr>
-              <td colspan="4" class="text-center text-muted">No attribute data available.</td>
+              <td colspan="4" class="text-center text-muted">No notification data available.</td>
             </tr>
           <?php else: ?>
             <?php foreach ($data as $d): ?>
