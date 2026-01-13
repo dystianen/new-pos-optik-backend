@@ -3,7 +3,7 @@
 
 <div class="container-fluid card">
   <div class="card-header mb-4 pb-0 d-flex align-items-center justify-content-between">
-    <h4>In Store Sales</h4>
+    <h4>In-Store Sales</h4>
     <div class="d-flex align-items-center gap-2">
       <form action="<?= base_url('/in-store-sales') ?>" method="get" class="d-flex align-items-center">
         <input

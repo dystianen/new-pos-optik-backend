@@ -18,7 +18,7 @@ function orderStatusBadge($status)
 
 <div class="container-fluid card">
   <div class="card-header mb-4 pb-0 d-flex align-items-center justify-content-between">
-    <h4>Order List</h4>
+    <h4>Online Sales</h4>
 
     <div class="d-flex align-items-center gap-2">
       <form action="<?= base_url('/online-sales') ?>" method="get" class="d-flex align-items-center">
