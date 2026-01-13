@@ -47,7 +47,7 @@ function orderStatusBadge($status)
             <th>Total Item</th>
             <th>Grand Total</th>
             <th>Status</th>
-            <th class="text-center">Action</th>
+            <th class="sticky-action text-center">Actions</th>
           </tr>
         </thead>
         <tbody>
