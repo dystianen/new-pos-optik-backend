@@ -131,6 +131,9 @@ $routes->group('in-store-sales', ['filter' => 'authGuard'], function ($routes) {
   $routes->get('', 'InStoreSalesController::index');
   $routes->get('create', 'InStoreSalesController::create');
   $routes->post('store', 'InStoreSalesController::store');
+  $routes->get('success/(:segment)', 'InStoreSalesController::success/$1');
+  $routes->get('print/(:segment)', 'InStoreSalesController::print/$1');
+
   $routes->get('(:segment)', 'InStoreSalesController::detail/$1');
 });
 

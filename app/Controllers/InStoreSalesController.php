@@ -228,7 +228,7 @@ class InStoreSalesController extends BaseController
             $db->transComplete();
 
             return redirect()
-                ->to(site_url('in-store-sales'))
+                ->to(site_url('in-store-sales/success/' . $orderId))
                 ->with('success', 'Transaksi berhasil disimpan');
         } catch (\Throwable $e) {
             $db->transRollback();
@@ -279,5 +279,47 @@ class InStoreSalesController extends BaseController
         ];
 
         return view('in_store_sales/v_detail', $data);
+    }
+
+    public function success($orderId)
+    {
+        return view('in_store_sales/v_success', [
+            'order_id' => $orderId
+        ]);
+    }
+
+    public function print($orderId)
+    {
+        $order = $this->orderModel
+            ->select('
+                orders.order_id,
+                orders.created_at,
+                orders.grand_total,
+                customers.customer_name
+            ')
+            ->join('customers', 'customers.customer_id = orders.customer_id')
+            ->where('orders.order_id', $orderId)
+            ->first();
+
+        if (!$order) {
+            throw new \CodeIgniter\Exceptions\PageNotFoundException('Order tidak ditemukan');
+        }
+
+        $items = $this->orderItemModel
+            ->select('
+            order_items.quantity,
+            order_items.price,
+            products.product_name,
+            product_variants.variant_name
+        ')
+            ->join('products', 'products.product_id = order_items.product_id')
+            ->join('product_variants', 'product_variants.variant_id = order_items.variant_id', 'left')
+            ->where('order_items.order_id', $orderId)
+            ->findAll();
+
+        return view('in_store_sales/v_print_struk', [
+            'order' => $order,
+            'items' => $items
+        ]);
     }
 }
