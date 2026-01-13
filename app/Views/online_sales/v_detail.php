@@ -115,30 +115,32 @@ function badgeStatus($status)
       </div>
     </div>
 
-    <div class="col-md-6">
-      <div class="card h-100">
-        <div class="card-body">
-          <strong>Payment</strong>
+    <?php if ($payment): ?>
+      <div class="col-md-6">
+        <div class="card h-100">
+          <div class="card-body">
+            <strong>Payment</strong>
 
-          <div class="mt-2">
-            <p class="mb-1">
-              Proof <br>
-              <img src="<?= esc($payment['proof']) ?>" class="rounded border w-50 h-100" style="object-fit: contain;" alt="payment">
-            </p>
-            <p class="mb-1">
-              Amount:
-              <strong>Rp <?= number_format($payment['amount']) ?? '-' ?></strong>
-            </p>
-            <p class="mb-1">
-              Method: <strong><?= $payment['method_name'] ?? '-' ?></strong>
-            </p>
-            <p class="mb-0">
-              Paid At: <?= $payment['paid_at'] ?? '-' ?>
-            </p>
+            <div class="mt-2">
+              <p class="mb-1">
+                Proof <br>
+                <img src="<?= esc($payment['proof']) ?>" class="rounded border w-50 h-100" style="object-fit: contain;" alt="payment">
+              </p>
+              <p class="mb-1">
+                Amount:
+                <strong>Rp <?= number_format($payment['amount']) ?? '-' ?></strong>
+              </p>
+              <p class="mb-1">
+                Method: <strong><?= $payment['method_name'] ?? '-' ?></strong>
+              </p>
+              <p class="mb-0">
+                Paid At: <?= $payment['paid_at'] ?? '-' ?>
+              </p>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    <?php endif ?>
   </div>
 
   <?php if (in_array($order['status_code'], ['waiting_confirmation', 'processing'])): ?>

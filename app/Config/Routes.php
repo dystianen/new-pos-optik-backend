@@ -149,3 +149,9 @@ $routes->group('roles', ['filter' => 'authGuard'], function ($routes) {
   $routes->post('save', 'RoleController::save');
   $routes->post('delete/(:any)', 'RoleController::delete/$1');
 });
+
+$routes->group('notifications', ['filter' => 'authGuard'], function ($routes) {
+  $routes->get('', 'NotificationController::index');
+  $routes->post('read-all', 'NotificationController::markAllRead');
+  $routes->post('read/(:segment)', 'NotificationController::markRead/$1');
+});

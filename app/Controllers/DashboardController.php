@@ -40,8 +40,7 @@ class DashboardController extends BaseController
             ->where('DATE(orders.created_at)', date('Y-m-d'))
             ->get()
             ->getRow()
-            ->total_quantity;
-
+            ->total_quantity ?? 0;
 
         // ONLINE SALES
         $onlineSales = $this->orderModel
@@ -60,7 +59,7 @@ class DashboardController extends BaseController
             ->first()['total'] ?? 0;
 
         // TOTAL CUSTOMERS
-        $totalCustomers = $this->customerModel->countAllResults();
+        $totalCustomers = $this->customerModel->countAllResults() ?? 0;
 
         // LOW STOCK
         $lowStockCount = $this->productModel
@@ -106,9 +105,9 @@ class DashboardController extends BaseController
          * ORDER STATUS SUMMARY
          * ======================= */
         $orderStatuses = $this->orderModel
-            ->select('os.status_code AS status, COUNT(orders.order_id) AS total')
+            ->select('os.status_name AS status, os.status_code, COUNT(order_id) AS total')
             ->join('order_statuses os', 'orders.status_id = os.status_id')
-            ->groupBy('os.status_code')
+            ->groupBy(['os.status_code', 'os.status_name'])
             ->findAll();
 
         return view('v_dashboard', [

@@ -35,6 +35,14 @@ class NotificationModel extends Model
         return $this->findAll($limit);
     }
 
+    /* hitung unread */
+    public function countUnread()
+    {
+        return $this->where([
+            'is_read' => 0
+        ])->countAllResults();
+    }
+
     // Tandai notifikasi sebagai dibaca
     public function markAsRead($id)
     {

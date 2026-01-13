@@ -961,11 +961,12 @@ class OnlineSalesController extends BaseController
                     ", [$item['product_id']]);
 
                     // ✅ Cek stok variant, buat notifikasi jika kurang dari 5
+                    $product = $this->productVariantModel->find($item['product_id']);
                     $variant = $this->productVariantModel->find($item['variant_id']);
                     if ($variant['stock'] < 5) {
                         $this->notificationModel->addNotification(
                             'low_stock',
-                            "Stok barang '{$variant['variant_name']}' tinggal {$variant['stock']}",
+                            "Stok barang '{$product['product_name']} ({$variant['variant_name']})' tinggal {$variant['stock']}",
                             $variant['variant_id']
                         );
                     }

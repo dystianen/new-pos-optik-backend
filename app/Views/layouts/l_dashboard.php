@@ -228,7 +228,28 @@
 
           <div class="collapse navbar-collapse mt-sm-0 mt-2 me-md-0 me-sm-4" id="navbar">
             <div class="ms-md-auto" />
-            <ul class="navbar-nav justify-content-end">
+            <ul class="navbar-nav justify-content-end gap-4">
+              <li class="nav-item position-relative">
+                <a href="#"
+                  class="nav-link text-white"
+                  onclick="toggleNotif(event)">
+                  <i class="fa fa-bell"></i>
+                  <span class="badge bg-danger badge-notification" style="display:none;">0</span>
+                </a>
+
+                <div id="notifMenu" class="notif-dropdown">
+                  <div class="notif-header">
+                    <h5>Notifications</h5>
+                  </div>
+
+                  <div id="notifList"></div>
+
+                  <div class="notif-footer">
+                    <a href="/notifications">Lihat semua notifikasi</a>
+                  </div>
+                </div>
+              </li>
+
               <li class="nav-item dropdown d-flex align-items-center">
                 <a class="nav-link text-white font-weight-bold px-0 dropdown-toggle" onclick="showDropdown()" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                   <i class="fa fa-user me-sm-1"></i>
@@ -353,6 +374,109 @@
     </div>
   </div>
   </div>
+
+  <style>
+    .notif-dropdown {
+      position: absolute;
+      top: 120%;
+      right: 0;
+      width: 320px;
+      background: #fff;
+      border-radius: 14px;
+      box-shadow: 0 12px 35px rgba(0, 0, 0, .18);
+      z-index: 9999;
+
+      display: flex;
+      flex-direction: column;
+
+      /* hidden state */
+      opacity: 0;
+      transform: translateY(-10px);
+      visibility: hidden;
+      pointer-events: none;
+
+      transition:
+        opacity .25s cubic-bezier(.4, 0, .2, 1),
+        transform .25s cubic-bezier(.4, 0, .2, 1);
+    }
+
+    .notif-header {
+      padding: 10px;
+      border-bottom: 1px solid #eee;
+    }
+
+    .notif-dropdown.show {
+      opacity: 1;
+      transform: translateY(0);
+      visibility: visible;
+      pointer-events: auto;
+    }
+
+    .badge-notification {
+      position: absolute;
+      top: -2px;
+      right: -4px;
+      font-size: 10px;
+      padding: 4px 6px;
+    }
+
+    /* item */
+    .notif-item {
+      display: flex;
+      gap: 12px;
+      padding: 12px 14px;
+      text-decoration: none;
+      color: #344767;
+      transition: background .2s ease;
+      border-radius: 14px;
+    }
+
+    .notif-item:hover {
+      background: #f5f7fa;
+    }
+
+    .notif-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, .05);
+      font-size: 14px;
+    }
+
+    .notif-content {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .notif-title {
+      font-size: 14px;
+      line-height: 1.3;
+    }
+
+    .notif-time {
+      font-size: 12px;
+      color: #8392ab;
+      margin-top: 2px;
+    }
+
+    /* footer */
+    .notif-footer {
+      padding: 10px;
+      text-align: center;
+      border-top: 1px solid #eee;
+    }
+
+    .notif-footer a {
+      font-size: 13px;
+      color: #7048e8;
+      text-decoration: none;
+      font-weight: 600;
+    }
+  </style>
+
   <!--   Core JS Files   -->
   <script src="<?= base_url('assets'); ?>/js/core/popper.min.js"></script>
   <script src="<?= base_url('assets'); ?>/js/core/bootstrap.min.js"></script>
@@ -382,6 +506,159 @@
         dropdown.classList.remove('d-none'); // menghapus class d-none
       }
     }
+
+    function toggleNotif(e) {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const menu = document.getElementById('notifMenu');
+      menu.classList.toggle('show');
+    }
+
+    // klik di luar → close
+    document.addEventListener('click', function() {
+      const menu = document.getElementById('notifMenu');
+      menu.classList.remove('show');
+    });
+
+    // klik di dalam dropdown jangan close
+    document.getElementById('notifMenu').addEventListener('click', function(e) {
+      e.stopPropagation();
+    });
+
+    const notifMenu = document.getElementById('notifMenu');
+    const notifBadge = document.querySelector('.badge-notification');
+
+    function loadNotifications() {
+      fetch('/notifications')
+        .then(res => res.json())
+        .then(res => {
+
+          if (!res.status) return;
+
+          /* badge */
+          if (res.count > 0) {
+            notifBadge.textContent = res.count;
+            notifBadge.style.display = 'inline-flex';
+          } else {
+            notifBadge.style.display = 'none';
+          }
+
+          const notifList = document.getElementById('notifList');
+          notifList.innerHTML = '';
+
+          /* empty state */
+          if (res.data.length === 0) {
+            notifList.innerHTML = `
+          <div class="notif-item">
+            <div class="notif-content">
+              <div class="notif-title text-muted">
+                Tidak ada notifikasi
+              </div>
+            </div>
+          </div>
+        `;
+            return;
+          }
+
+          /* render notif */
+          res.data.forEach(notif => {
+            const item = document.createElement('a');
+            item.href = getNotifLink(notif);
+            item.className = 'notif-item';
+            item.onclick = function() {
+              readNotif(notif.notification_id);
+            };
+
+            item.innerHTML = `
+          <div class="notif-icon ${getNotifColor(notif.type)}">
+            <i class="${getNotifIcon(notif.type)}"></i>
+          </div>
+          <div class="notif-content">
+            <div class="notif-title">${notif.message}</div>
+            <div class="notif-time">
+              <i class="fa fa-clock"></i> ${timeAgo(notif.created_at)}
+            </div>
+          </div>
+        `;
+
+            notifList.appendChild(item);
+          });
+        })
+        .catch(err => console.error('Notif error:', err));
+    }
+
+
+    function readNotif(id) {
+      fetch('/notifications/read/' + id, {
+        method: 'POST'
+      });
+    }
+
+    /* helper */
+    function getNotifIcon(type) {
+      switch (type) {
+        case 'new_order':
+          return 'fa fa-shopping-cart';
+        case 'stock':
+          return 'fa fa-box';
+        default:
+          return 'fa fa-bell';
+      }
+    }
+
+    function getNotifColor(type) {
+      switch (type) {
+        case 'order':
+          return 'text-success';
+        case 'stock':
+          return 'text-warning';
+        default:
+          return 'text-primary';
+      }
+    }
+
+    function getNotifLink(notif) {
+      if (notif.type === 'new_order') {
+        return `/online-sales/${notif.related_id}`;
+      }
+      return '#';
+    }
+
+    function timeAgo(date) {
+      const seconds = Math.floor((new Date() - new Date(date)) / 1000);
+      const units = [{
+          l: 'tahun',
+          s: 31536000
+        },
+        {
+          l: 'bulan',
+          s: 2592000
+        },
+        {
+          l: 'hari',
+          s: 86400
+        },
+        {
+          l: 'jam',
+          s: 3600
+        },
+        {
+          l: 'menit',
+          s: 60
+        }
+      ];
+
+      for (let u of units) {
+        const v = Math.floor(seconds / u.s);
+        if (v > 0) return `${v} ${u.l} lalu`;
+      }
+      return 'baru saja';
+    }
+
+    /* initial + realtime */
+    loadNotifications();
+    setInterval(loadNotifications, 10000);
   </script>
 
   </script>
