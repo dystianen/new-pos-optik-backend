@@ -40,6 +40,7 @@
             <th width="120">Harga</th>
             <th width="80">Qty</th>
             <th width="120">Subtotal</th>
+            <th width="180">Prescription</th>
             <th width="50"></th>
           </tr>
         </thead>
@@ -87,6 +88,37 @@
               <input type="text" class="form-control subtotal" readonly>
             </td>
 
+            <td>
+              <div class="d-flex flex-column gap-2">
+
+                <!-- TOGGLE -->
+                <select name="items[0][prescription][type]"
+                  class="form-select rx-type">
+                  <option value="none">Tanpa Resep</option>
+                  <option value="manual">Input Manual</option>
+                </select>
+
+                <!-- RX FORM -->
+                <div class="rx-form d-none">
+
+                  <small class="fw-bold">OD (Right Eye)</small>
+                  <div class="d-flex gap-2 flex-column mb-2">
+                    <input type="text" name="items[0][prescription][right][sph]" class="form-control form-control-sm" placeholder="SPH">
+                    <input type="text" name="items[0][prescription][right][cyl]" class="form-control form-control-sm" placeholder="CYL">
+                    <input type="text" name="items[0][prescription][right][axis]" class="form-control form-control-sm" placeholder="Axis">
+                    <input type="text" name="items[0][prescription][right][pd]" class="form-control form-control-sm" placeholder="PD">
+                  </div>
+
+                  <small class="fw-bold">OS (Left Eye)</small>
+                  <div class="d-flex gap-2 flex-column">
+                    <input type="text" name="items[0][prescription][left][sph]" class="form-control form-control-sm" placeholder="SPH">
+                    <input type="text" name="items[0][prescription][left][cyl]" class="form-control form-control-sm" placeholder="CYL">
+                    <input type="text" name="items[0][prescription][left][axis]" class="form-control form-control-sm" placeholder="Axis">
+                    <input type="text" name="items[0][prescription][left][pd]" class="form-control form-control-sm" placeholder="PD">
+                  </div>
+                </div>
+              </div>
+            </td>
 
             <td>
               <button type="button" class="btn btn-danger btn-sm remove-row">✕</button>
@@ -99,96 +131,6 @@
       <button type="button" class="btn btn-secondary btn-sm" id="addRow">
         + Tambah Produk
       </button>
-
-      <!-- LENS / PRESCRIPTION -->
-      <div class="card mt-4">
-        <div class="card-body">
-          <strong>Prescription</strong>
-
-          <!-- TYPE -->
-          <div class="my-3">
-            <label class="form-label fw-bold">Tipe Resep</label>
-            <div class="d-flex gap-4">
-              <div class="form-check">
-                <input class="form-check-input"
-                  type="radio"
-                  name="prescription[type]"
-                  value="none"
-                  id="rx_none"
-                  checked>
-                <label class="form-check-label" for="rx_none">
-                  Tanpa Resep
-                </label>
-              </div>
-
-              <div class="form-check">
-                <input class="form-check-input"
-                  type="radio"
-                  name="prescription[type]"
-                  value="manual"
-                  id="rx_manual">
-                <label class="form-check-label" for="rx_manual">
-                  Input Manual
-                </label>
-              </div>
-            </div>
-          </div>
-
-          <!-- MANUAL FORM -->
-          <div id="prescription_manual" style="display:none">
-
-            <!-- OD -->
-            <h6 class="fw-bold mt-3">OD (Mata Kanan)</h6>
-            <div class="row g-2">
-              <div class="col">
-                <input type="text" class="form-control"
-                  name="prescription[right][sph]"
-                  placeholder="SPH">
-              </div>
-              <div class="col">
-                <input type="text" class="form-control"
-                  name="prescription[right][cyl]"
-                  placeholder="CYL">
-              </div>
-              <div class="col">
-                <input type="text" class="form-control"
-                  name="prescription[right][axis]"
-                  placeholder="Axis">
-              </div>
-              <div class="col">
-                <input type="text" class="form-control"
-                  name="prescription[right][pd]"
-                  placeholder="PD">
-              </div>
-            </div>
-
-            <!-- OS -->
-            <h6 class="fw-bold mt-3">OS (Mata Kiri)</h6>
-            <div class="row g-2">
-              <div class="col">
-                <input type="text" class="form-control"
-                  name="prescription[left][sph]"
-                  placeholder="SPH">
-              </div>
-              <div class="col">
-                <input type="text" class="form-control"
-                  name="prescription[left][cyl]"
-                  placeholder="CYL">
-              </div>
-              <div class="col">
-                <input type="text" class="form-control"
-                  name="prescription[left][axis]"
-                  placeholder="Axis">
-              </div>
-              <div class="col">
-                <input type="text" class="form-control"
-                  name="prescription[left][pd]"
-                  placeholder="PD">
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
 
       <!-- TOTAL -->
       <div class="mt-4 text-end">
@@ -277,23 +219,6 @@
     }
   });
 
-  document.querySelectorAll('input[name="prescription[type]"]').forEach(radio => {
-    radio.addEventListener('change', function() {
-      const manualForm = document.getElementById('prescription_manual');
-
-      if (this.value === 'manual') {
-        manualForm.style.display = 'block';
-      } else {
-        manualForm.style.display = 'none';
-
-        // reset field jika pilih "tanpa resep"
-        manualForm.querySelectorAll('input').forEach(input => {
-          input.value = '';
-        });
-      }
-    });
-  });
-
   function updateSubtotal(row) {
     const price = Number(row.querySelector('.price').value || 0);
     const qty = Number(row.querySelector('.qty').value || 1);
@@ -334,16 +259,33 @@
     const tbody = document.querySelector('#itemsTable tbody');
     const newRow = tbody.rows[0].cloneNode(true);
 
-    newRow.querySelectorAll('select, input').forEach(el => {
-      el.name = el.name.replace(/\[\d+\]/, `[${index}]`);
-      el.value = '';
+    newRow.querySelectorAll('input, select').forEach(el => {
+      if (el.name) {
+        el.name = el.name.replace(/\[\d+\]/, `[${index}]`);
+      }
+
+      // ❗ PENTING
+      if (el.tagName === 'INPUT') {
+        el.value = '';
+      }
+
+      // ⛔ JANGAN reset SELECT
     });
+
+    // default tetap none
+    const rxType = newRow.querySelector('.rx-type');
+    rxType.value = 'none';
+
+    const rxForm = newRow.querySelector('.rx-form');
+    rxForm.classList.add('d-none');
 
     newRow.querySelector('.variant-select').disabled = true;
 
     tbody.appendChild(newRow);
     index++;
   });
+
+
 
   /* REMOVE ROW */
   document.addEventListener('click', function(e) {
@@ -354,6 +296,25 @@
         updateTotal();
       }
     }
+  });
+
+  document.addEventListener('change', function(e) {
+
+    // RX TYPE CHANGE
+    if (e.target.classList.contains('rx-type')) {
+      const row = e.target.closest('tr');
+      const rxForm = row.querySelector('.rx-form');
+
+      if (e.target.value === 'manual') {
+        rxForm.classList.remove('d-none');
+      } else {
+        rxForm.classList.add('d-none');
+
+        // reset field
+        rxForm.querySelectorAll('input').forEach(i => i.value = '');
+      }
+    }
+
   });
 </script>
 

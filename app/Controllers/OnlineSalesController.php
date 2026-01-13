@@ -1109,11 +1109,9 @@ class OnlineSalesController extends BaseController
             ->orderBy('orders.created_at', 'DESC')
             ->findAll($limit, $offset);
 
-        // ============================
-        // TOTAL ROWS (HARUS CLONE!)
-        // ============================
-        $totalRows = clone $builder;
-        $totalRows = $totalRows->countAllResults(false);
+        $totalRows = $this->orderModel
+            ->where('order_type', 'online')
+            ->countAllResults();
 
         $totalPages = ceil($totalRows / $limit);
 

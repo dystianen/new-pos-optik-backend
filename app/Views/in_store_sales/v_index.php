@@ -90,7 +90,7 @@
 
     <!-- PAGINATION -->
     <nav aria-label="Page navigation" class="mt-4">
-      <ul class="pagination justify-content-end" id="pagination"></ul>
+      <ul class="pagination" id="pagination"></ul>
     </nav>
   </div>
 </div>

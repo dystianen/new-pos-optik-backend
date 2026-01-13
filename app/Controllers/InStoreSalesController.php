@@ -38,14 +38,14 @@ class InStoreSalesController extends BaseController
         // ============================
         $builder = $this->orderModel
             ->select('
-            orders.order_id,
-            orders.created_at,
-            orders.grand_total,
-            customers.customer_name,
-            customers.customer_email,
-            order_statuses.status_name,
-            COUNT(order_items.order_item_id) as total_items
-        ')
+                orders.order_id,
+                orders.created_at,
+                orders.grand_total,
+                customers.customer_name,
+                customers.customer_email,
+                order_statuses.status_name,
+                COUNT(order_items.order_item_id) as total_items
+            ')
             ->join('customers', 'customers.customer_id = orders.customer_id')
             ->join('order_statuses', 'order_statuses.status_id = orders.status_id')
             ->join('order_items', 'order_items.order_id = orders.order_id', 'left')
@@ -71,11 +71,9 @@ class InStoreSalesController extends BaseController
             ->orderBy('orders.created_at', 'DESC')
             ->findAll($limit, $offset);
 
-        // ============================
-        // TOTAL ROWS (CLONE BUILDER)
-        // ============================
-        $countBuilder = clone $builder;
-        $totalRows    = $countBuilder->countAllResults(false);
+        $totalRows = $this->orderModel
+            ->where('order_type', 'offline')
+            ->countAllResults();
 
         $totalPages = ceil($totalRows / $limit);
 
@@ -107,7 +105,6 @@ class InStoreSalesController extends BaseController
         try {
             $customerId   = $this->request->getPost('customer_id');
             $items        = $this->request->getPost('items');
-            $prescription = $this->request->getPost('prescription');
 
             if (!$customerId) {
                 throw new \Exception('Customer wajib dipilih');
@@ -165,6 +162,9 @@ class InStoreSalesController extends BaseController
                 $qty       = (int) $item['qty'];
                 $price     = (float) $item['price'];
 
+                // ======================
+                // INSERT ORDER ITEM
+                // ======================
                 $this->orderItemModel->insert([
                     'order_id'   => $orderId,
                     'product_id' => $productId,
@@ -179,7 +179,6 @@ class InStoreSalesController extends BaseController
                 // KURANGI STOK
                 // ======================
                 if ($variantId) {
-                    // stok variant
                     $this->productVariantModel
                         ->where('variant_id', $variantId)
                         ->set('stock', 'stock - ' . $qty, false)
@@ -193,9 +192,8 @@ class InStoreSalesController extends BaseController
                             WHERE pv.product_id = p.product_id
                         )
                         WHERE p.product_id = ?
-                    ", [$item['product_id']]);
+                    ", [$productId]);
                 } else {
-                    // stok product tanpa variant
                     $this->productModel
                         ->where('product_id', $productId)
                         ->set('product_stock', 'product_stock - ' . $qty, false)
@@ -203,9 +201,12 @@ class InStoreSalesController extends BaseController
                 }
 
                 // ======================
-                // PRESCRIPTION (JIKA MANUAL)
+                // PRESCRIPTION PER ITEM (FIX)
                 // ======================
+                $prescription = $item['prescription'] ?? null;
+
                 if (
+                    $prescription &&
                     isset($prescription['type']) &&
                     $prescription['type'] === 'manual'
                 ) {

@@ -110,7 +110,7 @@ function orderStatusBadge($status)
   // PAGINATION
   function handlePagination(page) {
     window.location.href =
-      `<?= base_url('/orders') ?>?page=${page}&q=<?= esc($search) ?>`;
+      `<?= base_url('/online-sales') ?>?page=${page}&q=<?= esc($search) ?>`;
   }
 
   const paginationContainer = document.getElementById('pagination');
