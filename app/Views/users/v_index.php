@@ -11,7 +11,7 @@
       <table class="table align-items-center mb-0 table-bordered">
         <thead>
           <tr>
-            <th>No</th>
+            <th class="text-center">No</th>
             <th>Username</th>
             <th>Email</th>
             <th>Role</th>
@@ -28,7 +28,7 @@
           <?php else: ?>
             <?php foreach ($users as $user): ?>
               <tr>
-                <td><?= $startIndex++ ?></td>
+                <td class="text-center"><?= $startIndex++ ?></td>
                 <td><?= $user['user_name'] ?></td>
                 <td><?= $user['user_email'] ?></td>
                 <td><?= $user['role_name'] ?></td>

@@ -11,7 +11,7 @@
       <table class="table align-items-center mb-0 table-bordered">
         <thead>
           <tr>
-            <th>No</th>
+            <th class="text-center">No</th>
             <th>Name</th>
             <th>Description</th>
             <th class="sticky-action text-center">Actions</th>
@@ -27,7 +27,7 @@
           <?php else: ?>
             <?php foreach ($roles as $role): ?>
               <tr>
-                <td><?= $startIndex++ ?></td>
+                <td class="text-center"><?= $startIndex++ ?></td>
                 <td><?= $role['role_name'] ?></td>
                 <td><?= $role['role_description'] ?></td>
                 <td class="sticky-action text-center">

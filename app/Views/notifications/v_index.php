@@ -1,9 +1,30 @@
 <?= $this->extend('layouts/l_dashboard.php') ?>
 <?= $this->section('content') ?>
+
+<?php
+function notifTypeBadge($type)
+{
+  $map = [
+    'new_order' => ['label' => 'New Order', 'class' => 'bg-primary'],
+    'low_stock' => ['label' => 'Low Stock', 'class' => 'bg-warning text-dark'],
+    'payment'   => ['label' => 'Payment', 'class' => 'bg-success'],
+    'system'    => ['label' => 'System', 'class' => 'bg-secondary'],
+  ];
+
+  $data = $map[$type] ?? ['label' => ucfirst($type), 'class' => 'bg-dark'];
+
+  return '<span class="badge ' . $data['class'] . '">' . $data['label'] . '</span>';
+}
+?>
+
 <div class="container-fluid card">
   <div class="card-header mb-4 pb-0 d-flex align-items-center justify-content-between">
-    <h4>Product Attribute List</h4>
-    <a href="<?= base_url('/product-attribute/form') ?>" class="btn btn-primary btn-sm">Add Attribute</a>
+    <h4>Notification List</h4>
+
+    <button class="btn btn-sm btn-outline-primary"
+      onclick="markAllRead()">
+      Mark All as Read
+    </button>
   </div>
 
   <div class="card-body pt-0 pb-2">
@@ -12,34 +33,39 @@
         <thead>
           <tr>
             <th class="text-center">No</th>
-            <th>Name</th>
             <th>Type</th>
-            <th>Values</th>
+            <th>Message</th>
+            <th>Related ID</th>
             <th class="sticky-action text-center">Actions</th>
           </tr>
         </thead>
         <tbody>
           <?php $startIndex = ($pager["currentPage"] - 1) * $pager["limit"] + 1; ?>
 
-          <?php if (empty($attributes)): ?>
+          <?php if (empty($data)): ?>
             <tr>
               <td colspan="4" class="text-center text-muted">No attribute data available.</td>
             </tr>
           <?php else: ?>
-            <?php foreach ($attributes as $attribute): ?>
+            <?php foreach ($data as $d): ?>
               <tr>
                 <td class="text-center"><?= $startIndex++ ?></td>
-                <td><?= $attribute['attribute_name'] ?></td>
-                <td><?= $attribute['attribute_type'] ?></td>
-                <td><?= !empty($attribute['master_values']) ? esc($attribute['master_values']) : '-' ?></td>
+                <td><?= notifTypeBadge($d['type']) ?></td>
+                <td><?= $d['message'] ?></td>
+                <td>
+                  <?= !empty($d['related_id'])
+                    ? '<strong>#' . esc($d['related_id']) . '</strong>'
+                    : '-' ?>
+                </td>
                 <td class="sticky-action text-center">
-                  <a href="<?= base_url('/product-attribute/form?id=' . $attribute['attribute_id']) ?>" class="btn btn-sm btn-warning">
-                    <i class="fa-solid fa-pen-to-square"></i>
-                  </a>
-                  <form action="<?= base_url('/product-attribute/delete/' . $attribute['attribute_id']) ?>" method="post" style="display:inline-block;">
-                    <?= csrf_field() ?>
-                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?')"><i class="fa-solid fa-trash"></i></button>
-                  </form>
+                  <?php if ($d['is_read'] == 0): ?>
+                    <button class="btn btn-sm btn-success"
+                      onclick="markRead('<?= esc($d['notification_id']) ?>', this)">
+                      Mark Read
+                    </button>
+                  <?php else: ?>
+                    <span class="badge bg-secondary">Read</span>
+                  <?php endif; ?>
                 </td>
               </tr>
             <?php endforeach; ?>
@@ -65,7 +91,7 @@
 
   // PAGINATION
   function handlePagination(pageNumber) {
-    window.location.replace(`<?php echo base_url(); ?>product-category?page=${pageNumber}`);
+    window.location.replace(`<?php echo base_url(); ?>notifications?page=${pageNumber}`);
   }
 
   var paginationContainer = document.getElementById('pagination');
@@ -92,6 +118,32 @@
       pageItem.appendChild(pageLink);
       paginationContainer.appendChild(pageItem);
     }
+  }
+
+  function markRead(id, btn) {
+    fetch('/notifications/read/' + id, {
+        method: 'POST'
+      })
+      .then(res => res.json())
+      .then(res => {
+        if (res.status) {
+          btn.outerHTML = '<span class="badge bg-secondary">Read</span>';
+        }
+      });
+  }
+
+  function markAllRead() {
+    if (!confirm('Mark all notifications as read?')) return;
+
+    fetch('/notifications/read-all', {
+        method: 'POST'
+      })
+      .then(res => res.json())
+      .then(res => {
+        if (res.status) {
+          location.reload();
+        }
+      });
   }
 </script>
 <?= $this->endSection() ?>

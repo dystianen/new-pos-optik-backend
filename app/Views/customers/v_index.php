@@ -11,7 +11,7 @@
       <table class="table align-items-center mb-0 table-bordered">
         <thead>
           <tr>
-            <th>No</th>
+            <th class="text-center">No</th>
             <th>Name</th>
             <th>Email</th>
             <th>Phone</th>
@@ -30,7 +30,7 @@
           <?php else: ?>
             <?php foreach ($customers as $customer): ?>
               <tr>
-                <td><?= $startIndex++ ?></td>
+                <td class="text-center"><?= $startIndex++ ?></td>
                 <td><?= $customer['customer_name'] ?></td>
                 <td><?= $customer['customer_email'] ?></td>
                 <td><?= $customer['customer_phone'] ?></td>

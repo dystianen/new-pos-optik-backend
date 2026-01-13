@@ -27,7 +27,7 @@
       <table class="table align-items-center mb-0 table-bordered">
         <thead>
           <tr>
-            <th>No</th>
+            <th class="text-center">No</th>
             <th>Customer</th>
             <th>Symptomps</th>
             <th>Diagnosis</th>
@@ -44,7 +44,7 @@
           <?php else: ?>
             <?php foreach ($eyeExaminations as $eyeExamination): ?>
               <tr>
-                <td><?= $startIndex++ ?></td>
+                <td class="text-center"><?= $startIndex++ ?></td>
                 <td><?= $eyeExamination['customer_name'] ?></td>
                 <td><?= esc($eyeExamination['symptoms']) ?></td>
                 <td><?= esc($eyeExamination['diagnosis']) ?></td>

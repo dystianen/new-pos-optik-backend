@@ -420,6 +420,11 @@
       padding: 4px 6px;
     }
 
+    #notifList {
+      max-height: 320px;
+      overflow-y: auto;
+    }
+
     /* item */
     .notif-item {
       display: flex;
@@ -530,7 +535,7 @@
     const notifBadge = document.querySelector('.badge-notification');
 
     function loadNotifications() {
-      fetch('/notifications')
+      fetch('/notifications/unread')
         .then(res => res.json())
         .then(res => {
 

@@ -14,11 +14,32 @@ class NotificationController extends BaseController
         $this->notificationModel = new NotificationModel();
     }
 
-    /**
-     * API realtime (dipanggil via setInterval)
-     * GET /notifications
-     */
-    public function index()
+
+    public function getAllNotifications()
+    {
+        $page     = (int) ($this->request->getVar('page') ?? 1);
+        $perPage = 10;
+
+        $notifications = $this->notificationModel
+            ->orderBy('created_at', 'DESC')
+            ->paginate($perPage, 'default', $page);
+
+        $pager = [
+            'currentPage' => $this->notificationModel->pager->getCurrentPage('default'),
+            'totalPages'  => $this->notificationModel->pager->getPageCount('default'),
+            'limit'       => $perPage
+        ];
+
+        $data = [
+            'data'  => $notifications,
+            'pager' => $pager
+        ];
+
+        return view('notifications/v_index', $data);
+    }
+
+
+    public function getUnreadNotifications()
     {
         $notifications = $this->notificationModel->getNotifications();
         $unreadCount  = $this->notificationModel->countUnread();

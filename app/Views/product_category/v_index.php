@@ -11,7 +11,7 @@
       <table class="table align-items-center mb-0 table-bordered">
         <thead>
           <tr>
-            <th>No</th>
+            <th class="text-center">No</th>
             <th>Name</th>
             <th>Description</th>
             <th class="sticky-action text-center">Actions</th>
@@ -27,7 +27,7 @@
           <?php else: ?>
             <?php foreach ($categories as $category): ?>
               <tr>
-                <td><?= $startIndex++ ?></td>
+                <td class="text-center"><?= $startIndex++ ?></td>
                 <td><?= $category['category_name'] ?></td>
                 <td><?= $category['category_description'] ?></td>
                 <td class="sticky-action text-center">

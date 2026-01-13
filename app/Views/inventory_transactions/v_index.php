@@ -38,7 +38,7 @@ $referenceBadges = [
       <table class="table align-items-center mb-0 table-bordered">
         <thead>
           <tr>
-            <th>No</th>
+            <th class="text-center">No</th>
             <th>Product</th>
             <th>Variant</th>
             <th>Transaction Type</th>
@@ -60,7 +60,7 @@ $referenceBadges = [
           <?php else: ?>
             <?php foreach ($inventory_transactions as $inventory_transaction): ?>
               <tr>
-                <td><?= $startIndex++ ?></td>
+                <td class="text-center"><?= $startIndex++ ?></td>
                 <td><?= esc($inventory_transaction['product_name']) ?></td>
                 <td><?= esc($inventory_transaction['variant_name']) ?></td>
                 <td>

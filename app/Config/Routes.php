@@ -151,7 +151,8 @@ $routes->group('roles', ['filter' => 'authGuard'], function ($routes) {
 });
 
 $routes->group('notifications', ['filter' => 'authGuard'], function ($routes) {
-  $routes->get('', 'NotificationController::index');
+  $routes->get('', 'NotificationController::getAllNotifications');
+  $routes->get('unread', 'NotificationController::getUnreadNotifications');
   $routes->post('read-all', 'NotificationController::markAllRead');
   $routes->post('read/(:segment)', 'NotificationController::markRead/$1');
 });

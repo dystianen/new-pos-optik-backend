@@ -28,7 +28,7 @@
       <table class="table align-items-center mb-0 table-bordered">
         <thead>
           <tr>
-            <th>No</th>
+            <th class="text-center">No</th>
             <th>Category</th>
             <th>Name</th>
             <th>Brand</th>
@@ -47,7 +47,7 @@
           <?php else: ?>
             <?php foreach ($products as $product): ?>
               <tr>
-                <td><?= $startIndex++ ?></td>
+                <td class="text-center"><?= $startIndex++ ?></td>
                 <td><?= $product['category_name'] ?></td>
                 <td><?= $product['product_name'] ?></td>
                 <td><?= $product['product_brand'] ?></td>
