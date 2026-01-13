@@ -7,6 +7,7 @@ function notifTypeBadge($type)
   $map = [
     'new_order' => ['label' => 'New Order', 'class' => 'bg-primary'],
     'low_stock' => ['label' => 'Low Stock', 'class' => 'bg-warning text-dark'],
+    'stock_empty' => ['label' => 'Empty Stock', 'class' => 'bg-danger text-white'],
     'payment'   => ['label' => 'Payment', 'class' => 'bg-success'],
     'system'    => ['label' => 'System', 'class' => 'bg-secondary'],
   ];

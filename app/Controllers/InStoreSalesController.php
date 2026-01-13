@@ -12,6 +12,7 @@ class InStoreSalesController extends BaseController
     protected $orderItemPrescriptionModel;
     protected $customerModel;
     protected $orderItemModel;
+    protected $notificationModel;
     protected $db;
 
     public function __construct()
@@ -22,6 +23,7 @@ class InStoreSalesController extends BaseController
         $this->orderItemPrescriptionModel  = new \App\Models\OrderItemPrescriptionModel();
         $this->customerModel = new \App\Models\CustomerModel();
         $this->orderItemModel = new \App\Models\OrderItemModel();
+        $this->notificationModel = new \App\Models\NotificationModel();
         $this->db            = \Config\Database::connect();
     }
 
@@ -88,7 +90,6 @@ class InStoreSalesController extends BaseController
         ]);
     }
 
-
     public function create()
     {
         return view('in_store_sales/v_create', [
@@ -136,6 +137,45 @@ class InStoreSalesController extends BaseController
                 }
 
                 $grandTotal += $price * $qty;
+            }
+
+            // ======================
+            // VALIDASI STOK (WAJIB)
+            // ======================
+            foreach ($items as $item) {
+
+                $productId = $item['product_id'];
+                $variantId = $item['variant_id'] ?? null;
+                $qty       = (int) $item['qty'];
+
+                if ($variantId) {
+                    $variant = $db->query(
+                        'SELECT stock FROM product_variants WHERE variant_id = ? FOR UPDATE',
+                        [$variantId]
+                    )->getRowArray();
+
+                    if (!$variant) {
+                        throw new \Exception('Variant tidak ditemukan');
+                    }
+
+                    if ($variant['stock'] < $qty) {
+                        throw new \Exception('Stok variant tidak mencukupi');
+                    }
+                } else {
+
+                    $product = $db->query(
+                        'SELECT product_stock FROM products WHERE product_id = ? FOR UPDATE',
+                        [$productId]
+                    )->getRowArray();
+
+                    if (!$product) {
+                        throw new \Exception('Produk tidak ditemukan');
+                    }
+
+                    if ($product['product_stock'] < $qty) {
+                        throw new \Exception('Stok produk tidak mencukupi');
+                    }
+                }
             }
 
             // ======================
@@ -193,11 +233,43 @@ class InStoreSalesController extends BaseController
                         )
                         WHERE p.product_id = ?
                     ", [$productId]);
+
+                    // 🔍 CEK STOK TERBARU
+                    $updatedVariant = $this->productVariantModel
+                        ->select('stock, variant_name')
+                        ->where('variant_id', $variantId)
+                        ->get()
+                        ->getRowArray();
+
+                    // 🚨 JIKA STOK HABIS
+                    if ($updatedVariant && (int)$updatedVariant['stock'] === 0) {
+                        $this->notificationModel->addNotification(
+                            'stock_empty',
+                            'Stok variant "' . $updatedVariant['variant_name'] . '" telah habis',
+                            $variantId
+                        );
+                    }
                 } else {
                     $this->productModel
                         ->where('product_id', $productId)
                         ->set('product_stock', 'product_stock - ' . $qty, false)
                         ->update();
+
+                    // 🔍 CEK STOK TERBARU
+                    $updatedProduct = $this->productModel
+                        ->select('product_stock, product_name')
+                        ->where('product_id', $productId)
+                        ->get()
+                        ->getRowArray();
+
+                    // 🚨 JIKA STOK HABIS
+                    if ($updatedProduct && (int)$updatedProduct['product_stock'] === 0) {
+                        $this->notificationModel->addNotification(
+                            'stock_empty',
+                            'Stok produk "' . $updatedProduct['product_name'] . '" telah habis',
+                            $productId
+                        );
+                    }
                 }
 
                 // ======================

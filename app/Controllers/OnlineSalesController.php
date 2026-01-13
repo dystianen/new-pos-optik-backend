@@ -263,6 +263,41 @@ class OnlineSalesController extends BaseController
             $summary = json_decode($summaryResponse->getBody(), true)['data'];
             log_message('debug', 'SUMMARY: ' . json_encode($summary));
 
+            // ======================
+            // VALIDASI STOK (MARKETPLACE)
+            // ======================
+            foreach ($summary['items'] as $item) {
+
+                $productId = $item['product_id'];
+                $variantId = $item['variant_id'] ?? null;
+                $qty       = (int) $item['quantity'];
+
+                if ($variantId) {
+                    $variant = $this->productVariantModel
+                        ->where('variant_id', $variantId)
+                        ->lockForUpdate() // 🔒 penting
+                        ->first();
+
+                    if (!$variant || $variant['stock'] < $qty) {
+                        throw new \Exception(
+                            'Stok produk tidak mencukupi'
+                        );
+                    }
+                } else {
+                    $product = $this->productModel
+                        ->where('product_id', $productId)
+                        ->lockForUpdate()
+                        ->first();
+
+                    if (!$product || $product['product_stock'] < $qty) {
+                        throw new \Exception(
+                            'Stok produk tidak mencukupi'
+                        );
+                    }
+                }
+            }
+
+
             if (empty($summary['items'])) {
                 throw new \Exception('Cart is empty');
             }
@@ -997,7 +1032,6 @@ class OnlineSalesController extends BaseController
         }
     }
 
-
     // POST /admin/orders/{id}/reject
     public function rejectPayment($orderId)
     {
@@ -1057,7 +1091,6 @@ class OnlineSalesController extends BaseController
             ]
         ]);
     }
-
 
     // =======================
     // WEB DASHBOARD FUNCTIONS
