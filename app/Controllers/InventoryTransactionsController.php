@@ -40,10 +40,18 @@ class InventoryTransactionsController extends BaseController
             v1.variant_id,
             v1.variant_name,
             v1.stock AS variant_stock,
-            p2.category_name
-        ')
+            p2.category_name,
+            CASE 
+                WHEN v1.variant_id IS NOT NULL THEN v1.variant_name
+                ELSE "No Variant"
+            END AS display_variant,
+            CASE 
+                WHEN v1.variant_id IS NOT NULL THEN v1.stock
+                ELSE p1.product_stock
+            END AS current_stock
+        ', false)
             ->join('products p1', 'inventory_transactions.product_id = p1.product_id')
-            ->join('product_variants v1', 'inventory_transactions.variant_id = v1.variant_id', 'left')
+            ->join('product_variants v1', 'inventory_transactions.variant_id = v1.variant_id', 'left') // ✅ LEFT JOIN
             ->join('product_categories p2', 'p1.category_id = p2.category_id', 'left')
             ->orderBy('inventory_transactions.transaction_date', 'DESC');
 
@@ -169,21 +177,29 @@ class InventoryTransactionsController extends BaseController
         $session = session();
 
         $productId = $this->request->getVar('product_id');
-        $variantId = $this->request->getVar('variant_id');
+        $variantId = $this->request->getVar('variant_id'); // ✅ Bisa NULL
         $type      = $this->request->getVar('transaction_type');
-        $reference_type      = $this->request->getVar('reference_type');
-        $reference_id      = $this->request->getVar('reference_id');
+        $reference_type = $this->request->getVar('reference_type');
+        $reference_id   = $this->request->getVar('reference_id');
         $qty       = (int) $this->request->getVar('quantity');
 
-        $variant = $this->productVariantModel->find($variantId);
+        // ✅ Validasi: product harus ada
+        $product = $this->productModel->find($productId);
+        if (!$product) {
+            return redirect()->back()->with('failed', 'Product not found.');
+        }
 
-        if (!$variant) {
-            return redirect()->back()->with('failed', 'Variant not found.');
+        // ✅ Validasi: jika ada variant_id, variant harus exist
+        if ($variantId) {
+            $variant = $this->productVariantModel->find($variantId);
+            if (!$variant) {
+                return redirect()->back()->with('failed', 'Variant not found.');
+            }
         }
 
         $data = [
             'product_id' => $productId,
-            'variant_id' => $variantId,
+            'variant_id' => $variantId, // ✅ Bisa NULL untuk product tanpa variant
             'transaction_type' => $type,
             'reference_type' => $reference_type,
             'reference_id' => $reference_id,
@@ -214,9 +230,19 @@ class InventoryTransactionsController extends BaseController
                 // 3️⃣ Adjust stock berdasarkan selisih dan type
                 if ($qtyDiff != 0) {
                     if ($type === 'in') {
-                        $this->adjustVariantStock($variantId, $qtyDiff);
+                        // ✅ Update variant atau product stock
+                        if ($variantId) {
+                            $this->adjustVariantStock($variantId, $qtyDiff);
+                        } else {
+                            $this->adjustProductStock($productId, $qtyDiff);
+                        }
                     } else {
-                        $this->adjustVariantStock($variantId, -$qtyDiff);
+                        // ✅ Update variant atau product stock
+                        if ($variantId) {
+                            $this->adjustVariantStock($variantId, -$qtyDiff);
+                        } else {
+                            $this->adjustProductStock($productId, -$qtyDiff);
+                        }
                     }
                 }
 
@@ -228,15 +254,21 @@ class InventoryTransactionsController extends BaseController
              * INSERT TRANSACTION (BARU)
              * ========================= */
             else {
-                // Langsung apply stock
-                $this->updateVariantStock($variantId, $type, $qty);
+                // ✅ Update stock: variant atau product
+                if ($variantId) {
+                    $this->updateVariantStock($variantId, $type, $qty);
+                } else {
+                    $this->updateProductStock($productId, $type, $qty);
+                }
 
                 // Insert transaksi
                 $this->InventoryTransactionModel->insert($data);
             }
 
-            // 5️⃣ Recalculate stok product
-            $this->recalcProductStock($productId);
+            // 5️⃣ Recalculate stok product (hanya jika ada variant)
+            if ($variantId) {
+                $this->recalcProductStock($productId);
+            }
 
             $this->db->transCommit();
 
@@ -245,6 +277,53 @@ class InventoryTransactionsController extends BaseController
             $this->db->transRollback();
             return redirect()->back()->with('failed', $e->getMessage());
         }
+    }
+
+    /**
+     * ✅ Helper: Adjust product stock (untuk product tanpa variant)
+     */
+    private function adjustProductStock($productId, $qtyDiff)
+    {
+        $product = $this->productModel->find($productId);
+        if (!$product) {
+            throw new \Exception('Product not found');
+        }
+
+        $newStock = $product['product_stock'] + $qtyDiff;
+
+        if ($newStock < 0) {
+            throw new \Exception('Insufficient stock');
+        }
+
+        $this->productModel->update($productId, [
+            'product_stock' => $newStock
+        ]);
+    }
+
+    /**
+     * ✅ Helper: Update product stock langsung (untuk insert baru)
+     */
+    private function updateProductStock($productId, $type, $qty)
+    {
+        $product = $this->productModel->find($productId);
+        if (!$product) {
+            throw new \Exception('Product not found');
+        }
+
+        $currentStock = $product['product_stock'];
+
+        if ($type === 'in') {
+            $newStock = $currentStock + $qty;
+        } else { // 'out'
+            $newStock = $currentStock - $qty;
+            if ($newStock < 0) {
+                throw new \Exception('Insufficient stock');
+            }
+        }
+
+        $this->productModel->update($productId, [
+            'product_stock' => $newStock
+        ]);
     }
 
     public function delete($id)

@@ -82,7 +82,7 @@ $referenceBadges = [
                 <td>
                   <?= esc($inventory_transaction['reference_id'] ?: '-') ?>
                 </td>
-                <td><?= esc($inventory_transaction['quantity']) ?></td>
+                <td><?= $inventory_transaction['quantity'] ?></td>
                 <td><?= esc($inventory_transaction['description']) ?></td>
                 <td><?= date('d/m/Y H:i', strtotime($inventory_transaction['transaction_date'])) ?></td>
                 <td class="sticky-action text-center">
