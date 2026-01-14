@@ -152,7 +152,7 @@ class CartController extends BaseController
             $db->transComplete();
 
             return $this->response->setJSON([
-                'message' => 'Item added to cart with prescription'
+                'message' => 'Item added to cart'
             ]);
         } catch (\Throwable $e) {
             $db->transRollback();

@@ -13,6 +13,7 @@ use App\Models\ProductVariantAttributeModel;
 use App\Models\ProductVariantImageModel;
 use App\Models\ProductVariantModel;
 use App\Models\ProductVariantValueModel;
+use AWS\CRT\Log;
 use CodeIgniter\HTTP\ResponseInterface;
 
 class ProductController extends BaseController
@@ -48,6 +49,75 @@ class ProductController extends BaseController
     // API FUNCTIONS
     // =======================
 
+    // GET /api/products/search
+    public function apiSearchProduct()
+    {
+        $keyword = $this->request->getVar('q');
+
+        if (empty($keyword)) {
+            return $this->response->setJSON([
+                'status'  => 200,
+                'message' => 'Empty search',
+                'data'    => []
+            ]);
+        }
+
+        $builder = $this->db->table('products p');
+
+        $builder->select('
+            p.product_id,
+            p.product_name,
+            p.product_price,
+            p.product_brand,
+            p.category_id,
+            c.category_name,
+            pi.url AS product_image_url
+        ');
+
+        $builder->join('product_categories c', 'c.category_id = p.category_id');
+        $builder->join(
+            'product_images pi',
+            'pi.product_id = p.product_id AND pi.is_primary = 1',
+            'left'
+        );
+
+        $builder->where('p.deleted_at', null);
+        $builder->like('p.product_name', $keyword);
+        $builder->orderBy('p.product_name', 'ASC');
+        $builder->limit(20);
+
+        $rows = $builder->get()->getResultArray();
+
+        // Grouping hasil per category
+        $grouped = [];
+
+        foreach ($rows as $row) {
+            $categoryId = $row['category_id'];
+
+            if (!isset($grouped[$categoryId])) {
+                $grouped[$categoryId] = [
+                    'category_id'   => $categoryId,
+                    'category_name' => $row['category_name'],
+                    'products'      => []
+                ];
+            }
+
+            $grouped[$categoryId]['products'][] = [
+                'product_id'        => $row['product_id'],
+                'product_name'      => $row['product_name'],
+                'product_price'     => $row['product_price'],
+                'product_brand'     => $row['product_brand'],
+                'product_image_url' => $row['product_image_url']
+            ];
+        }
+
+        return $this->response->setJSON([
+            'status'  => 200,
+            'message' => 'Successfully!',
+            'data'    => array_values($grouped)
+        ]);
+    }
+
     // GET /api/products
     public function apiProduct()
     {
@@ -56,19 +126,40 @@ class ProductController extends BaseController
         $page     = $this->request->getVar('page') ?? 1;
         $limit    = $this->request->getVar('limit') ?? 10;
 
+        $jwtUser    = getJWTUser(false);
+        $customerId = $jwtUser->user_id ?? null;
+
         // pakai builder dari model
         $builder = $this->productModel
             ->select('
                 products.*,
-                product_images.url AS product_image_url
+                product_images.url AS product_image_url,
+                IF(w.wishlist_id IS NULL, 0, 1) AS is_wishlist
             ')
             ->join(
                 'product_images',
                 'product_images.product_id = products.product_id 
-             AND product_images.is_primary = 1',
+                    AND product_images.is_primary = 1',
                 'left'
             )
             ->where('products.deleted_at', null);
+
+        if ($customerId) {
+            $escapedCustomerId = $this->db->escape($customerId);
+            $builder->join(
+                'wishlists w',
+                "w.product_id = products.product_id 
+                AND w.customer_id = {$escapedCustomerId} 
+                AND w.deleted_at IS NULL",
+                'left'
+            );
+        } else {
+            $builder->join(
+                'wishlists w',
+                '1 = 0',
+                'left'
+            );
+        }
 
         if ($category) {
             $builder->where('products.category_id', $category);
@@ -112,12 +203,12 @@ class ProductController extends BaseController
     // GET /api/products/new-eyewear
     public function apiListNewEyewear()
     {
-        $search = $this->request->getVar('search');
+        $jwtUser    = getJWTUser(false);
+        $customerId = $jwtUser->user_id ?? null;
 
-        // definisi NEW = 30 hari terakhir
+        $search = $this->request->getVar('search');
         $newLimitDate = date('Y-m-d H:i:s', strtotime('-30 days'));
 
-        // subquery total sold
         $subQuery = $this->db->table('order_items oi')
             ->select('oi.product_id, SUM(oi.quantity) AS total_sold')
             ->join('orders o', 'o.order_id = oi.order_id')
@@ -133,7 +224,8 @@ class ProductController extends BaseController
             p.product_stock,
             p.product_brand,
             pi.url AS product_image_url,
-            COALESCE(ts.total_sold, 0) AS total_sold
+            COALESCE(ts.total_sold, 0) AS total_sold,
+            IF(w.wishlist_id IS NULL, 0, 1) AS is_wishlist
         ');
 
         $builder->join(
@@ -148,13 +240,29 @@ class ProductController extends BaseController
             'left'
         );
 
+        if ($customerId) {
+            $escapedCustomerId = $this->db->escape($customerId);
+            $builder->join(
+                'wishlists w',
+                "w.product_id = p.product_id 
+                    AND w.customer_id = {$escapedCustomerId} 
+                    AND w.deleted_at IS NULL",
+                'left'
+            );
+        } else {
+            $builder->join(
+                'wishlists w',
+                '1 = 0',
+                'left'
+            );
+        }
+
         if (!empty($search)) {
             $builder->like('p.product_name', $search);
         }
 
         $builder->where('p.deleted_at', null);
         $builder->where('p.created_at >=', $newLimitDate);
-
         $builder->orderBy('p.created_at', 'DESC');
         $builder->limit(10);
 
@@ -163,14 +271,16 @@ class ProductController extends BaseController
         return $this->response->setJSON([
             'status'  => 200,
             'message' => 'Successfully!',
-            'data'    => $products
+            'data'    => $products,
         ]);
     }
-
 
     // GET /api/products/best-seller
     public function apiListBestSeller()
     {
+        $jwtUser    = getJWTUser(false);
+        $customerId = $jwtUser->user_id ?? null;
+
         $search = $this->request->getVar('search');
 
         $builder = $this->db->table('order_items oi');
@@ -182,7 +292,8 @@ class ProductController extends BaseController
             p.product_stock,
             p.product_brand,
             pi.url AS product_image_url,
-            SUM(oi.quantity) AS total_sold
+            SUM(oi.quantity) AS total_sold,
+            IF(w.wishlist_id IS NULL, 0, 1) AS is_wishlist
         ');
 
         $builder->join('orders o', 'o.order_id = oi.order_id');
@@ -192,6 +303,23 @@ class ProductController extends BaseController
             'pi.product_id = p.product_id AND pi.is_primary = 1',
             'left'
         );
+
+        if ($customerId) {
+            $escapedCustomerId = $this->db->escape($customerId);
+            $builder->join(
+                'wishlists w',
+                "w.product_id = p.product_id 
+                AND w.customer_id = {$escapedCustomerId} 
+                AND w.deleted_at IS NULL",
+                'left'
+            );
+        } else {
+            $builder->join(
+                'wishlists w',
+                '1 = 0',
+                'left'
+            );
+        }
 
         $builder->where('o.status_id', '8d434de4-ba22-4698-8438-8318ef3f6d8f');
 
@@ -204,7 +332,9 @@ class ProductController extends BaseController
             'p.product_name',
             'p.product_price',
             'p.product_stock',
-            'pi.url'
+            'p.product_brand',
+            'pi.url',
+            'w.wishlist_id'
         ]);
 
         $builder->orderBy('total_sold', 'DESC');
@@ -218,7 +348,6 @@ class ProductController extends BaseController
             'data'    => $bestSeller
         ]);
     }
-
 
     // GET /api/products/recommendations
     public function apiProductRecommendations($productId)

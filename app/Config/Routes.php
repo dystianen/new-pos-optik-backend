@@ -37,6 +37,7 @@ $routes->group('api', ['filter' => 'cors'], function ($routes) {
     $routes->get('best-seller', 'ProductController::apiListBestSeller');
     $routes->get('categories', 'ProductCategoryController::apiListProductCategory');
     $routes->get('recommendations/(:segment)', 'ProductController::apiProductRecommendations/$1');
+    $routes->get('search', 'ProductController::apiSearchProduct');
     $routes->get('(:segment)', 'ProductController::apiProductDetail/$1');
     $routes->get('(:segment)/attributes', 'ProductController::apiProductAttributes/$1');
   });
@@ -71,6 +72,13 @@ $routes->group('api', ['filter' => 'cors'], function ($routes) {
     $routes->get('', 'CustomerShippingAddressController::getAllShippingAddress');
     $routes->get('(:segment)', 'CustomerShippingAddressController::getById/$1');
     $routes->post('save', 'CustomerShippingAddressController::save');
+  });
+
+  // WISHLIST
+  $routes->group('wishlist', ['filter' => 'authApi'], function ($routes) {
+    $routes->get('', 'WishlistController::index');
+    $routes->post('toggle', 'WishlistController::toggle');
+    $routes->get('count', 'WishlistController::count');
   });
 });
 
