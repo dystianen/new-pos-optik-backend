@@ -34,6 +34,7 @@ $routes->group('api', ['filter' => 'cors'], function ($routes) {
   $routes->group('products', function ($routes) {
     $routes->get('/', 'ProductController::apiProduct');
     $routes->get('new-eyewear', 'ProductController::apiListNewEyewear');
+    $routes->get('best-seller', 'ProductController::apiListBestSeller');
     $routes->get('categories', 'ProductCategoryController::apiListProductCategory');
     $routes->get('recommendations/(:segment)', 'ProductController::apiProductRecommendations/$1');
     $routes->get('(:segment)', 'ProductController::apiProductDetail/$1');

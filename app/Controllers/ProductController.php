@@ -59,9 +59,9 @@ class ProductController extends BaseController
         // pakai builder dari model
         $builder = $this->productModel
             ->select('
-            products.*,
-            product_images.url AS product_image_url
-        ')
+                products.*,
+                product_images.url AS product_image_url
+            ')
             ->join(
                 'product_images',
                 'product_images.product_id = products.product_id 
@@ -114,35 +114,111 @@ class ProductController extends BaseController
     {
         $search = $this->request->getVar('search');
 
-        $builder = $this->productModel->builder();
+        // definisi NEW = 30 hari terakhir
+        $newLimitDate = date('Y-m-d H:i:s', strtotime('-30 days'));
+
+        // subquery total sold
+        $subQuery = $this->db->table('order_items oi')
+            ->select('oi.product_id, SUM(oi.quantity) AS total_sold')
+            ->join('orders o', 'o.order_id = oi.order_id')
+            ->where('o.status_id', '8d434de4-ba22-4698-8438-8318ef3f6d8f')
+            ->groupBy('oi.product_id');
+
+        $builder = $this->db->table('products p');
 
         $builder->select('
-            products.*,
-            product_images.url AS product_image_url
+            p.product_id,
+            p.product_name,
+            p.product_price,
+            p.product_stock,
+            p.product_brand,
+            pi.url AS product_image_url,
+            COALESCE(ts.total_sold, 0) AS total_sold
         ');
 
         $builder->join(
-            'product_images',
-            'product_images.product_id = products.product_id AND product_images.is_primary = 1',
+            "({$subQuery->getCompiledSelect()}) ts",
+            'ts.product_id = p.product_id',
+            'left'
+        );
+
+        $builder->join(
+            'product_images pi',
+            'pi.product_id = p.product_id AND pi.is_primary = 1',
             'left'
         );
 
         if (!empty($search)) {
-            $builder->like('products.product_name', $search);
+            $builder->like('p.product_name', $search);
         }
 
-        $products = $builder
-            ->orderBy('products.created_at', 'DESC')
-            ->where('products.deleted_at', null)
-            ->get()
-            ->getResultArray();
+        $builder->where('p.deleted_at', null);
+        $builder->where('p.created_at >=', $newLimitDate);
+
+        $builder->orderBy('p.created_at', 'DESC');
+        $builder->limit(10);
+
+        $products = $builder->get()->getResultArray();
 
         return $this->response->setJSON([
-            'status' => 200,
+            'status'  => 200,
             'message' => 'Successfully!',
-            'data' => $products
+            'data'    => $products
         ]);
     }
+
+
+    // GET /api/products/best-seller
+    public function apiListBestSeller()
+    {
+        $search = $this->request->getVar('search');
+
+        $builder = $this->db->table('order_items oi');
+
+        $builder->select('
+            p.product_id,
+            p.product_name,
+            p.product_price,
+            p.product_stock,
+            p.product_brand,
+            pi.url AS product_image_url,
+            SUM(oi.quantity) AS total_sold
+        ');
+
+        $builder->join('orders o', 'o.order_id = oi.order_id');
+        $builder->join('products p', 'p.product_id = oi.product_id');
+        $builder->join(
+            'product_images pi',
+            'pi.product_id = p.product_id AND pi.is_primary = 1',
+            'left'
+        );
+
+        $builder->where('o.status_id', '8d434de4-ba22-4698-8438-8318ef3f6d8f');
+
+        if (!empty($search)) {
+            $builder->like('p.product_name', $search);
+        }
+
+        $builder->groupBy([
+            'p.product_id',
+            'p.product_name',
+            'p.product_price',
+            'p.product_stock',
+            'pi.url'
+        ]);
+
+        $builder->orderBy('total_sold', 'DESC');
+        $builder->limit(10);
+
+        $bestSeller = $builder->get()->getResultArray();
+
+        return $this->response->setJSON([
+            'status'  => 200,
+            'message' => 'Successfully!',
+            'data'    => $bestSeller
+        ]);
+    }
+
 
     // GET /api/products/recommendations
     public function apiProductRecommendations($productId)
