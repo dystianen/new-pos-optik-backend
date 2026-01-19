@@ -273,26 +273,22 @@ class OnlineSalesController extends BaseController
                 $qty       = (int) $item['quantity'];
 
                 if ($variantId) {
-                    $variant = $this->productVariantModel
-                        ->where('variant_id', $variantId)
-                        ->lockForUpdate() // 🔒 penting
-                        ->first();
+                    $variant = $db->query(
+                        "SELECT * FROM product_variants WHERE variant_id = ? FOR UPDATE",
+                        [$variantId]
+                    )->getRowArray();
 
                     if (!$variant || $variant['stock'] < $qty) {
-                        throw new \Exception(
-                            'Stok produk tidak mencukupi'
-                        );
+                        throw new \Exception('Stok produk tidak mencukupi');
                     }
                 } else {
-                    $product = $this->productModel
-                        ->where('product_id', $productId)
-                        ->lockForUpdate()
-                        ->first();
+                    $product = $db->query(
+                        "SELECT * FROM products WHERE product_id = ? FOR UPDATE",
+                        [$productId]
+                    )->getRowArray();
 
                     if (!$product || $product['product_stock'] < $qty) {
-                        throw new \Exception(
-                            'Stok produk tidak mencukupi'
-                        );
+                        throw new \Exception('Stok produk tidak mencukupi');
                     }
                 }
             }

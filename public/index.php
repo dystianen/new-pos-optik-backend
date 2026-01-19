@@ -10,6 +10,7 @@ use Config\Paths;
  */
 
 $minPhpVersion = '8.1'; // If you update this, don't forget to update `spark`.
+date_default_timezone_set('Asia/Jakarta');
 if (version_compare(PHP_VERSION, $minPhpVersion, '<')) {
     $message = sprintf(
         'Your PHP version must be %s or higher to run CodeIgniter. Current version: %s',
