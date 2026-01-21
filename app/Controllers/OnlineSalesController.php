@@ -13,17 +13,19 @@ use App\Models\NotificationModel;
 use App\Models\OrderItemModel;
 use App\Models\OrderItemPrescriptionModel;
 use App\Models\OrderModel;
+use App\Models\OrderRefundModel;
 use App\Models\OrderShippingAddressModel;
 use App\Models\PaymentModel;
 use App\Models\ProductModel;
 use App\Models\ProductVariantModel;
 use App\Models\ShippingRateModel;
+use App\Models\UserRefundAccountModel;
 use CodeIgniter\API\ResponseTrait;
 
 class OnlineSalesController extends BaseController
 {
     use ResponseTrait;
-    protected $orderModel, $orderItemModel, $InventoryTransactionModel, $productModel, $productVariantModel, $csaModel, $cartModel, $cartItemModel, $shippingRateModel, $cartItemPrescriptionModel, $orderShippingAddressModel, $orderItemPrescriptionModel, $paymentModel, $notificationModel, $r2;
+    protected $orderModel, $orderItemModel, $InventoryTransactionModel, $productModel, $productVariantModel, $csaModel, $cartModel, $cartItemModel, $shippingRateModel, $cartItemPrescriptionModel, $orderShippingAddressModel, $orderItemPrescriptionModel, $paymentModel, $notificationModel, $userRefundAccountModel, $orderRefundModel, $r2;
 
     public function __construct()
     {
@@ -41,6 +43,8 @@ class OnlineSalesController extends BaseController
         $this->orderItemPrescriptionModel = new OrderItemPrescriptionModel();
         $this->paymentModel = new PaymentModel();
         $this->notificationModel = new NotificationModel();
+        $this->userRefundAccountModel = new UserRefundAccountModel();
+        $this->orderRefundModel = new OrderRefundModel();
         $this->r2 = new R2Storage();
     }
 
@@ -418,6 +422,9 @@ class OnlineSalesController extends BaseController
             $payment_method_id  = $this->request->getVar('payment_method_id');
             $amount  = $this->request->getVar('amount');
             $img     = $this->request->getFile('proof');
+            $accountName  = $this->request->getVar('account_name');
+            $bankName  = $this->request->getVar('bank_name');
+            $accountNumber  = $this->request->getVar('account_number');
 
             if (!$orderId || !$amount) {
                 throw new \Exception('Invalid payload');
@@ -443,10 +450,6 @@ class OnlineSalesController extends BaseController
                 throw new \Exception('Invalid file type');
             }
 
-            if ($img->getSizeByUnit('mb') > 5) {
-                throw new \Exception('Max file size is 5MB');
-            }
-
             // ☁️ UPLOAD KE R2
             $objectUrl = $this->r2->uploadFile(
                 $img->getTempName(),
@@ -454,6 +457,37 @@ class OnlineSalesController extends BaseController
             );
 
             log_message('debug', 'UPLOAD SUCCESS: ' . $objectUrl);
+
+            // 🔍 CARI REFUND ACCOUNT CUSTOMER
+            $refundAccount = $this->userRefundAccountModel
+                ->where('customer_id', $customerId)
+                ->first();
+
+            if (!$refundAccount) {
+                // 🚨 VALIDASI WAJIB JIKA BELUM ADA
+                if (!$accountName || !$bankName || !$accountNumber) {
+                    throw new \Exception('Refund account is required');
+                }
+
+                // ➕ CREATE REFUND ACCOUNT
+                $userRefundAccountId = service('uuid')->uuid4()->toString();
+
+                $this->userRefundAccountModel->insert([
+                    'user_refund_account_id' => $userRefundAccountId,
+                    'customer_id'            => $customerId,
+                    'account_name'           => $accountName,
+                    'bank_name'              => $bankName,
+                    'account_number'         => $accountNumber,
+                ]);
+            } else {
+                // ✅ PAKAI YANG SUDAH ADA
+                $userRefundAccountId = $refundAccount['user_refund_account_id'];
+            }
+
+            $this->orderRefundModel->insert([
+                'order_id'               => $orderId,
+                'user_refund_account_id' => $userRefundAccountId,
+            ]);
 
             // 💳 INSERT PAYMENT (TANPA STATUS)
             $this->paymentModel->insert([
@@ -1157,6 +1191,7 @@ class OnlineSalesController extends BaseController
 
     public function detail($orderId)
     {
+        // 🧾 ORDER
         $order = $this->orderModel
             ->select('
             orders.order_id,
@@ -1187,29 +1222,46 @@ class OnlineSalesController extends BaseController
             throw new \CodeIgniter\Exceptions\PageNotFoundException('Order not found');
         }
 
-        // 📦 Order items
+        // 📦 ORDER ITEMS
         $items = $this->orderModel->getOrderItems($orderId);
 
-        // 💳 Payment
+        // 💳 PAYMENT
         $payment = $this->paymentModel
             ->select('
-                payments.proof,
-                payments.amount,
-                payments.paid_at,
-                payment_methods.method_name
-            ')
+            payments.proof,
+            payments.amount,
+            payments.paid_at,
+            payment_methods.method_name
+        ')
             ->join('payment_methods', 'payment_methods.payment_method_id = payments.payment_method_id', 'left')
             ->where('payments.order_id', $orderId)
             ->first();
 
-        // 📍 Shipping address
+        // 📍 SHIPPING ADDRESS
         $shippingAddress = $this->orderModel->getShippingAddress($orderId);
+
+        // 🔁 REFUND ACCOUNT
+        $refundAccount = $this->orderRefundModel
+            ->select('
+            user_refund_accounts.user_refund_account_id,
+            user_refund_accounts.account_name,
+            user_refund_accounts.bank_name,
+            user_refund_accounts.account_number
+        ')
+            ->join(
+                'user_refund_accounts',
+                'user_refund_accounts.user_refund_account_id = order_refunds.user_refund_account_id',
+                'left'
+            )
+            ->where('order_refunds.order_id', $orderId)
+            ->first();
 
         $data = [
             'order'           => $order,
             'items'           => $items,
             'payment'         => $payment,
-            'shippingAddress' => $shippingAddress
+            'shippingAddress' => $shippingAddress,
+            'refundAccount'   => $refundAccount,
         ];
 
         return view('online_sales/v_detail', $data);

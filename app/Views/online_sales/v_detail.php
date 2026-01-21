@@ -99,48 +99,88 @@ function badgeStatus($status)
   </div>
 
   <div class="row mb-4">
-    <div class="col-md-6">
+    <div class="col-md-4">
       <div class="card h-100">
+        <div class="card-header fw-bold">
+          Shipping
+        </div>
         <div class="card-body">
-          <strong>Shipping</strong>
+          <dl class="row mb-0 small">
+            <dt class="col-5 text-muted">Method</dt>
+            <dd class="col-7 fw-semibold"><?= $order['shipping_method'] ?></dd>
 
-          <div class="mt-2">
-            <p class="mb-1">Method: <strong><?= $order['shipping_method'] ?></strong></p>
-            <p class="mb-1">Estimated: <?= $order['estimated_days'] ?> days</p>
-            <p class="mb-1">Courier: <strong><?= $order['courier'] ?></strong></p>
-            <p class="mb-1">Tracking Number: <strong><?= $order['tracking_number'] ?></strong></p>
-            <p class="mb-0"><?= $shippingAddress['address'] ?? '-' ?></p>
-          </div>
+            <dt class="col-5 text-muted">Estimated</dt>
+            <dd class="col-7"><?= $order['estimated_days'] ?> days</dd>
+
+            <dt class="col-5 text-muted">Courier</dt>
+            <dd class="col-7"><?= $order['courier'] ?></dd>
+
+            <dt class="col-5 text-muted">Tracking</dt>
+            <dd class="col-7 fw-semibold"><?= $order['tracking_number'] ?: '-' ?></dd>
+
+            <dt class="col-12 text-muted mt-2">Address</dt>
+            <dd class="col-12 mb-0"><?= $shippingAddress['address'] ?? '-' ?></dd>
+          </dl>
         </div>
       </div>
     </div>
 
     <?php if ($payment): ?>
-      <div class="col-md-6">
+      <div class="col-md-4">
         <div class="card h-100">
+          <div class="card-header fw-bold">
+            Payment
+          </div>
           <div class="card-body">
-            <strong>Payment</strong>
-
-            <div class="mt-2">
-              <p class="mb-1">
-                Proof <br>
-                <img src="<?= esc($payment['proof']) ?>" class="rounded border w-50 h-100" style="object-fit: contain;" alt="payment">
-              </p>
-              <p class="mb-1">
-                Amount:
-                <strong>Rp <?= number_format($payment['amount']) ?? '-' ?></strong>
-              </p>
-              <p class="mb-1">
-                Method: <strong><?= $payment['method_name'] ?? '-' ?></strong>
-              </p>
-              <p class="mb-0">
-                Paid At: <?= $payment['paid_at'] ?? '-' ?>
-              </p>
+            <div class="text-center mb-3">
+              <img
+                src="<?= esc($payment['proof']) ?>"
+                class="img-thumbnail"
+                style="max-height:120px"
+                alt="payment proof">
             </div>
+
+            <dl class="row mb-0 small">
+              <dt class="col-5 text-muted">Amount</dt>
+              <dd class="col-7 fw-semibold">
+                Rp <?= number_format($payment['amount']) ?>
+              </dd>
+
+              <dt class="col-5 text-muted">Method</dt>
+              <dd class="col-7"><?= $payment['method_name'] ?></dd>
+
+              <dt class="col-5 text-muted">Paid At</dt>
+              <dd class="col-7"><?= $payment['paid_at'] ?></dd>
+            </dl>
           </div>
         </div>
       </div>
     <?php endif ?>
+
+    <div class="col-md-4">
+      <div class="card h-100">
+        <div class="card-header fw-bold">
+          Refund Account
+        </div>
+        <div class="card-body">
+          <?php if ($refundAccount): ?>
+            <dl class="row mb-0 small">
+              <dt class="col-5 text-muted">Account Name</dt>
+              <dd class="col-7 fw-semibold"><?= $refundAccount['account_name'] ?></dd>
+
+              <dt class="col-5 text-muted">Bank</dt>
+              <dd class="col-7"><?= $refundAccount['bank_name'] ?></dd>
+
+              <dt class="col-5 text-muted">Account No</dt>
+              <dd class="col-7"><?= $refundAccount['account_number'] ?></dd>
+            </dl>
+          <?php else: ?>
+            <p class="text-muted mb-0">No refund account</p>
+          <?php endif ?>
+        </div>
+      </div>
+    </div>
+
   </div>
 
   <?php if (in_array($order['status_code'], ['waiting_confirmation', 'processing'])): ?>

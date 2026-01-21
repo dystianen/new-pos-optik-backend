@@ -80,6 +80,13 @@ $routes->group('api', ['filter' => 'cors'], function ($routes) {
     $routes->post('toggle', 'WishlistController::toggle');
     $routes->get('count', 'WishlistController::count');
   });
+
+  // REFUND ACCOUNTS
+  $routes->group('refund-accounts', ['filter' => 'authApi'], function ($routes) {
+    $routes->get('', 'UserRefundAccountController::findOne');
+    $routes->get('(:segment)', 'UserRefundAccountController::getById/$1');
+    $routes->post('save', 'UserRefundAccountController::save');
+  });
 });
 
 

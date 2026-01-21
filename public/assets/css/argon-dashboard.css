@@ -74,8 +74,9 @@
   --bs-white-rgb: 255, 255, 255;
   --bs-black-rgb: 0, 0, 0;
   --bs-font-sans-serif: "Open Sans", sans-serif;
-  --bs-font-monospace: SFMono-Regular, Menlo, Monaco, Consolas,
-    "Liberation Mono", "Courier New", monospace;
+  --bs-font-monospace:
+    SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New",
+    monospace;
   --bs-gradient: linear-gradient(
     180deg,
     rgba(255, 255, 255, 0.15),
@@ -120,10 +121,12 @@
   --bs-border-radius-xxl: 2rem;
   --bs-border-radius-2xl: var(--bs-border-radius-xxl);
   --bs-border-radius-pill: 50rem;
-  --bs-box-shadow: 0 0.25rem 0.375rem -0.0625rem rgba(20, 20, 20, 0.12),
+  --bs-box-shadow:
+    0 0.25rem 0.375rem -0.0625rem rgba(20, 20, 20, 0.12),
     0 0.125rem 0.25rem -0.0625rem rgba(20, 20, 20, 0.07);
   --bs-box-shadow-sm: 0 0.3125rem 0.625rem 0 rgba(0, 0, 0, 0.12);
-  --bs-box-shadow-lg: 0 8px 26px -4px rgba(20, 20, 20, 0.15),
+  --bs-box-shadow-lg:
+    0 8px 26px -4px rgba(20, 20, 20, 0.15),
     0 8px 9px -5px rgba(20, 20, 20, 0.06);
   --bs-box-shadow-inset: inset 0 1px 2px rgba(0, 0, 0, 0.075);
   --bs-focus-ring-width: 0.25rem;
@@ -2862,7 +2865,9 @@ progress {
   background-clip: padding-box;
   border: 1px solid #d2d6da;
   border-radius: 0.5rem;
-  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+  transition:
+    box-shadow 0.15s ease,
+    border-color 0.15s ease;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -2884,7 +2889,9 @@ progress {
   background-color: #fff;
   border-color: #5e72e4;
   outline: 0;
-  box-shadow: 0 3px 9px rgba(50, 50, 9, 0), 3px 4px 8px rgba(94, 114, 228, 0.1);
+  box-shadow:
+    0 3px 9px rgba(50, 50, 9, 0),
+    3px 4px 8px rgba(94, 114, 228, 0.1);
 }
 
 .form-control::-webkit-date-and-time-value {
@@ -3032,14 +3039,16 @@ textarea.form-control-lg {
   color: #495057;
   appearance: none;
   background-color: #fff;
-  background-image: var(--bs-form-select-bg-img),
-    var(--bs-form-select-bg-icon, none);
+  background-image:
+    var(--bs-form-select-bg-img), var(--bs-form-select-bg-icon, none);
   background-repeat: no-repeat;
   background-position: right 0.75rem center;
   background-size: 16px 12px;
   border: 1px solid #d2d6da;
   border-radius: 0.5rem;
-  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+  transition:
+    box-shadow 0.15s ease,
+    border-color 0.15s ease;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -3051,7 +3060,9 @@ textarea.form-control-lg {
 .form-select:focus {
   border-color: #5e72e4;
   outline: 0;
-  box-shadow: 0 3px 9px rgba(50, 50, 9, 0), 3px 4px 8px rgba(94, 114, 228, 0.1);
+  box-shadow:
+    0 3px 9px rgba(50, 50, 9, 0),
+    3px 4px 8px rgba(94, 114, 228, 0.1);
 }
 
 .form-select[multiple],
@@ -3129,8 +3140,11 @@ textarea.form-control-lg {
   background-size: contain;
   border: none;
   print-color-adjust: exact;
-  transition: background-color 0.25s ease, border-color 0.25s ease,
-    background-position 0.15s ease-in-out, opacity 0.15s ease-out,
+  transition:
+    background-color 0.25s ease,
+    border-color 0.25s ease,
+    background-position 0.15s ease-in-out,
+    opacity 0.15s ease-out,
     box-shadow 0.15s ease-in-out;
 }
 
@@ -3200,8 +3214,11 @@ textarea.form-control-lg {
   background-image: var(--bs-form-switch-bg);
   background-position: left center;
   border-radius: 2.5rem;
-  transition: background-color 0.25s ease, border-color 0.25s ease,
-    background-position 0.15s ease-in-out, opacity 0.15s ease-out,
+  transition:
+    background-color 0.25s ease,
+    border-color 0.25s ease,
+    background-position 0.15s ease-in-out,
+    opacity 0.15s ease-out,
     box-shadow 0.15s ease-in-out;
 }
 
@@ -3267,12 +3284,16 @@ textarea.form-control-lg {
 }
 
 .form-range:focus::-webkit-slider-thumb {
-  box-shadow: 0 0 0 1px #fff, 0 3px 9px rgba(50, 50, 9, 0),
+  box-shadow:
+    0 0 0 1px #fff,
+    0 3px 9px rgba(50, 50, 9, 0),
     3px 4px 8px rgba(94, 114, 228, 0.1);
 }
 
 .form-range:focus::-moz-range-thumb {
-  box-shadow: 0 0 0 1px #fff, 0 3px 9px rgba(50, 50, 9, 0),
+  box-shadow:
+    0 0 0 1px #fff,
+    0 3px 9px rgba(50, 50, 9, 0),
     3px 4px 8px rgba(94, 114, 228, 0.1);
 }
 
@@ -3288,7 +3309,9 @@ textarea.form-control-lg {
   background-color: #5e72e4;
   border: 0;
   border-radius: 1rem;
-  transition: background-color 0.15s ease-in-out, border-color 0.15s ease-in-out,
+  transition:
+    background-color 0.15s ease-in-out,
+    border-color 0.15s ease-in-out,
     box-shadow 0.15s ease-in-out;
 }
 
@@ -3319,7 +3342,9 @@ textarea.form-control-lg {
   background-color: #5e72e4;
   border: 0;
   border-radius: 1rem;
-  transition: background-color 0.15s ease-in-out, border-color 0.15s ease-in-out,
+  transition:
+    background-color 0.15s ease-in-out,
+    border-color 0.15s ease-in-out,
     box-shadow 0.15s ease-in-out;
 }
 
@@ -3381,7 +3406,9 @@ textarea.form-control-lg {
   pointer-events: none;
   border: 1px solid transparent;
   transform-origin: 0 0;
-  transition: opacity 0.1s ease-in-out, transform 0.1s ease-in-out;
+  transition:
+    opacity 0.1s ease-in-out,
+    transform 0.1s ease-in-out;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -3636,8 +3663,12 @@ textarea.form-control.is-valid {
 .form-select.is-valid:not([multiple])[size="1"] {
   --bs-form-select-bg-icon: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 8'%3e%3cpath fill='%2366d432' d='M2.3 6.73L.6 4.53c-.4-1.04.46-1.4 1.1-.8l1.1 1.4 3.4-3.8c.6-.63 1.6-.27 1.2.7l-4 4.6c-.43.5-.8.4-1.1.1z'/%3e%3c/svg%3e");
   padding-right: 2.875rem;
-  background-position: right 0.75rem center, center right 1.75rem;
-  background-size: 16px 12px, 1rem 1rem;
+  background-position:
+    right 0.75rem center,
+    center right 1.75rem;
+  background-size:
+    16px 12px,
+    1rem 1rem;
 }
 
 .was-validated .form-select:valid:focus,
@@ -3746,8 +3777,12 @@ textarea.form-control.is-invalid {
 .form-select.is-invalid:not([multiple])[size="1"] {
   --bs-form-select-bg-icon: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' stroke='%23fd5c70' viewBox='0 0 12 12'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath stroke-linejoin='round' d='M5.8 3.6h.4L6 6.5z'/%3e%3ccircle cx='6' cy='8.2' r='.6' fill='%23fd5c70' stroke='none'/%3e%3c/svg%3e");
   padding-right: 2.875rem;
-  background-position: right 0.75rem center, center right 1.75rem;
-  background-size: 16px 12px, 1rem 1rem;
+  background-position:
+    right 0.75rem center,
+    center right 1.75rem;
+  background-size:
+    16px 12px,
+    1rem 1rem;
 }
 
 .was-validated .form-select:invalid:focus,
@@ -3807,8 +3842,8 @@ textarea.form-control.is-invalid {
   --bs-btn-border-color: transparent;
   --bs-btn-border-radius: 0.5rem;
   --bs-btn-hover-border-color: transparent;
-  --bs-btn-box-shadow: 0 4px 6px rgba(50, 50, 93, 0.1),
-    0 1px 3px rgba(0, 0, 0, 0.08);
+  --bs-btn-box-shadow:
+    0 4px 6px rgba(50, 50, 93, 0.1), 0 1px 3px rgba(0, 0, 0, 0.08);
   --bs-btn-disabled-opacity: 0.65;
   --bs-btn-focus-box-shadow: 0 0 0 0.2rem
     rgba(var(--bs-btn-focus-shadow-rgb), 0.5);
@@ -4329,7 +4364,8 @@ fieldset:disabled .btn {
   --bs-dropdown-inner-border-radius: 0.5rem;
   --bs-dropdown-divider-bg: transparent;
   --bs-dropdown-divider-margin-y: 0.5rem;
-  --bs-dropdown-box-shadow: 0 8px 26px -4px rgba(20, 20, 20, 0.15),
+  --bs-dropdown-box-shadow:
+    0 8px 26px -4px rgba(20, 20, 20, 0.15),
     0 8px 9px -5px rgba(20, 20, 20, 0.06);
   --bs-dropdown-link-color: #67748e;
   --bs-dropdown-link-hover-color: #344767;
@@ -4783,7 +4819,9 @@ fieldset:disabled .btn {
   color: var(--bs-nav-link-color);
   background: none;
   border: 0;
-  transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out,
+  transition:
+    color 0.15s ease-in-out,
+    background-color 0.15s ease-in-out,
     border-color 0.15s ease-in-out;
 }
 
@@ -5848,8 +5886,11 @@ fieldset:disabled .btn {
   background-color: var(--bs-pagination-bg);
   border: var(--bs-pagination-border-width) solid
     var(--bs-pagination-border-color);
-  transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out,
-    border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+  transition:
+    color 0.15s ease-in-out,
+    background-color 0.15s ease-in-out,
+    border-color 0.15s ease-in-out,
+    box-shadow 0.15s ease-in-out;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -6587,7 +6628,8 @@ fieldset:disabled .btn {
   --bs-toast-border-width: 0;
   --bs-toast-border-color: transparent;
   --bs-toast-border-radius: 0.5rem;
-  --bs-toast-box-shadow: 0 0.25rem 0.375rem -0.0625rem rgba(20, 20, 20, 0.12),
+  --bs-toast-box-shadow:
+    0 0.25rem 0.375rem -0.0625rem rgba(20, 20, 20, 0.12),
     0 0.125rem 0.25rem -0.0625rem rgba(20, 20, 20, 0.07);
   --bs-toast-header-color: #344767;
   --bs-toast-header-bg: rgba(255, 255, 255, 0.85);
@@ -6819,7 +6861,8 @@ fieldset:disabled .btn {
 @media (min-width: 576px) {
   .modal {
     --bs-modal-margin: 1.75rem;
-    --bs-modal-box-shadow: 0 0.25rem 0.375rem -0.0625rem rgba(20, 20, 20, 0.12),
+    --bs-modal-box-shadow:
+      0 0.25rem 0.375rem -0.0625rem rgba(20, 20, 20, 0.12),
       0 0.125rem 0.25rem -0.0625rem rgba(20, 20, 20, 0.07);
   }
 
@@ -8966,7 +9009,8 @@ fieldset:disabled .btn {
 }
 
 .shadow {
-  box-shadow: 0 0.25rem 0.375rem -0.0625rem rgba(20, 20, 20, 0.12),
+  box-shadow:
+    0 0.25rem 0.375rem -0.0625rem rgba(20, 20, 20, 0.12),
     0 0.125rem 0.25rem -0.0625rem rgba(20, 20, 20, 0.07) !important;
 }
 
@@ -8975,7 +9019,8 @@ fieldset:disabled .btn {
 }
 
 .shadow-lg {
-  box-shadow: 0 8px 26px -4px rgba(20, 20, 20, 0.15),
+  box-shadow:
+    0 8px 26px -4px rgba(20, 20, 20, 0.15),
     0 8px 9px -5px rgba(20, 20, 20, 0.06) !important;
 }
 
@@ -21949,7 +21994,9 @@ fieldset:disabled .btn {
 .btn {
   letter-spacing: -0.025rem;
   text-transform: none;
-  box-shadow: 0 4px 6px rgba(50, 50, 93, 0.1), 0 1px 3px rgba(0, 0, 0, 0.08);
+  box-shadow:
+    0 4px 6px rgba(50, 50, 93, 0.1),
+    0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .btn:not([class*="btn-outline-"]) {
@@ -21959,12 +22006,16 @@ fieldset:disabled .btn {
 .btn:active,
 .btn:active:focus,
 .btn:active:hover {
-  box-shadow: 0 7px 14px rgba(50, 50, 93, 0.1), 0 3px 6px rgba(0, 0, 0, 0.08);
+  box-shadow:
+    0 7px 14px rgba(50, 50, 93, 0.1),
+    0 3px 6px rgba(0, 0, 0, 0.08);
   transform: translateY(-1px);
 }
 
 .btn:hover:not(.btn-icon-only) {
-  box-shadow: 0 7px 14px rgba(50, 50, 93, 0.1), 0 3px 6px rgba(0, 0, 0, 0.08);
+  box-shadow:
+    0 7px 14px rgba(50, 50, 93, 0.1),
+    0 3px 6px rgba(0, 0, 0, 0.08);
   transform: translateY(-1px);
 }
 
@@ -22518,12 +22569,12 @@ fieldset:disabled .btn {
 }
 
 .card .card-header {
-  padding: 1.5rem;
+  padding: 1rem 1rem 0;
 }
 
 .card .card-body {
   font-family: "Open Sans", sans-serif;
-  padding: 1.5rem;
+  padding: 1rem;
 }
 
 .card.card-plain {
@@ -22712,7 +22763,8 @@ fieldset:disabled .btn {
   .dropup .dropdown-menu,
   .dropstart .dropdown-menu,
   .dropend .dropdown-menu {
-    box-shadow: 0 8px 26px -4px rgba(20, 20, 20, 0.15),
+    box-shadow:
+      0 8px 26px -4px rgba(20, 20, 20, 0.15),
       0 8px 9px -5px rgba(20, 20, 20, 0.06);
     animation: hide-navbar-dropdown 0.25s ease forwards;
     cursor: pointer;
@@ -22802,7 +22854,9 @@ fieldset:disabled .btn {
   }
 
   .dropdown-item {
-    transition: background-color 0.3s ease, color 0.3s ease;
+    transition:
+      background-color 0.3s ease,
+      color 0.3s ease;
   }
 }
 
@@ -22815,11 +22869,15 @@ fieldset:disabled .btn {
     pointer-events: none;
     transform: perspective(999px) rotateX(-10deg) translateZ(0)
       translate3d(0px, 37px, 0px) !important;
-    transition: visibility 0.25s, opacity 0.25s, transform 0.25s;
+    transition:
+      visibility 0.25s,
+      opacity 0.25s,
+      transform 0.25s;
     -webkit-backface-visibility: hidden;
     backface-visibility: hidden;
     will-change: transform, box-shadow;
-    box-shadow: 0 8px 26px -4px rgba(20, 20, 20, 0.15),
+    box-shadow:
+      0 8px 26px -4px rgba(20, 20, 20, 0.15),
       0 8px 9px -5px rgba(20, 20, 20, 0.06);
   }
 
@@ -22874,11 +22932,15 @@ fieldset:disabled .btn {
     top: 0;
     pointer-events: none;
     animation: hide-navbar-dropdown 0.25s ease forwards;
-    transition: visibility 0.25s, opacity 0.25s, transform 0.25s;
+    transition:
+      visibility 0.25s,
+      opacity 0.25s,
+      transform 0.25s;
     -webkit-backface-visibility: hidden;
     backface-visibility: hidden;
     will-change: animation, box-shadow;
-    box-shadow: 0 8px 26px -4px rgba(20, 20, 20, 0.15),
+    box-shadow:
+      0 8px 26px -4px rgba(20, 20, 20, 0.15),
       0 8px 9px -5px rgba(20, 20, 20, 0.06);
   }
 
@@ -22999,7 +23061,10 @@ fieldset:disabled .btn {
   0% {
     opacity: 0;
     transform: translate(0, 10px) perspective(200px);
-    transition: visibility 0.25s, opacity 0.25s, transform 0.25s;
+    transition:
+      visibility 0.25s,
+      opacity 0.25s,
+      transform 0.25s;
   }
 
   100% {
@@ -23020,9 +23085,13 @@ fieldset:disabled .btn {
 }
 
 .dropup .dropdown-menu {
-  box-shadow: 0 8px 26px -4px rgba(20, 20, 20, 0.15),
+  box-shadow:
+    0 8px 26px -4px rgba(20, 20, 20, 0.15),
     0 8px 9px -5px rgba(20, 20, 20, 0.06);
-  transition: visibility 0.25s, opacity 0.25s, transform 0.25s;
+  transition:
+    visibility 0.25s,
+    opacity 0.25s,
+    transform 0.25s;
   cursor: pointer;
   top: auto !important;
   bottom: 100% !important;
@@ -23154,7 +23223,9 @@ fieldset:disabled .btn {
 
 .input-group,
 .input-group .input-group-text {
-  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+  transition:
+    box-shadow 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .input-group > :not(:first-child):not(.dropdown-menu) {
@@ -23198,11 +23269,15 @@ fieldset:disabled .btn {
 
 .form-control.form-control-alternative {
   border: 0;
-  box-shadow: 0 1px 3px rgba(50, 50, 93, 0.15), 0 1px 0 rgba(0, 0, 0, 0.02);
+  box-shadow:
+    0 1px 3px rgba(50, 50, 93, 0.15),
+    0 1px 0 rgba(0, 0, 0, 0.02);
 }
 
 .form-control.form-control-alternative:focus {
-  box-shadow: 0 4px 6px rgba(50, 50, 93, 0.11), 0 1px 3px rgba(0, 0, 0, 0.08);
+  box-shadow:
+    0 4px 6px rgba(50, 50, 93, 0.11),
+    0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .form-group {
@@ -23292,7 +23367,9 @@ fieldset:disabled .btn {
 }
 
 .form-switch .form-check-input:after {
-  transition: transform 0.25s ease-in-out, background-color 0.25s ease-in-out;
+  transition:
+    transform 0.25s ease-in-out,
+    background-color 0.25s ease-in-out;
   content: "";
   width: 1rem;
   height: 1rem;
@@ -23300,7 +23377,8 @@ fieldset:disabled .btn {
   position: absolute;
   background-color: #fff;
   transform: translateX(1px);
-  box-shadow: 0 0.25rem 0.375rem -0.0625rem rgba(20, 20, 20, 0.12),
+  box-shadow:
+    0 0.25rem 0.375rem -0.0625rem rgba(20, 20, 20, 0.12),
     0 0.125rem 0.25rem -0.0625rem rgba(20, 20, 20, 0.07);
   top: 1px;
 }
@@ -23320,7 +23398,9 @@ fieldset:disabled .btn {
 }
 
 .form-select {
-  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+  transition:
+    box-shadow 0.15s ease,
+    border-color 0.15s ease;
 }
 
 label,
@@ -23732,7 +23812,8 @@ html {
 }
 
 .shadow-blur {
-  box-shadow: inset 0 0px 1px 1px rgba(254, 254, 254, 0.9),
+  box-shadow:
+    inset 0 0px 1px 1px rgba(254, 254, 254, 0.9),
     0 20px 27px 0 rgba(0, 0, 0, 0.05) !important;
 }
 
@@ -24275,7 +24356,8 @@ hr.horizontal.gray-light {
   }
 
   .navbar.navbar-transparent .navbar-collapse {
-    box-shadow: 0 8px 26px -4px rgba(20, 20, 20, 0.15),
+    box-shadow:
+      0 8px 26px -4px rgba(20, 20, 20, 0.15),
       0 8px 9px -5px rgba(20, 20, 20, 0.06);
   }
 }
@@ -25349,7 +25431,9 @@ hr.horizontal.gray-light {
 }
 
 .navbar-main {
-  transition: box-shadow 0.25s ease-in, background-color 0.25s ease-in;
+  transition:
+    box-shadow 0.25s ease-in,
+    background-color 0.25s ease-in;
 }
 
 .navbar-main.fixed-top {
@@ -25918,7 +26002,9 @@ hr.horizontal.gray-light {
 }
 
 .page-item.active .page-link {
-  box-shadow: 0 7px 14px rgba(50, 50, 93, 0.1), 0 3px 6px rgba(0, 0, 0, 0.08);
+  box-shadow:
+    0 7px 14px rgba(50, 50, 93, 0.1),
+    0 3px 6px rgba(0, 0, 0, 0.08);
   color: white !important;
 }
 
@@ -27058,8 +27144,9 @@ p {
 }
 
 .text-monospace {
-  font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
-    "Courier New", monospace !important;
+  font-family:
+    SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New",
+    monospace !important;
 }
 
 .text-justify {
@@ -27293,7 +27380,9 @@ p {
 .dark-version .dropdown .dropdown-menu,
 .dark-version .kanban-board {
   background: #111c44;
-  box-shadow: 0 2px 2px 0 rgba(0, 0, 0, 0.14), 0 3px 1px -2px rgba(0, 0, 0, 0.2),
+  box-shadow:
+    0 2px 2px 0 rgba(0, 0, 0, 0.14),
+    0 3px 1px -2px rgba(0, 0, 0, 0.2),
     0 1px 5px 0 rgba(0, 0, 0, 0.12);
 }
 
@@ -27345,18 +27434,23 @@ p {
 
 .dark-version .input-group.input-group-dynamic .form-control,
 .dark-version .input-group.input-group-static .form-control {
-  background-image: linear-gradient(0deg, #e91e63 2px, rgba(156, 39, 176, 0) 0),
+  background-image:
+    linear-gradient(0deg, #e91e63 2px, rgba(156, 39, 176, 0) 0),
     linear-gradient(
       0deg,
       rgba(210, 210, 210, 0.6) 1px,
       rgba(209, 209, 209, 0) 0
     ) !important;
-  background-size: 0 100%, 100% 100%;
+  background-size:
+    0 100%,
+    100% 100%;
 }
 
 .dark-version .input-group.input-group-dynamic .form-control:focus,
 .dark-version .input-group.input-group-static .form-control:focus {
-  background-size: 100% 100%, 100% 100%;
+  background-size:
+    100% 100%,
+    100% 100%;
 }
 
 .dark-version .input-group.input-group-outline .form-control {
@@ -27391,7 +27485,9 @@ p {
 
 .dark-version .nav.bg-white {
   background-color: #111c44 !important;
-  box-shadow: 0 2px 2px 0 rgba(0, 0, 0, 0.14), 0 3px 1px -2px rgba(0, 0, 0, 0.2),
+  box-shadow:
+    0 2px 2px 0 rgba(0, 0, 0, 0.14),
+    0 3px 1px -2px rgba(0, 0, 0, 0.2),
     0 1px 5px 0 rgba(0, 0, 0, 0.12);
 }
 
@@ -27401,7 +27497,9 @@ p {
 
 .dark-version .toast {
   background-color: #111c44 !important;
-  box-shadow: 0 2px 2px 0 rgba(0, 0, 0, 0.14), 0 3px 1px -2px rgba(0, 0, 0, 0.2),
+  box-shadow:
+    0 2px 2px 0 rgba(0, 0, 0, 0.14),
+    0 3px 1px -2px rgba(0, 0, 0, 0.2),
     0 1px 5px 0 rgba(0, 0, 0, 0.12);
 }
 
@@ -27426,7 +27524,9 @@ p {
 
 .dark-version .choices .choices__list.choices__list--dropdown {
   background: #111c44;
-  box-shadow: 0 2px 2px 0 rgba(0, 0, 0, 0.14), 0 3px 1px -2px rgba(0, 0, 0, 0.2),
+  box-shadow:
+    0 2px 2px 0 rgba(0, 0, 0, 0.14),
+    0 3px 1px -2px rgba(0, 0, 0, 0.2),
     0 1px 5px 0 rgba(0, 0, 0, 0.12);
 }
 
@@ -27551,7 +27651,8 @@ body.dark-version {
   -ms-touch-action: manipulation;
   touch-action: manipulation;
   background: #fff;
-  -webkit-box-shadow: 0 8px 26px -4px rgba(20, 20, 20, 0.15),
+  -webkit-box-shadow:
+    0 8px 26px -4px rgba(20, 20, 20, 0.15),
     0 8px 9px -5px rgba(20, 20, 20, 0.06);
 }
 
@@ -27600,8 +27701,12 @@ body.dark-version {
   .flatpickr-days
   .dayContainer:nth-child(n + 2)
   .flatpickr-day.inRange:nth-child(7n + 1) {
-  -webkit-box-shadow: -2px 0 0 #e6e6e6, 5px 0 0 #e6e6e6;
-  box-shadow: -2px 0 0 #e6e6e6, 5px 0 0 #e6e6e6;
+  -webkit-box-shadow:
+    -2px 0 0 #e6e6e6,
+    5px 0 0 #e6e6e6;
+  box-shadow:
+    -2px 0 0 #e6e6e6,
+    5px 0 0 #e6e6e6;
 }
 
 .flatpickr-calendar .hasWeeks .dayContainer,
@@ -28215,8 +28320,12 @@ span.flatpickr-weekday {
 
 .flatpickr-day.inRange {
   border-radius: 0;
-  -webkit-box-shadow: -5px 0 0 #e6e6e6, 5px 0 0 #e6e6e6;
-  box-shadow: -5px 0 0 #e6e6e6, 5px 0 0 #e6e6e6;
+  -webkit-box-shadow:
+    -5px 0 0 #e6e6e6,
+    5px 0 0 #e6e6e6;
+  box-shadow:
+    -5px 0 0 #e6e6e6,
+    5px 0 0 #e6e6e6;
 }
 
 .flatpickr-day.flatpickr-disabled,
@@ -28240,8 +28349,12 @@ span.flatpickr-weekday {
 
 .flatpickr-day.week.selected {
   border-radius: 0;
-  -webkit-box-shadow: -5px 0 0 #569ff7, 5px 0 0 #569ff7;
-  box-shadow: -5px 0 0 #569ff7, 5px 0 0 #569ff7;
+  -webkit-box-shadow:
+    -5px 0 0 #569ff7,
+    5px 0 0 #569ff7;
+  box-shadow:
+    -5px 0 0 #569ff7,
+    5px 0 0 #569ff7;
 }
 
 .flatpickr-day.hidden {
@@ -28483,8 +28596,12 @@ span.flatpickr-weekday {
 .flatpickr-calendar .flatpickr-day.inRange {
   background: rgba(94, 114, 228, 0.28);
   border: none;
-  -webkit-box-shadow: -5px 0 0 #d7dcf8, 5px 0 0 #d7dcf8;
-  box-shadow: -5px 0 0 #d7dcf8, 5px 0 0 #d7dcf8;
+  -webkit-box-shadow:
+    -5px 0 0 #d7dcf8,
+    5px 0 0 #d7dcf8;
+  box-shadow:
+    -5px 0 0 #d7dcf8,
+    5px 0 0 #d7dcf8;
 }
 
 .flatpickr-calendar .flatpickr-day:not(.selected):hover,
@@ -28639,7 +28756,9 @@ span.flatpickr-weekday {
 .noUi-target {
   background: #fafafa;
   border-radius: 4px;
-  box-shadow: inset 0 1px 1px #f0f0f0, 0 3px 6px -5px #bbb;
+  box-shadow:
+    inset 0 1px 1px #f0f0f0,
+    0 3px 6px -5px #bbb;
 }
 
 .noUi-connects {
@@ -28999,8 +29118,12 @@ pre[class*="language-"] {
 .ps__rail-x {
   display: none;
   opacity: 0;
-  transition: background-color 0.2s linear, opacity 0.2s linear;
-  -webkit-transition: background-color 0.2s linear, opacity 0.2s linear;
+  transition:
+    background-color 0.2s linear,
+    opacity 0.2s linear;
+  -webkit-transition:
+    background-color 0.2s linear,
+    opacity 0.2s linear;
   height: 15px;
   /* there must be 'bottom' or 'top' for ps__rail-x */
   bottom: 0px;
@@ -29011,8 +29134,12 @@ pre[class*="language-"] {
 .ps__rail-y {
   display: none;
   opacity: 0;
-  transition: background-color 0.2s linear, opacity 0.2s linear;
-  -webkit-transition: background-color 0.2s linear, opacity 0.2s linear;
+  transition:
+    background-color 0.2s linear,
+    opacity 0.2s linear;
+  -webkit-transition:
+    background-color 0.2s linear,
+    opacity 0.2s linear;
   width: 15px;
   /* there must be 'right' or 'left' for ps__rail-y */
   right: 0;
@@ -29051,8 +29178,12 @@ pre[class*="language-"] {
 .ps__thumb-x {
   background-color: #aaa;
   border-radius: 6px;
-  transition: background-color 0.2s linear, height 0.2s ease-in-out;
-  -webkit-transition: background-color 0.2s linear, height 0.2s ease-in-out;
+  transition:
+    background-color 0.2s linear,
+    height 0.2s ease-in-out;
+  -webkit-transition:
+    background-color 0.2s linear,
+    height 0.2s ease-in-out;
   height: 6px;
   /* there must be 'bottom' for ps__thumb-x */
   bottom: 2px;
@@ -29063,8 +29194,12 @@ pre[class*="language-"] {
 .ps__thumb-y {
   background-color: #aaa;
   border-radius: 6px;
-  transition: background-color 0.2s linear, width 0.2s ease-in-out;
-  -webkit-transition: background-color 0.2s linear, width 0.2s ease-in-out;
+  transition:
+    background-color 0.2s linear,
+    width 0.2s ease-in-out;
+  -webkit-transition:
+    background-color 0.2s linear,
+    width 0.2s ease-in-out;
   width: 6px;
   /* there must be 'right' for ps__thumb-y */
   right: 2px;
