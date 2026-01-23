@@ -5,7 +5,7 @@ namespace App\Controllers\Api;
 use App\Controllers\BaseController;
 use App\Models\CustomerShippingAddressModel;
 
-class CustomerShippingAddressApiController extends BaseController
+class CustomerShippingAddressApiController extends BaseApiController
 {
     protected $csaModel;
 

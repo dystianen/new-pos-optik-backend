@@ -2,7 +2,6 @@
 
 namespace App\Controllers\Api;
 
-use App\Controllers\BaseController;
 use App\Libraries\R2Storage;
 use App\Models\CartItemModel;
 use App\Models\CartItemPrescriptionModel;
@@ -22,7 +21,7 @@ use App\Models\ShippingRateModel;
 use App\Models\UserRefundAccountModel;
 use CodeIgniter\API\ResponseTrait;
 
-class OnlineSalesApiController extends BaseController
+class OnlineSalesApiController extends BaseApiController
 {
     use ResponseTrait;
     protected $orderModel, $orderItemModel, $InventoryTransactionModel, $productModel, $productVariantModel, $csaModel, $cartModel, $cartItemModel, $shippingRateModel, $cartItemPrescriptionModel, $orderShippingAddressModel, $orderItemPrescriptionModel, $paymentModel, $notificationModel, $userRefundAccountModel, $orderRefundModel, $r2;
@@ -960,7 +959,7 @@ class OnlineSalesApiController extends BaseController
         return $grouped;
     }
 
-    // POST /admin/orders/{id}/approve
+    // POST /api/online-sales/{id}/approve
     public function approvePayment($orderId)
     {
         $this->db->transBegin();
@@ -1058,7 +1057,7 @@ class OnlineSalesApiController extends BaseController
         }
     }
 
-    // POST /admin/orders/{id}/reject
+    // POST /api/online-sales/{id}/reject
     public function rejectPayment($orderId)
     {
         $this->orderModel->update($orderId, [
@@ -1068,7 +1067,7 @@ class OnlineSalesApiController extends BaseController
         return redirect()->back()->with('success', 'Payment rejected');
     }
 
-    // POST /admin/orders/{id}/ship
+    // POST /api/online-sales/{id}/ship
     public function shipOrder($orderId)
     {
         $data = [
@@ -1083,7 +1082,7 @@ class OnlineSalesApiController extends BaseController
         return redirect()->back()->with('success', 'Shipping added');
     }
 
-    // POST /admin/orders/{id}/status
+    // POST /api/online-sales/{id}/status
     public function updateStatus($orderId)
     {
         $statusId = $this->request->getVar('status_id');

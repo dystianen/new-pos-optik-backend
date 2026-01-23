@@ -2,7 +2,6 @@
 
 namespace App\Controllers\Api;
 
-use App\Controllers\BaseController;
 use App\Models\CustomerModel;
 use App\Models\RoleModel;
 use App\Models\UserModel;
@@ -12,7 +11,7 @@ use Exception;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 
-class AuthApiController extends BaseController
+class AuthApiController extends BaseApiController
 {
   use ResponseTrait;
   protected $customerModel, $userModel, $roleModel;

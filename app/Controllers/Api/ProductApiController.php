@@ -2,7 +2,6 @@
 
 namespace App\Controllers\Api;
 
-use App\Controllers\BaseController;
 use App\Libraries\R2Storage;
 use App\Models\ProductAttributeModel;
 use App\Models\ProductImageModel;
@@ -10,7 +9,7 @@ use App\Models\ProductModel;
 use App\Models\ProductVariantModel;
 use CodeIgniter\HTTP\ResponseInterface;
 
-class ProductApiController extends BaseController
+class ProductApiController extends BaseApiController
 {
     protected $productModel;
     protected $productImageModel;

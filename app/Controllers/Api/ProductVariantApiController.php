@@ -2,11 +2,10 @@
 
 namespace App\Controllers\Api;
 
-use App\Controllers\BaseController;
 use App\Models\ProductVariantModel;
 use CodeIgniter\API\ResponseTrait;
 
-class ProductVariantApiController extends BaseController
+class ProductVariantApiController extends BaseApiController
 {
     use ResponseTrait;
     protected $variantModel;

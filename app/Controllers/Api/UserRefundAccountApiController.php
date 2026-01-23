@@ -2,10 +2,9 @@
 
 namespace App\Controllers\Api;
 
-use App\Controllers\BaseController;
 use App\Models\UserRefundAccountModel;
 
-class UserRefundAccountApiController extends BaseController
+class UserRefundAccountApiController extends BaseApiController
 {
     protected $refundModel;
 
@@ -13,10 +12,6 @@ class UserRefundAccountApiController extends BaseController
     {
         $this->refundModel = new UserRefundAccountModel();
     }
-
-    // =======================
-    // API FUNCTIONS
-    // =======================
 
     // GET /api/refund-accounts
     public function findOne()
@@ -131,7 +126,7 @@ class UserRefundAccountApiController extends BaseController
     }
 
     // DELETE /api/refund-accounts/{id}
-    public function delete($id)
+    public function deleteAccount($id)
     {
         $jwtUser = getJWTUser();
         if (!$jwtUser) {

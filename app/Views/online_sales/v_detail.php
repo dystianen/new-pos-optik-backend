@@ -193,7 +193,7 @@ function badgeStatus($status)
           <div class="mb-4">
             <p class="mb-2 fw-semibold">Payment Verification</p>
             <div class="d-flex gap-2 flex-wrap">
-              <form method="post" action="<?= base_url('/online-sales/' . $order['order_id'] . '/approve') ?>">
+              <form method="post" action="<?= base_url('/api/online-sales/' . $order['order_id'] . '/approve') ?>">
                 <?= csrf_field() ?>
                 <button type="submit"
                   class="btn btn-success"
@@ -202,7 +202,7 @@ function badgeStatus($status)
                 </button>
               </form>
 
-              <form method="post" action="<?= base_url('/online-sales/' . $order['order_id'] . '/reject') ?>">
+              <form method="post" action="<?= base_url('/api/online-sales/' . $order['order_id'] . '/reject') ?>">
                 <?= csrf_field() ?>
                 <button type="submit"
                   class="btn btn-danger"
@@ -219,7 +219,7 @@ function badgeStatus($status)
             <div class="card-body">
               <h5 class="mb-3">Shipping Information</h5>
 
-              <form method="post" action="<?= base_url('/online-sales/' . $order['order_id'] . '/ship') ?>">
+              <form method="post" action="<?= base_url('/api/online-sales/' . $order['order_id'] . '/ship') ?>">
                 <?= csrf_field() ?>
 
                 <div class="row g-3">

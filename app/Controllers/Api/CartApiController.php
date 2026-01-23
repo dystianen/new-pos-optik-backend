@@ -10,7 +10,7 @@ use App\Models\OrderItemModel;
 use App\Models\OrderModel;
 use CodeIgniter\API\ResponseTrait;
 
-class CartApiController extends BaseController
+class CartApiController extends BaseApiController
 {
     use ResponseTrait;
     protected $cartModel;

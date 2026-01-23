@@ -2,13 +2,12 @@
 
 namespace App\Controllers\Api;
 
-use App\Controllers\BaseController;
 use App\Models\OrderRefundModel;
 use App\Models\OrderModel;
 use App\Models\OrderItemModel;
 use CodeIgniter\HTTP\ResponseInterface;
 
-class RefundApiController extends BaseController
+class RefundApiController extends BaseApiController
 {
   protected $refundModel;
   protected $orderModel;
