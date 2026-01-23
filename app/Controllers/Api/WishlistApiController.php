@@ -1,11 +1,11 @@
 <?php
 
-namespace App\Controllers;
+namespace App\Controllers\Api;
 
 use App\Controllers\BaseController;
 use App\Models\WishlistModel;
 
-class WishlistController extends BaseController
+class WishlistApiController extends BaseController
 {
     protected $wishlistModel;
 
@@ -14,9 +14,7 @@ class WishlistController extends BaseController
         $this->wishlistModel = new WishlistModel();
     }
 
-    /**
-     * GET /api/wishlist
-     */
+    // GET /api/wishlist
     public function index()
     {
         $jwtUser    = getJWTUser();
@@ -101,10 +99,7 @@ class WishlistController extends BaseController
     }
 
 
-    /**
-     * GET /api/wishlist/count
-     * ✅ Get total wishlist count untuk customer
-     */
+    // GET /api/wishlist/count
     public function count()
     {
         $jwtUser    = getJWTUser();
@@ -123,9 +118,7 @@ class WishlistController extends BaseController
         ]);
     }
 
-    /**
-     * POST /api/wishlist/toggle
-     */
+    // GET /api/wishlist/toggle
     public function toggle()
     {
         $jwtUser    = getJWTUser();

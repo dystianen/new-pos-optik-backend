@@ -13,32 +13,80 @@ class CreateOrderRefundsTable extends Migration
                 'type'       => 'CHAR',
                 'constraint' => 36,
             ],
+
             'order_id' => [
                 'type'       => 'CHAR',
                 'constraint' => 36,
             ],
+
             'user_refund_account_id' => [
                 'type'       => 'CHAR',
                 'constraint' => 36,
                 'null'       => true,
             ],
+
+            'refund_amount' => [
+                'type'       => 'DECIMAL',
+                'constraint' => '15,2',
+                'null'       => true,
+                'comment'    => 'Jumlah yang di-refund, null = full refund',
+            ],
+
+            'reason' => [
+                'type' => 'TEXT',
+                'null' => true,
+            ],
+
+            'status' => [
+                'type'       => 'ENUM',
+                'constraint' => ['pending', 'processing', 'approved', 'rejected'],
+                'default'    => 'pending',
+            ],
+
+            'admin_note' => [
+                'type' => 'TEXT',
+                'null' => true,
+            ],
+
+            'processed_by' => [
+                'type'       => 'CHAR',
+                'constraint' => 36,
+                'null'       => true,
+                'comment'    => 'Admin ID yang memproses refund',
+            ],
+
             'created_at' => [
                 'type' => 'DATETIME',
                 'null' => true,
             ],
+
             'updated_at' => [
                 'type' => 'DATETIME',
                 'null' => true,
             ],
+
+            'completed_at' => [
+                'type' => 'DATETIME',
+                'null' => true,
+                'comment' => 'Waktu saat refund approved/rejected',
+            ],
+
             'deleted_at' => [
                 'type' => 'DATETIME',
                 'null' => true,
             ],
         ]);
 
+        // Primary key
         $this->forge->addKey('order_refund_id', true);
-        $this->forge->addKey('order_id');
 
+        // Indexes
+        $this->forge->addKey('order_id');
+        $this->forge->addKey('user_refund_account_id');
+        $this->forge->addKey('status');
+        $this->forge->addKey(['created_at', 'status']);
+
+        // Foreign Keys
         $this->forge->addForeignKey(
             'order_id',
             'orders',
@@ -51,6 +99,14 @@ class CreateOrderRefundsTable extends Migration
             'user_refund_account_id',
             'user_refund_accounts',
             'user_refund_account_id',
+            'CASCADE',
+            'CASCADE'
+        );
+
+        $this->forge->addForeignKey(
+            'processed_by',
+            'users',
+            'user_id',
             'SET NULL',
             'CASCADE'
         );

@@ -17,26 +17,6 @@ class ProductAttributeController extends BaseController
         $this->attributeMasterValueModel = new ProductAttributeMasterValueModel();
     }
 
-    // =======================
-    // API FUNCTIONS
-    // =======================
-
-    public function apiListProductAttribute()
-    {
-        $attributes = $this->attributeModel->findAll();
-
-        $response = [
-            'status' => 200,
-            'message' => 'Successfully',
-            'data' => $attributes
-        ];
-        return $this->response->setJSON($response);
-    }
-
-    // =======================
-    // WEB DASHBOARD FUNCTIONS
-    // =======================
-
     public function webIndex()
     {
         $page = $this->request->getVar('page') ?? 1;

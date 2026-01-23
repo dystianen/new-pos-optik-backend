@@ -16,10 +16,6 @@ class UserController extends BaseController
         $this->roleModel = new RoleModel();
     }
 
-    // =======================
-    // WEB DASHBOARD FUNCTIONS
-    // =======================
-
     public function index()
     {
         $currentPage = $this->request->getVar('page') ? (int)$this->request->getVar('page') : 1;

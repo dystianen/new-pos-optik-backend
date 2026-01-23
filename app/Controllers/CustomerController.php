@@ -13,10 +13,6 @@ class CustomerController extends BaseController
         $this->customerModel = new CustomerModel();
     }
 
-    // =======================
-    // WEB DASHBOARD FUNCTIONS
-    // =======================
-
     public function index()
     {
         $currentPage = $this->request->getVar('page') ? (int)$this->request->getVar('page') : 1;

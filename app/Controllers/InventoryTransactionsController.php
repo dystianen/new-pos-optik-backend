@@ -18,10 +18,6 @@ class InventoryTransactionsController extends BaseController
         $this->productVariantModel = new ProductVariantModel();
     }
 
-    // =======================
-    // WEB DASHBOARD FUNCTIONS
-    // =======================
-
     public function webIndex()
     {
         $currentPage = $this->request->getVar('page')

@@ -14,28 +14,6 @@ class ProductCategoryController extends BaseController
         $this->categoryModel = new ProductCategoryModel();
     }
 
-    // =======================
-    // API FUNCTIONS
-    // =======================
-
-    // GET /api/products/categories
-    public function apiListProductCategory()
-    {
-        $categories = $this->categoryModel->findAll();
-
-        $response = [
-            'status' => 200,
-            'message' => 'Successfully',
-            'data' => $categories
-        ];
-        return $this->response->setJSON($response);
-    }
-
-
-    // =======================
-    // WEB DASHBOARD FUNCTIONS
-    // =======================
-
     public function webIndex()
     {
         $page = $this->request->getVar('page') ?? 1;

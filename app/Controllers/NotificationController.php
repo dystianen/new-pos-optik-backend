@@ -14,7 +14,6 @@ class NotificationController extends BaseController
         $this->notificationModel = new NotificationModel();
     }
 
-
     public function getAllNotifications()
     {
         $page     = (int) ($this->request->getVar('page') ?? 1);
@@ -37,7 +36,6 @@ class NotificationController extends BaseController
 
         return view('notifications/v_index', $data);
     }
-
 
     public function getUnreadNotifications()
     {
@@ -64,7 +62,6 @@ class NotificationController extends BaseController
         ]);
     }
 
-    // opsional: jika klik satu notif
     public function markRead($id)
     {
         $this->notificationModel

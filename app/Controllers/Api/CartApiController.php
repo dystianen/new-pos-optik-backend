@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Controllers;
+namespace App\Controllers\Api;
 
 use App\Controllers\BaseController;
 use App\Models\CartItemModel;
@@ -10,7 +10,7 @@ use App\Models\OrderItemModel;
 use App\Models\OrderModel;
 use CodeIgniter\API\ResponseTrait;
 
-class CartController extends BaseController
+class CartApiController extends BaseController
 {
     use ResponseTrait;
     protected $cartModel;
@@ -27,10 +27,6 @@ class CartController extends BaseController
         $this->orderItemModel = new OrderItemModel();
         $this->cartItemPrescriptionModel = new CartItemPrescriptionModel();
     }
-
-    // =======================
-    // API FUNCTIONS
-    // =======================
 
     // GET /api/cart/add-to-cart
     public function addToCart()

@@ -1,12 +1,12 @@
 <?php
 
-namespace App\Controllers;
+namespace App\Controllers\Api;
 
 use App\Controllers\BaseController;
 use App\Models\ProductVariantModel;
 use CodeIgniter\API\ResponseTrait;
 
-class ProductVariantController extends BaseController
+class ProductVariantApiController extends BaseController
 {
     use ResponseTrait;
     protected $variantModel;
@@ -15,10 +15,7 @@ class ProductVariantController extends BaseController
         $this->variantModel = new ProductVariantModel();
     }
 
-    // =======================
-    // API FUNCTIONS
-    // =======================
-
+    // GET /api/variants
     public function getByProductId()
     {
         $request = $this->request;
