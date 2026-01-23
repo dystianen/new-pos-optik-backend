@@ -32,7 +32,7 @@ $routes->group('api', ['filter' => 'cors'], function ($routes) {
 
   // PRODUCTS
   $routes->group('products', function ($routes) {
-    $routes->get('/', 'Api\ProductApiController::apiProduct');
+    $routes->get('', 'Api\ProductApiController::apiProduct');
     $routes->get('new-eyewear', 'Api\ProductApiController::apiListNewEyewear');
     $routes->get('best-seller', 'Api\ProductApiController::apiListBestSeller');
     $routes->get('categories', 'Api\ProductCategoryController::apiListProductCategory');
