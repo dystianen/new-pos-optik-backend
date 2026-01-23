@@ -34,12 +34,7 @@ class CartApiController extends BaseApiController
         $db->transStart();
 
         try {
-            $jwtUser = getJWTUser();
-            if (!$jwtUser) {
-                return $this->unauthorizedResponse();
-            }
-
-            $customerId = $jwtUser->user_id;
+            $customerId = $this->getAuthenticatedCustomerId();
             $payload = $this->getRequestBody(true);
 
             $productId    = $payload['product_id'] ?? null;
@@ -153,12 +148,7 @@ class CartApiController extends BaseApiController
     public function listCart()
     {
         try {
-            $jwtUser = getJWTUser();
-            if (!$jwtUser) {
-                return $this->unauthorizedResponse();
-            }
-
-            $customerId = $jwtUser->user_id;
+            $customerId = $this->getAuthenticatedCustomerId();
 
             $cart = $this->cartModel
                 ->where('customer_id', $customerId)
@@ -265,12 +255,7 @@ class CartApiController extends BaseApiController
     public function getTotalCart()
     {
         try {
-            $jwtUser = getJWTUser();
-            if (!$jwtUser) {
-                return $this->unauthorizedResponse('Please login first to view cart.');
-            }
-
-            $customerId = $jwtUser->user_id;
+            $customerId = $this->getAuthenticatedCustomerId();
 
             // 🛒 Cart
             $cart = $this->cartModel
@@ -310,12 +295,7 @@ class CartApiController extends BaseApiController
         $db->transStart();
 
         try {
-            $jwtUser = getJWTUser();
-            if (!$jwtUser) {
-                return $this->unauthorizedResponse();
-            }
-
-            $customerId = $jwtUser->user_id;
+            $customerId = $this->getAuthenticatedCustomerId();
 
             $cart = $this->cartModel
                 ->where('customer_id', $customerId)

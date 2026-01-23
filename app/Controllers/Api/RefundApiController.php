@@ -56,10 +56,7 @@ class RefundApiController extends BaseApiController
     }
 
     // Check ownership
-    $userId = $this->request->getHeaderLine('X-User-Id') ?? session('user_id');
-    if ($order['user_id'] !== $userId) {
-      return $this->unauthorizedResponse();
-    }
+    $this->getAuthenticatedUser();
 
     // Check if can be cancelled
     if (!$this->canBeCancelled($order)) {
@@ -186,10 +183,7 @@ class RefundApiController extends BaseApiController
     }
 
     // Check ownership
-    $userId = $this->request->getHeaderLine('X-User-Id') ?? session('user_id');
-    if ($order['user_id'] !== $userId) {
-      return $this->unauthorizedResponse();
-    }
+    $this->getAuthenticatedUser();
 
     // Check if order eligible for refund
     if (!$this->isEligibleForRefund($order)) {

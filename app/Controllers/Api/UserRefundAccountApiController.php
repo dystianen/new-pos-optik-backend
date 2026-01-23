@@ -106,14 +106,11 @@ class UserRefundAccountApiController extends BaseApiController
     // DELETE /api/refund-accounts/{id}
     public function deleteAccount($id)
     {
-        $jwtUser = getJWTUser();
-        if (!$jwtUser) {
-            return $this->unauthorizedResponse();
-        }
+        $customerId = $this->getAuthenticatedCustomerId();
 
         $data = $this->refundModel
             ->where('user_refund_account_id', $id)
-            ->where('customer_id', $jwtUser->user_id)
+            ->where('customer_id', $customerId)
             ->first();
 
         if (!$data) {

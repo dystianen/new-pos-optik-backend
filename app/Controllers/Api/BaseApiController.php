@@ -27,6 +27,29 @@ class BaseApiController extends ResourceController
    */
   protected $db;
 
+  protected function getAuthenticatedUser()
+  {
+    $jwtUser = getJWTUser();
+
+    if (!$jwtUser) {
+      $this->unauthorizedResponse()->send();
+      exit;
+    }
+
+    return $jwtUser;
+  }
+
+  protected function getAuthenticatedCustomerId(): string
+  {
+    return $this->getAuthenticatedUser()->user_id;
+  }
+
+  protected function getAuthenticatedCustomerName(): string
+  {
+    return $this->getAuthenticatedUser()->user_name;
+  }
+
+
   /**
    * Initialize controller
    * 

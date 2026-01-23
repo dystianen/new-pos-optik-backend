@@ -40,11 +40,7 @@ class CustomerShippingAddressApiController extends BaseApiController
     // =======================
     public function getById($id)
     {
-        $jwtUser = getJWTUser();
-        if (!$jwtUser) {
-            return $this->unauthorizedResponse();
-        }
-
+        $this->getAuthenticatedUser();
         $data = $this->csaModel->find($id);
 
         if (!$data) {
@@ -63,13 +59,8 @@ class CustomerShippingAddressApiController extends BaseApiController
     public function save()
     {
         try {
-            $jwtUser = getJWTUser();
-            if (!$jwtUser) {
-                return $this->unauthorizedResponse();
-            }
-
+            $customerId = $this->getAuthenticatedCustomerId();
             $id = $this->request->getVar('id');
-            $customerId = $jwtUser->user_id;
 
             $data = [
                 'customer_id'    => $customerId,

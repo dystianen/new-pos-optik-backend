@@ -51,15 +51,7 @@ class OnlineSalesApiController extends BaseApiController
     public function summaryOrders($addressId)
     {
         try {
-            // 🔐 AUTH
-            $jwtUser = getJWTUser();
-            if (!$jwtUser) {
-                return $this->response->setStatusCode(401)->setJSON([
-                    'message' => 'Unauthorized'
-                ]);
-            }
-
-            $customerId = $jwtUser->user_id;
+            $customerId = $this->getAuthenticatedCustomerId();
 
             // 📍 SHIPPING ADDRESS
             $shippingAddress = $this->csaModel
@@ -235,18 +227,10 @@ class OnlineSalesApiController extends BaseApiController
         $db->transStart();
 
         try {
-            // 🔐 AUTH
-            $jwtUser = getJWTUser();
-            if (!$jwtUser) {
-                return $this->unauthorizedResponse();
-            }
+            $customerId = $this->getAuthenticatedCustomerId();
+            $customerName = $this->getAuthenticatedCustomerName();
 
             log_message('debug', 'SUBMIT ORDER START');
-
-            log_message('debug', 'AUTH USER: ' . json_encode($jwtUser));
-
-            $customerId = $jwtUser->user_id;
-            $customerName = $jwtUser->user_name;
 
             // 🔁 Ambil snapshot summary
             $summaryResponse = $this->summaryOrders($addressId);
@@ -388,13 +372,8 @@ class OnlineSalesApiController extends BaseApiController
             log_message('debug', 'UPLOAD PAYMENT START');
 
             // 🔐 AUTH
-            $jwtUser = getJWTUser();
-            if (!$jwtUser) {
-                return $this->unauthorizedResponse();
-            }
-
-            $customerId = $jwtUser->user_id;
-            $customerName = $jwtUser->user_name;
+            $customerId = $this->getAuthenticatedCustomerId();
+            $customerName = $this->getAuthenticatedCustomerName();
 
             // 📥 INPUT
             $orderId = $this->request->getVar('order_id');
@@ -506,15 +485,11 @@ class OnlineSalesApiController extends BaseApiController
     public function checkPaymentStatus($orderId)
     {
         // 🔐 AUTH
-        $jwtUser = getJWTUser();
-        if (!$jwtUser) {
-            return $this->unauthorizedResponse();
-        }
+        $customerId = $this->getAuthenticatedCustomerId();
 
         if (!$orderId) {
             return $this->errorResponse('Order ID is required', 400);
         }
-        $customerId = $jwtUser->user_id;
 
         if (!$orderId) {
             return $this->errorResponse('Order ID is required', 400);
@@ -557,14 +532,7 @@ class OnlineSalesApiController extends BaseApiController
     public function listOrders()
     {
         try {
-            $jwtUser = getJWTUser();
-            if (!$jwtUser) {
-                return $this->response->setStatusCode(401)->setJSON([
-                    'message' => 'Unauthorized'
-                ]);
-            }
-
-            $customerId = $jwtUser->user_id;
+            $customerId = $this->getAuthenticatedCustomerId();
 
             // Get filters from query params
             $statusId = $this->request->getVar('statusId');
@@ -669,12 +637,7 @@ class OnlineSalesApiController extends BaseApiController
     public function getOrderDetail($orderId)
     {
         try {
-            $jwtUser = getJWTUser();
-            if (!$jwtUser) {
-                return $this->unauthorizedResponse();
-            }
-
-            $customerId = $jwtUser->user_id;
+            $customerId = $this->getAuthenticatedCustomerId();
 
             // Get order detail
             $order = $this->orderModel

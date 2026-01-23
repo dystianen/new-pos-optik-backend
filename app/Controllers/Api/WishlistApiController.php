@@ -16,8 +16,7 @@ class WishlistApiController extends BaseApiController
     // GET /api/wishlist
     public function index()
     {
-        $jwtUser    = getJWTUser();
-        $customerId = $jwtUser->user_id;
+        $customerId = $this->getAuthenticatedCustomerId();
 
         $search = $this->request->getVar('search');
         $page   = (int) ($this->request->getVar('page') ?? 1);
@@ -104,8 +103,7 @@ class WishlistApiController extends BaseApiController
     // GET /api/wishlist/toggle
     public function toggle()
     {
-        $jwtUser    = getJWTUser();
-        $customerId = $jwtUser->user_id;
+        $customerId = $this->getAuthenticatedCustomerId();
         $productId  = $this->request->getVar('product_id');
 
         if (!$productId) {
@@ -141,7 +139,7 @@ class WishlistApiController extends BaseApiController
             ->countAllResults();
 
         $response = [
-            'is_wishlist' => false,
+            'is_wishlist' => true,
             'total' => $total
         ];
         return $this->successResponse($response, 'Added to wishlist');
