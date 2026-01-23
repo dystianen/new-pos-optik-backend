@@ -5,7 +5,6 @@ namespace App\Controllers\Api;
 use App\Models\CustomerModel;
 use App\Models\RoleModel;
 use App\Models\UserModel;
-use CodeIgniter\HTTP\ResponseInterface;
 use Exception;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;

@@ -74,7 +74,6 @@ $routes->group('api', ['filter' => 'cors'], function ($routes) {
     $routes->post('(:segment)/ship', 'OnlineSalesController::shipOrder/$1');
   });
 
-
   // SHIPPING ADDRESS
   $routes->group('shipping', ['filter' => 'authApi'], function ($routes) {
     $routes->get('', 'Api\CustomerShippingAddressApiController::getAllShippingAddress');
