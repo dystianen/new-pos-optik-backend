@@ -20,6 +20,7 @@ class OrderRefundModel extends Model
         'user_refund_account_id',
         'refund_amount',
         'reason',
+        'additional_note',
         'status',
         'admin_note',
         'processed_by',
@@ -73,20 +74,10 @@ class OrderRefundModel extends Model
     protected $beforeInsert = ['generateUUID'];
     protected $beforeUpdate = [];
 
-    protected function generateUUID(array $data)
+    protected function generateUuid(array $data)
     {
-        if (!isset($data['data']['order_refund_id'])) {
-            $data['data']['order_refund_id'] = $this->generateUUIDv4();
-        }
+        $data['data']['order_id'] = service('uuid')->uuid4()->toString();
         return $data;
-    }
-
-    private function generateUUIDv4(): string
-    {
-        $data = random_bytes(16);
-        $data[6] = chr(ord($data[6]) & 0x0f | 0x40);
-        $data[8] = chr(ord($data[8]) & 0x3f | 0x80);
-        return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4));
     }
 
     // =====================
@@ -270,35 +261,6 @@ class OrderRefundModel extends Model
         return [
             'success' => false,
             'message' => 'Gagal membuat permintaan refund',
-            'errors' => $this->errors(),
-        ];
-    }
-
-    public function createCancellation(array $data)
-    {
-        // Cek apakah order sudah punya cancel request yang masih aktif
-        if ($this->hasActiveRefund($data['order_id'])) {
-            return [
-                'success' => false,
-                'message' => 'Order ini sudah memiliki permintaan pembatalan yang sedang diproses',
-            ];
-        }
-
-        // Set type to cancel
-        $data['type'] = self::TYPE_CANCEL;
-        $data['status'] = self::STATUS_PENDING;
-
-        if ($this->insert($data)) {
-            return [
-                'success' => true,
-                'message' => 'Permintaan pembatalan berhasil dibuat',
-                'refund_id' => $this->getInsertID(),
-            ];
-        }
-
-        return [
-            'success' => false,
-            'message' => 'Gagal membuat permintaan pembatalan',
             'errors' => $this->errors(),
         ];
     }

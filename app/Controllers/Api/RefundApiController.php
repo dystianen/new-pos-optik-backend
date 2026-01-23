@@ -5,6 +5,7 @@ namespace App\Controllers\Api;
 use App\Models\OrderRefundModel;
 use App\Models\OrderModel;
 use App\Models\OrderItemModel;
+use App\Models\UserRefundAccountModel;
 use CodeIgniter\HTTP\ResponseInterface;
 
 class RefundApiController extends BaseApiController
@@ -12,12 +13,14 @@ class RefundApiController extends BaseApiController
   protected $refundModel;
   protected $orderModel;
   protected $orderItemModel;
+  protected $userRefundAccountModel;
 
   public function __construct()
   {
     $this->refundModel = new OrderRefundModel();
     $this->orderModel = new OrderModel();
     $this->orderItemModel = new OrderItemModel();
+    $this->userRefundAccountModel = new UserRefundAccountModel();
   }
 
     // =====================================================
@@ -37,6 +40,9 @@ class RefundApiController extends BaseApiController
    */
   public function submitCancel()
   {
+    // Check ownership
+    $this->getAuthenticatedUser();
+
     $rules = [
       'order_id' => 'required|min_length[36]|max_length[36]',
       'reason' => 'required|min_length[10]',
@@ -48,15 +54,13 @@ class RefundApiController extends BaseApiController
 
     $orderId = $this->request->getJSON()->order_id;
     $reason = $this->request->getJSON()->reason;
+    $additionalNote = $this->request->getJSON()->additional_note;
 
     $order = $this->orderModel->find($orderId);
 
     if (!$order) {
       return $this->errorResponse('Order tidak ditemukan');
     }
-
-    // Check ownership
-    $this->getAuthenticatedUser();
 
     // Check if can be cancelled
     if (!$this->canBeCancelled($order)) {
@@ -69,7 +73,7 @@ class RefundApiController extends BaseApiController
     }
 
     // === CASE 1: Belum bayar - Cancel langsung tanpa refund ===
-    if ($order['payment_status'] !== 'paid') {
+    if ($order['status'] !== 'pending') {
       $this->orderModel->update($orderId, [
         'status' => 'cancelled',
         'cancel_reason' => $reason,
@@ -84,7 +88,7 @@ class RefundApiController extends BaseApiController
     }
 
     // === CASE 2: Sudah bayar - Perlu proses refund ===
-    $refundAccountId = $this->request->getJSON()->user_refund_account_id ?? null;
+    $refundAccountId = $this->userRefundAccountModel->where('order_id', $orderId)->first() ?? null;
 
     if (empty($refundAccountId)) {
       return $this->errorResponse('user_refund_account_id diperlukan karena order sudah dibayar');
@@ -96,9 +100,10 @@ class RefundApiController extends BaseApiController
       'user_refund_account_id' => $refundAccountId,
       'refund_amount' => $order['total_amount'], // Always full refund for cancellation
       'reason' => $reason,
+      'additional_note' => $additionalNote
     ];
 
-    $result = $this->refundModel->createCancellation($data);
+    $result = $this->refundModel->insert($data);
 
     if (!$result['success']) {
       return $this->errorResponse($result['errors'] ?? null,  $result['message']);

@@ -33,6 +33,10 @@ class CreateOrderRefundsTable extends Migration
             ],
 
             'reason' => [
+                'type' => 'VARCHAR',
+                'contraint' => 100
+            ],
+            'additional_note' => [
                 'type' => 'TEXT',
                 'null' => true,
             ],
@@ -41,6 +45,11 @@ class CreateOrderRefundsTable extends Migration
                 'type'       => 'ENUM',
                 'constraint' => ['pending', 'processing', 'approved', 'rejected'],
                 'default'    => 'pending',
+            ],
+
+            'type' => [
+                'type'       => 'ENUM',
+                'constraint' => ['cancel', 'refund'],
             ],
 
             'admin_note' => [

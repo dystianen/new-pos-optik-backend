@@ -68,10 +68,10 @@ $routes->group('api', ['filter' => 'cors'], function ($routes) {
 
   // ONLINE SALES
   $routes->group('online-sales', ['filter' => 'authGuard'], function ($routes) {
-    $routes->post('(:segment)/approve', 'OnlineSalesController::approvePayment/$1');
-    $routes->post('(:segment)/reject', 'OnlineSalesController::rejectPayment/$1');
-    $routes->post('(:segment)/status', 'OnlineSalesController::updateStatus/$1');
-    $routes->post('(:segment)/ship', 'OnlineSalesController::shipOrder/$1');
+    $routes->post('(:segment)/approve', 'Api\OnlineSalesApiController::approvePayment/$1');
+    $routes->post('(:segment)/reject', 'Api\OnlineSalesApiController::rejectPayment/$1');
+    $routes->post('(:segment)/status', 'Api\OnlineSalesApiController::updateStatus/$1');
+    $routes->post('(:segment)/ship', 'Api\OnlineSalesApiController::shipOrder/$1');
   });
 
   // SHIPPING ADDRESS
@@ -94,6 +94,12 @@ $routes->group('api', ['filter' => 'cors'], function ($routes) {
     $routes->get('(:segment)', 'Api\UserRefundAccountApiController::getById/$1');
     $routes->post('save', 'Api\UserRefundAccountApiController::save');
   });
+
+  // REFUND ORDER
+  $routes->post('refund', 'Api\RefundApiController::submitRefund', ['filter' => 'authApi']);
+
+  // CANCEL ORDER
+  $routes->post('cancel', 'Api\RefundApiController::submitCancel', ['filter' => 'authApi']);
 });
 
 
