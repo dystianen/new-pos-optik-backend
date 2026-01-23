@@ -2,10 +2,9 @@
 
 namespace App\Controllers\Api;
 
-use App\Controllers\BaseController;
 use App\Models\WishlistModel;
 
-class WishlistApiController extends BaseController
+class WishlistApiController extends BaseApiController
 {
     protected $wishlistModel;
 
@@ -83,19 +82,9 @@ class WishlistApiController extends BaseController
             ->orderBy('wishlists.created_at', 'DESC')
             ->paginate($limit, 'wishlist', $page);
 
-        $pager = [
-            'currentPage' => $this->wishlistModel->pager->getCurrentPage('wishlist'),
-            'totalPages'  => $this->wishlistModel->pager->getPageCount('wishlist'),
-            'limit'       => $limit,
-            'totalItems'  => $this->wishlistModel->pager->getTotal('wishlist'),
-        ];
-
-        return $this->response->setJSON([
-            'status'  => 200,
-            'message' => 'Wishlist fetched',
-            'data'    => $wishlist,
-            'pager'   => $pager
-        ]);
+        $total = $this->wishlistModel->pager->getTotal('wishlist');
+        $totalPages  = $this->wishlistModel->pager->getPageCount('wishlist');
+        return $this->paginatedResponse($wishlist, $total, $totalPages, $limit);
     }
 
 
@@ -109,13 +98,7 @@ class WishlistApiController extends BaseController
             ->where('customer_id', $customerId)
             ->countAllResults();
 
-        return $this->response->setJSON([
-            'status'  => 200,
-            'message' => 'Wishlist count fetched',
-            'data'    => [
-                'total' => $total
-            ]
-        ]);
+        return $this->successResponse($total);
     }
 
     // GET /api/wishlist/toggle
@@ -126,10 +109,7 @@ class WishlistApiController extends BaseController
         $productId  = $this->request->getVar('product_id');
 
         if (!$productId) {
-            return $this->response->setJSON([
-                'status'  => 400,
-                'message' => 'Product ID required'
-            ]);
+            return $this->errorResponse('Product ID required');
         }
 
         $exists = $this->wishlistModel
@@ -138,42 +118,32 @@ class WishlistApiController extends BaseController
             ->first();
 
         if ($exists) {
-            // remove
             $this->wishlistModel->delete($exists['wishlist_id']);
 
-            // ✅ Get updated count
             $total = $this->wishlistModel
                 ->where('customer_id', $customerId)
                 ->countAllResults();
 
-            return $this->response->setJSON([
-                'status'  => 200,
-                'message' => 'Removed from wishlist',
-                'data'    => [
-                    'is_wishlist' => false,
-                    'total' => $total // ✅ Return total count
-                ]
-            ]);
+            $response = [
+                'is_wishlist' => false,
+                'total' => $total
+            ];
+            return $this->successResponse($response, 'Removed from wishlist');
         }
 
-        // add
         $this->wishlistModel->insert([
             'customer_id' => $customerId,
             'product_id'  => $productId
         ]);
 
-        // ✅ Get updated count
         $total = $this->wishlistModel
             ->where('customer_id', $customerId)
             ->countAllResults();
 
-        return $this->response->setJSON([
-            'status'  => 200,
-            'message' => 'Added to wishlist',
-            'data'    => [
-                'is_wishlist' => true,
-                'total' => $total // ✅ Return total count
-            ]
-        ]);
+        $response = [
+            'is_wishlist' => false,
+            'total' => $total
+        ];
+        return $this->successResponse($response, 'Added to wishlist');
     }
 }

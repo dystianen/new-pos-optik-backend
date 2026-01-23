@@ -65,6 +65,21 @@ class BaseApiController extends ResourceController
   }
 
   /**
+   * Success response without data (message only)
+   * 
+   * @param string $message     Success message
+   * @param int    $statusCode  HTTP status code (default: 200)
+   * @return ResponseInterface
+   */
+  protected function messageResponse(string $message = 'Success', int $statusCode = ResponseInterface::HTTP_OK)
+  {
+    return $this->respond([
+      'success' => true,
+      'message' => $message,
+    ], $statusCode);
+  }
+
+  /**
    * Error response helper
    * 
    * @param string $message     Error message

@@ -17,12 +17,6 @@ class ProductCategoryApiController extends BaseApiController
     public function apiListProductCategory()
     {
         $categories = $this->categoryModel->findAll();
-
-        $response = [
-            'status' => 200,
-            'message' => 'Successfully',
-            'data' => $categories
-        ];
-        return $this->response->setJSON($response);
+        return $this->successResponse($categories);
     }
 }

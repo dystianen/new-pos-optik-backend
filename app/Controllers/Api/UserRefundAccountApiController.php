@@ -23,11 +23,7 @@ class UserRefundAccountApiController extends BaseApiController
             ->where('customer_id', $userId)
             ->first();
 
-        return $this->response->setJSON([
-            'status'  => 200,
-            'message' => 'Get refund accounts successfully!',
-            'data'    => $data
-        ]);
+        return $this->successResponse($data);
     }
 
     // GET /api/refund-accounts/{id}
@@ -35,9 +31,7 @@ class UserRefundAccountApiController extends BaseApiController
     {
         $jwtUser = getJWTUser();
         if (!$jwtUser) {
-            return $this->response->setStatusCode(401)->setJSON([
-                'message' => 'Unauthorized'
-            ]);
+            return $this->unauthorizedResponse();
         }
 
         $data = $this->refundModel
@@ -46,16 +40,10 @@ class UserRefundAccountApiController extends BaseApiController
             ->first();
 
         if (!$data) {
-            return $this->response->setStatusCode(404)->setJSON([
-                'message' => 'Refund account not found'
-            ]);
+            return $this->errorResponse('Refund account not found');
         }
 
-        return $this->response->setJSON([
-            'status'  => 200,
-            'message' => 'Get refund account successfully!',
-            'data'    => $data
-        ]);
+        return $this->successResponse($data);
     }
 
     // POST /api/refund-accounts/save
@@ -64,9 +52,7 @@ class UserRefundAccountApiController extends BaseApiController
         try {
             $jwtUser = getJWTUser();
             if (!$jwtUser) {
-                return $this->response->setStatusCode(401)->setJSON([
-                    'message' => 'Unauthorized'
-                ]);
+                return $this->unauthorizedResponse();
             }
 
             $customerId = $jwtUser->user_id;
@@ -80,10 +66,7 @@ class UserRefundAccountApiController extends BaseApiController
             ];
 
             if (!$this->validate($this->refundModel->validationRules)) {
-                return $this->response->setStatusCode(422)->setJSON([
-                    'status' => 422,
-                    'errors' => $this->validator->getErrors()
-                ]);
+                return $this->validationErrorResponse($this->validator->getErrors());
             }
 
             // 🔍 cari berdasarkan customer_id
@@ -99,7 +82,7 @@ class UserRefundAccountApiController extends BaseApiController
                 );
 
                 if (!$success) {
-                    throw new \Exception('Failed to update refund account');
+                    return $this->errorResponse('Failed to update refund account');
                 }
 
                 $message = 'Refund account updated successfully!';
@@ -108,20 +91,15 @@ class UserRefundAccountApiController extends BaseApiController
                 $success = $this->refundModel->insert($data);
 
                 if (!$success) {
-                    throw new \Exception('Failed to create refund account');
+                    return $this->errorResponse('Failed to create refund account');
                 }
 
                 $message = 'Refund account created successfully!';
             }
 
-            return $this->response->setJSON([
-                'status'  => 200,
-                'message' => $message
-            ]);
+            return $this->messageResponse($message);
         } catch (\Throwable $e) {
-            return $this->response->setStatusCode(500)->setJSON([
-                'message' => $e->getMessage()
-            ]);
+            return $this->errorResponse($e->getMessage());
         }
     }
 
@@ -130,9 +108,7 @@ class UserRefundAccountApiController extends BaseApiController
     {
         $jwtUser = getJWTUser();
         if (!$jwtUser) {
-            return $this->response->setStatusCode(401)->setJSON([
-                'message' => 'Unauthorized'
-            ]);
+            return $this->unauthorizedResponse();
         }
 
         $data = $this->refundModel
@@ -141,16 +117,11 @@ class UserRefundAccountApiController extends BaseApiController
             ->first();
 
         if (!$data) {
-            return $this->response->setStatusCode(404)->setJSON([
-                'message' => 'Refund account not found'
-            ]);
+            return $this->notFoundResponse('Refund account not found');
         }
 
         $this->refundModel->delete($id);
 
-        return $this->response->setJSON([
-            'status'  => 200,
-            'message' => 'Refund account deleted successfully!'
-        ]);
+        return $this->messageResponse('Refund account deleted successfully!');
     }
 }

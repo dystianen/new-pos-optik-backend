@@ -67,7 +67,7 @@ class OnlineSalesApiController extends BaseApiController
                 ->find($addressId);
 
             if (!$shippingAddress) {
-                throw new \Exception('Shipping address not found');
+                return $this->notFoundResponse('Shipping address not found');
             }
 
             // 🛒 CART
@@ -77,17 +77,14 @@ class OnlineSalesApiController extends BaseApiController
                 ->first();
 
             if (!$cart) {
-                return $this->response->setJSON([
-                    'status' => 200,
-                    'data' => [
-                        'shipping_address' => $shippingAddress,
-                        'items' => [],
-                        'shipping' => null,
-                        'summary' => [
-                            'subtotal' => 0,
-                            'shipping_cost' => 0,
-                            'total' => 0
-                        ]
+                return $this->successResponse([
+                    'shipping_address' => $shippingAddress,
+                    'items' => [],
+                    'shipping' => null,
+                    'summary' => [
+                        'subtotal' => 0,
+                        'shipping_cost' => 0,
+                        'total' => 0
                     ]
                 ]);
             }
@@ -95,17 +92,17 @@ class OnlineSalesApiController extends BaseApiController
             // 🛒 CART ITEMS
             $items = $this->cartItemModel
                 ->select("
-                cart_items.cart_item_id,
-                cart_items.product_id,
-                cart_items.variant_id,
-                cart_items.quantity,
-                cart_items.price,
+                    cart_items.cart_item_id,
+                    cart_items.product_id,
+                    cart_items.variant_id,
+                    cart_items.quantity,
+                    cart_items.price,
 
-                products.product_name,
-                product_variants.variant_name,
+                    products.product_name,
+                    product_variants.variant_name,
 
-                COALESCE(pvi_img.url, pi_img.url) AS image
-            ")
+                    COALESCE(pvi_img.url, pi_img.url) AS image
+                ")
                 ->join('products', 'products.product_id = cart_items.product_id')
                 ->join('product_variants', 'product_variants.variant_id = cart_items.variant_id', 'left')
                 ->join(
@@ -201,37 +198,33 @@ class OnlineSalesApiController extends BaseApiController
             $total = $subtotal + $shippingCost;
 
             // ✅ RESPONSE
-            return $this->response->setJSON([
-                'status' => 200,
-                'data' => [
-                    'shipping_address' => [
-                        'recipient_name' => $shippingAddress['recipient_name'],
-                        'phone'          => $shippingAddress['phone'],
-                        'address'        => $shippingAddress['address'],
-                        'city'           => $shippingAddress['city'],
-                        'province'       => $shippingAddress['province'],
-                        'postal_code'    => $shippingAddress['postal_code'],
-                    ],
+            $responseData = [
+                'shipping_address' => [
+                    'recipient_name' => $shippingAddress['recipient_name'],
+                    'phone'          => $shippingAddress['phone'],
+                    'address'        => $shippingAddress['address'],
+                    'city'           => $shippingAddress['city'],
+                    'province'       => $shippingAddress['province'],
+                    'postal_code'    => $shippingAddress['postal_code'],
+                ],
 
-                    'items' => $mappedItems,
+                'items' => $mappedItems,
 
-                    'shipping' => [
-                        'service'     => 'regular',
-                        'destination' => $destinationText,
-                        'cost'        => (int) $shippingCost
-                    ],
+                'shipping' => [
+                    'service'     => 'regular',
+                    'destination' => $destinationText,
+                    'cost'        => (int) $shippingCost
+                ],
 
-                    'summary' => [
-                        'subtotal'      => (int) $subtotal,
-                        'shipping_cost' => (int) $shippingCost,
-                        'total'         => (int) $total
-                    ]
+                'summary' => [
+                    'subtotal'      => (int) $subtotal,
+                    'shipping_cost' => (int) $shippingCost,
+                    'total'         => (int) $total
                 ]
-            ]);
+            ];
+            return $this->successResponse($responseData);
         } catch (\Throwable $e) {
-            return $this->response->setStatusCode(400)->setJSON([
-                'message' => $e->getMessage()
-            ]);
+            return $this->errorResponse($e->getMessage(), 400);
         }
     }
 
@@ -245,9 +238,7 @@ class OnlineSalesApiController extends BaseApiController
             // 🔐 AUTH
             $jwtUser = getJWTUser();
             if (!$jwtUser) {
-                return $this->response->setStatusCode(401)->setJSON([
-                    'message' => 'Unauthorized'
-                ]);
+                return $this->unauthorizedResponse();
             }
 
             log_message('debug', 'SUBMIT ORDER START');
@@ -369,14 +360,10 @@ class OnlineSalesApiController extends BaseApiController
 
             $db->transComplete();
 
-            return $this->response->setJSON([
-                'status' => 200,
-                'message' => 'Order submitted',
-                'data' => [
-                    'order_id' => $orderId,
-                    'grand_total' => $summary['summary']['total']
-                ]
-            ]);
+            return $this->successResponse([
+                'order_id' => $orderId,
+                'grand_total' => $summary['summary']['total']
+            ], 'Order submitted');
         } catch (\Throwable $e) {
             log_message('error', 'SUBMIT ORDER ERROR');
             log_message('error', $e->getMessage());
@@ -387,10 +374,7 @@ class OnlineSalesApiController extends BaseApiController
             }
 
             $db->transRollback();
-
-            return $this->response->setStatusCode(400)->setJSON([
-                'message' => $e->getMessage()
-            ]);
+            return $this->errorResponse($e->getMessage(), 400);
         }
     }
 
@@ -406,7 +390,7 @@ class OnlineSalesApiController extends BaseApiController
             // 🔐 AUTH
             $jwtUser = getJWTUser();
             if (!$jwtUser) {
-                throw new \Exception('Unauthorized');
+                return $this->unauthorizedResponse();
             }
 
             $customerId = $jwtUser->user_id;
@@ -502,14 +486,10 @@ class OnlineSalesApiController extends BaseApiController
 
             $db->transComplete();
 
-            return $this->response->setJSON([
-                'status'  => 200,
-                'message' => 'Payment proof uploaded successfully',
-                'data' => [
-                    'order_id'  => $orderId,
-                    'proof_url' => $objectUrl,
-                ]
-            ]);
+            return $this->successResponse([
+                'order_id'  => $orderId,
+                'proof_url' => $objectUrl,
+            ], 'Payment proof uploaded successfully');
         } catch (\Throwable $e) {
             $db->transRollback();
 
@@ -528,19 +508,16 @@ class OnlineSalesApiController extends BaseApiController
         // 🔐 AUTH
         $jwtUser = getJWTUser();
         if (!$jwtUser) {
-            return $this->respond([
-                'status'  => 401,
-                'message' => 'Unauthorized'
-            ], 401);
+            return $this->unauthorizedResponse();
         }
 
+        if (!$orderId) {
+            return $this->errorResponse('Order ID is required', 400);
+        }
         $customerId = $jwtUser->user_id;
 
         if (!$orderId) {
-            return $this->respond([
-                'status'  => 400,
-                'message' => 'Order ID is required'
-            ], 400);
+            return $this->errorResponse('Order ID is required', 400);
         }
 
         $order = $this->orderModel
@@ -549,10 +526,7 @@ class OnlineSalesApiController extends BaseApiController
             ->first();
 
         if (!$order) {
-            return $this->respond([
-                'status'  => 404,
-                'message' => 'Order not found'
-            ], 404);
+            return $this->notFoundResponse('Order not found');
         }
 
         // ============================
@@ -572,15 +546,11 @@ class OnlineSalesApiController extends BaseApiController
             $message       = 'Payment rejected';
         }
 
-        return $this->respond([
-            'status'  => 200,
-            'message' => $message,
-            'data'    => [
-                'order_id'       => $orderId,
-                'status_id'      => $order['status_id'],
-                'payment_status' => $paymentStatus,
-            ]
-        ]);
+        return $this->successResponse([
+            'order_id' => $orderId,
+            'status_id' => $order['status_id'],
+            'payment_status' => $paymentStatus
+        ], $message);
     }
 
     // GET /api/orders
@@ -689,14 +659,9 @@ class OnlineSalesApiController extends BaseApiController
                 ];
             }, $orders);
 
-            return $this->response->setJSON([
-                'status' => 200,
-                'data' => $mappedOrders
-            ]);
+            return $this->successResponse($mappedOrders);
         } catch (\Throwable $e) {
-            return $this->response->setStatusCode(400)->setJSON([
-                'message' => $e->getMessage()
-            ]);
+            return $this->errorResponse($e->getMessage());
         }
     }
 
@@ -706,9 +671,7 @@ class OnlineSalesApiController extends BaseApiController
         try {
             $jwtUser = getJWTUser();
             if (!$jwtUser) {
-                return $this->response->setStatusCode(401)->setJSON([
-                    'message' => 'Unauthorized'
-                ]);
+                return $this->unauthorizedResponse();
             }
 
             $customerId = $jwtUser->user_id;
@@ -734,9 +697,7 @@ class OnlineSalesApiController extends BaseApiController
                 ->first();
 
             if (!$order) {
-                return $this->response->setStatusCode(404)->setJSON([
-                    'message' => 'Order not found'
-                ]);
+                return $this->notFoundResponse('Order not found');
             }
 
             /**
@@ -834,44 +795,40 @@ class OnlineSalesApiController extends BaseApiController
                 ->where('order_id', $orderId)
                 ->first();
 
-            return $this->response->setJSON([
-                'status' => 200,
-                'data' => [
-                    'order_id' => $order['order_id'],
-                    'order_date' => $order['created_at'],
-                    'status' => $order['status_name'],
-                    'items' => $mappedItems,
-                    'summary' => [
-                        'shipping_cost' => (int) $order['shipping_cost'],
-                        'grand_total' => (int) $order['grand_total']
-                    ],
-                    'shipping' => [
-                        'method' => $order['shipping_method'],
-                        'rate' => (int) $order['shipping_cost'],
-                        'courier' => $order['courier'],
-                        'tracking_number' => $order['tracking_number'],
-                        'estimated_days' => $order['estimated_days'],
-                        'address' => $shippingAddress ? [
-                            'recipient_name' => $shippingAddress['recipient_name'],
-                            'phone' => $shippingAddress['phone'],
-                            'address' => $shippingAddress['address'],
-                            'city' => $shippingAddress['city'],
-                            'province' => $shippingAddress['province'],
-                            'postal_code' => $shippingAddress['postal_code']
-                        ] : null
-                    ],
-                    'payment' => [
-                        'method' => $order['payment_method'],
-                        'proof' => $order['proof'],
-                        'date' => $order['paid_at']
-                    ],
-                    // 'notes' => $order['notes']
-                ]
-            ]);
+            $responseData = [
+                'order_id' => $order['order_id'],
+                'order_date' => $order['created_at'],
+                'status' => $order['status_name'],
+                'items' => $mappedItems,
+                'summary' => [
+                    'shipping_cost' => (int) $order['shipping_cost'],
+                    'grand_total' => (int) $order['grand_total']
+                ],
+                'shipping' => [
+                    'method' => $order['shipping_method'],
+                    'rate' => (int) $order['shipping_cost'],
+                    'courier' => $order['courier'],
+                    'tracking_number' => $order['tracking_number'],
+                    'estimated_days' => $order['estimated_days'],
+                    'address' => $shippingAddress ? [
+                        'recipient_name' => $shippingAddress['recipient_name'],
+                        'phone' => $shippingAddress['phone'],
+                        'address' => $shippingAddress['address'],
+                        'city' => $shippingAddress['city'],
+                        'province' => $shippingAddress['province'],
+                        'postal_code' => $shippingAddress['postal_code']
+                    ] : null
+                ],
+                'payment' => [
+                    'method' => $order['payment_method'],
+                    'proof' => $order['proof'],
+                    'date' => $order['paid_at']
+                ],
+            ];
+
+            return $this->successResponse($responseData);
         } catch (\Throwable $e) {
-            return $this->response->setStatusCode(400)->setJSON([
-                'message' => $e->getMessage()
-            ]);
+            return $this->errorResponse($e->getMessage());
         }
     }
 
@@ -970,11 +927,11 @@ class OnlineSalesApiController extends BaseApiController
             $order = $this->orderModel->find($orderId);
 
             if (!$order) {
-                throw new \Exception('Order tidak ditemukan');
+                $this->errorResponse('Order tidak ditemukan');
             }
 
             if ($order['status_id'] === 'cc46d2a8-436c-42fc-96a1-ffb537dbabed') {
-                throw new \Exception('Order sudah diproses');
+                $this->errorResponse('Order sudah diproses');
             }
 
             // 2️⃣ Update status → PAID / PROCESSING
@@ -1088,32 +1045,27 @@ class OnlineSalesApiController extends BaseApiController
         $statusId = $this->request->getVar('status_id');
 
         if (!$statusId) {
-            return $this->respond([
-                'status'  => 400,
-                'message' => 'status_id is required'
-            ], 400);
+            return $this->errorResponse(
+                'status_id is required'
+            );
         }
 
         $order = $this->orderModel->find($orderId);
 
         if (!$order) {
-            return $this->respond([
-                'status'  => 404,
-                'message' => 'Order not found'
-            ], 404);
+            return $this->errorResponse('Order not found');
         }
 
         $this->orderModel->update($orderId, [
             'status_id' => $statusId
         ]);
 
-        return $this->respond([
-            'status'  => 200,
-            'message' => 'Order status updated successfully',
-            'data'    => [
+        return $this->successResponse(
+            [
                 'order_id' => $orderId,
                 'status_id' => $statusId
-            ]
-        ]);
+            ],
+            'Order status updated successfully',
+        );
     }
 }

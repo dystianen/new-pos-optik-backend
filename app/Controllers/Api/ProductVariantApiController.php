@@ -24,10 +24,6 @@ class ProductVariantApiController extends BaseApiController
             ->where('product_id', $productId)
             ->findAll();
 
-        return $this->respond([
-            'status' => 200,
-            'message' => 'Get variants successfully!',
-            'data' => $variants
-        ], 200);
+        return $this->successResponse($variants);
     }
 }

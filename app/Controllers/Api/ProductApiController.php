@@ -33,11 +33,10 @@ class ProductApiController extends BaseApiController
         $keyword = $this->request->getVar('q');
 
         if (empty($keyword)) {
-            return $this->response->setJSON([
-                'status'  => 200,
-                'message' => 'Empty search',
-                'data'    => []
-            ]);
+            return $this->successResponse(
+                [],
+                'Empty search'
+            );
         }
 
         $builder = $this->db->table('products p');
@@ -89,11 +88,7 @@ class ProductApiController extends BaseApiController
             ];
         }
 
-        return $this->response->setJSON([
-            'status'  => 200,
-            'message' => 'Successfully!',
-            'data'    => array_values($grouped)
-        ]);
+        return $this->successResponse(array_values($grouped));
     }
 
     // GET /api/products
@@ -158,24 +153,12 @@ class ProductApiController extends BaseApiController
             ->paginate($limit, 'products', $page);
 
         if (empty($products)) {
-            return $this->response
-                ->setStatusCode(ResponseInterface::HTTP_NOT_FOUND)
-                ->setJSON(['message' => 'No products found']);
+            return $this->errorResponse('No products found');
         }
 
-        $pager = [
-            'currentPage' => $this->productModel->pager->getCurrentPage('products'),
-            'totalPages'  => $this->productModel->pager->getPageCount('products'),
-            'limit'       => (int) $limit,
-            'totalItems'  => $totalItems,
-        ];
+        $currentPage = $this->productModel->pager->getCurrentPage('products');
 
-        return $this->response->setJSON([
-            'status'  => 200,
-            'message' => 'Successfully!',
-            'data'    => $products,
-            'pager'   => $pager,
-        ]);
+        return $this->paginatedResponse($products, $totalItems, $currentPage, $limit);
     }
 
     // GET /api/products/new-eyewear
@@ -246,11 +229,7 @@ class ProductApiController extends BaseApiController
 
         $products = $builder->get()->getResultArray();
 
-        return $this->response->setJSON([
-            'status'  => 200,
-            'message' => 'Successfully!',
-            'data'    => $products,
-        ]);
+        return $this->successResponse($products);
     }
 
     // GET /api/products/best-seller
@@ -320,11 +299,7 @@ class ProductApiController extends BaseApiController
 
         $bestSeller = $builder->get()->getResultArray();
 
-        return $this->response->setJSON([
-            'status'  => 200,
-            'message' => 'Successfully!',
-            'data'    => $bestSeller
-        ]);
+        return $this->successResponse($bestSeller);
     }
 
     // GET /api/products/recommendations
@@ -334,10 +309,7 @@ class ProductApiController extends BaseApiController
         $search    = $this->request->getVar('search');
 
         if (!$productId) {
-            return $this->response->setStatusCode(400)->setJSON([
-                'status'  => 400,
-                'message' => 'productId is required'
-            ]);
+            return $this->errorResponse('productId is required');
         }
 
         /**
@@ -353,10 +325,7 @@ class ProductApiController extends BaseApiController
             ->getResultArray();
 
         if (empty($baseAttributes)) {
-            return $this->response->setJSON([
-                'status' => 200,
-                'data'   => []
-            ]);
+            return $this->successResponse();
         }
 
         $baseAttrMap = [];
@@ -402,10 +371,7 @@ class ProductApiController extends BaseApiController
             ->getResultArray();
 
         if (empty($products)) {
-            return $this->response->setJSON([
-                'status' => 200,
-                'data'   => []
-            ]);
+            return $this->successResponse();
         }
 
         /**
@@ -477,11 +443,7 @@ class ProductApiController extends BaseApiController
 
         $recommendations = array_slice($recommendations, 0, $limit);
 
-        return $this->response->setJSON([
-            'status'  => 200,
-            'message' => 'Successfully!',
-            'data'    => $recommendations
-        ]);
+        return $this->successResponse($recommendations);
     }
 
     // GET /api/products/{id}
@@ -495,12 +457,7 @@ class ProductApiController extends BaseApiController
         $product = $this->productModel->find($id);
 
         if (!$product) {
-            return $this->response
-                ->setStatusCode(ResponseInterface::HTTP_NOT_FOUND)
-                ->setJSON([
-                    'status'  => 404,
-                    'message' => 'Product not found'
-                ]);
+            return $this->errorResponse('Product not found');
         }
 
         /**
@@ -573,11 +530,7 @@ class ProductApiController extends BaseApiController
         $product['gallery']  = $galleryImages;
         $product['variants'] = $variants;
 
-        return $this->response->setJSON([
-            'status'  => 200,
-            'message' => 'Successfully!',
-            'data'    => $product
-        ]);
+        return $this->successResponse($product);
     }
 
     // GET /api/products/{id}/attributes
@@ -598,10 +551,7 @@ class ProductApiController extends BaseApiController
             ->getResultArray();
 
         if (empty($rows)) {
-            return $this->response->setJSON([
-                'status' => 200,
-                'data' => []
-            ]);
+            return $this->successResponse();
         }
 
         // Grouping by attribute
@@ -621,9 +571,6 @@ class ProductApiController extends BaseApiController
             $attributes[$attrId]['values'][] = $row['value'];
         }
 
-        return $this->response->setJSON([
-            'status' => 200,
-            'data'   => array_values($attributes)
-        ]);
+        return $this->successResponse(array_values($attributes));
     }
 }

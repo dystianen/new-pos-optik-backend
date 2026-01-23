@@ -17,12 +17,6 @@ class ProductAttributeApiController extends BaseApiController
     public function apiListProductAttribute()
     {
         $attributes = $this->attributeModel->findAll();
-
-        $response = [
-            'status' => 200,
-            'message' => 'Successfully',
-            'data' => $attributes
-        ];
-        return $this->response->setJSON($response);
+        return $this->successResponse($attributes);
     }
 }

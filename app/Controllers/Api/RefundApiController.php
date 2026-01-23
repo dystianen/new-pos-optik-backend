@@ -43,11 +43,7 @@ class RefundApiController extends BaseApiController
     ];
 
     if (!$this->validate($rules)) {
-      return $this->response->setJSON([
-        'success' => false,
-        'message' => 'Validation failed',
-        'errors' => $this->validator->getErrors(),
-      ])->setStatusCode(ResponseInterface::HTTP_BAD_REQUEST);
+      return $this->validationErrorResponse($this->validator->getErrors(), 'Validation failed');
     }
 
     $orderId = $this->request->getJSON()->order_id;
@@ -56,35 +52,23 @@ class RefundApiController extends BaseApiController
     $order = $this->orderModel->find($orderId);
 
     if (!$order) {
-      return $this->response->setJSON([
-        'success' => false,
-        'message' => 'Order tidak ditemukan',
-      ])->setStatusCode(ResponseInterface::HTTP_NOT_FOUND);
+      return $this->errorResponse('Order tidak ditemukan');
     }
 
     // Check ownership
     $userId = $this->request->getHeaderLine('X-User-Id') ?? session('user_id');
     if ($order['user_id'] !== $userId) {
-      return $this->response->setJSON([
-        'success' => false,
-        'message' => 'Unauthorized',
-      ])->setStatusCode(ResponseInterface::HTTP_UNAUTHORIZED);
+      return $this->unauthorizedResponse();
     }
 
     // Check if can be cancelled
     if (!$this->canBeCancelled($order)) {
-      return $this->response->setJSON([
-        'success' => false,
-        'message' => 'Order tidak bisa dibatalkan karena sudah ' . $order['status'],
-      ])->setStatusCode(ResponseInterface::HTTP_BAD_REQUEST);
+      return $this->errorResponse('Order tidak bisa dibatalkan karena sudah ' . $order['status']);
     }
 
     // Check if already have active cancel request
     if ($this->refundModel->hasActiveRefund($orderId)) {
-      return $this->response->setJSON([
-        'success' => false,
-        'message' => 'Anda sudah mengajukan pembatalan untuk order ini',
-      ])->setStatusCode(ResponseInterface::HTTP_CONFLICT);
+      return $this->conflictResponse('Anda sudah mengajukan pembatalan untuk order ini');
     }
 
     // === CASE 1: Belum bayar - Cancel langsung tanpa refund ===
@@ -95,25 +79,18 @@ class RefundApiController extends BaseApiController
         'cancelled_at' => date('Y-m-d H:i:s'),
       ]);
 
-      return $this->response->setJSON([
-        'success' => true,
-        'message' => 'Order berhasil dibatalkan',
-        'data' => [
-          'order_id' => $orderId,
-          'status' => 'cancelled',
-          'refund_needed' => false,
-        ],
-      ])->setStatusCode(ResponseInterface::HTTP_OK);
+      return $this->successResponse([
+        'order_id' => $orderId,
+        'status' => 'cancelled',
+        'refund_needed' => false,
+      ], 'Order berhasil dibatalkan');
     }
 
     // === CASE 2: Sudah bayar - Perlu proses refund ===
     $refundAccountId = $this->request->getJSON()->user_refund_account_id ?? null;
 
     if (empty($refundAccountId)) {
-      return $this->response->setJSON([
-        'success' => false,
-        'message' => 'user_refund_account_id diperlukan karena order sudah dibayar',
-      ])->setStatusCode(ResponseInterface::HTTP_BAD_REQUEST);
+      return $this->errorResponse('user_refund_account_id diperlukan karena order sudah dibayar');
     }
 
     $data = [
@@ -127,11 +104,7 @@ class RefundApiController extends BaseApiController
     $result = $this->refundModel->createCancellation($data);
 
     if (!$result['success']) {
-      return $this->response->setJSON([
-        'success' => false,
-        'message' => $result['message'],
-        'errors' => $result['errors'] ?? null,
-      ])->setStatusCode(ResponseInterface::HTTP_BAD_REQUEST);
+      return $this->errorResponse($result['errors'] ?? null,  $result['message']);
     }
 
     // Update order status to "cancellation_requested"
@@ -143,35 +116,29 @@ class RefundApiController extends BaseApiController
     if ($this->canAutoApproveCancellation($order)) {
       $this->autoApproveCancellation($result['refund_id'], $orderId);
 
-      return $this->response->setJSON([
-        'success' => true,
-        'message' => 'Order berhasil dibatalkan dan refund sedang diproses',
-        'data' => [
-          'order_id' => $orderId,
-          'refund_id' => $result['refund_id'],
-          'status' => 'cancelled',
-          'refund_status' => 'approved',
-          'refund_amount' => $order['total_amount'],
-          'auto_approved' => true,
-        ],
-      ])->setStatusCode(ResponseInterface::HTTP_OK);
+      $response = [
+        'order_id' => $orderId,
+        'refund_id' => $result['refund_id'],
+        'status' => 'cancelled',
+        'refund_status' => 'approved',
+        'refund_amount' => $order['total_amount'],
+        'auto_approved' => true,
+      ];
+      return $this->successResponse($response);
     }
 
     // Kirim notifikasi ke admin untuk review
     $this->sendNotificationToAdmin($result['refund_id']);
 
-    return $this->response->setJSON([
-      'success' => true,
-      'message' => 'Permintaan pembatalan berhasil diajukan. Admin akan meninjaunya segera.',
-      'data' => [
-        'order_id' => $orderId,
-        'refund_id' => $result['refund_id'],
-        'status' => 'cancellation_requested',
-        'refund_status' => 'pending',
-        'refund_amount' => $order['total_amount'],
-        'auto_approved' => false,
-      ],
-    ])->setStatusCode(ResponseInterface::HTTP_CREATED);
+    $response = [
+      'order_id' => $orderId,
+      'refund_id' => $result['refund_id'],
+      'status' => 'cancellation_requested',
+      'refund_status' => 'pending',
+      'refund_amount' => $order['total_amount'],
+      'auto_approved' => false,
+    ];
+    return $this->successResponse($response, 'Permintaan pembatalan berhasil diajukan. Admin akan meninjaunya segera.');
   }
 
     // =====================================================
@@ -203,11 +170,7 @@ class RefundApiController extends BaseApiController
     ];
 
     if (!$this->validate($rules)) {
-      return $this->response->setJSON([
-        'success' => false,
-        'message' => 'Validation failed',
-        'errors' => $this->validator->getErrors(),
-      ])->setStatusCode(ResponseInterface::HTTP_BAD_REQUEST);
+      return $this->validationErrorResponse($this->validator->getErrors());
     }
 
     $json = $this->request->getJSON();
@@ -219,49 +182,33 @@ class RefundApiController extends BaseApiController
     $order = $this->orderModel->find($orderId);
 
     if (!$order) {
-      return $this->response->setJSON([
-        'success' => false,
-        'message' => 'Order tidak ditemukan',
-      ])->setStatusCode(ResponseInterface::HTTP_NOT_FOUND);
+      return $this->notFoundResponse('Order not found');
     }
 
     // Check ownership
     $userId = $this->request->getHeaderLine('X-User-Id') ?? session('user_id');
     if ($order['user_id'] !== $userId) {
-      return $this->response->setJSON([
-        'success' => false,
-        'message' => 'Unauthorized',
-      ])->setStatusCode(ResponseInterface::HTTP_UNAUTHORIZED);
+      return $this->unauthorizedResponse();
     }
 
     // Check if order eligible for refund
     if (!$this->isEligibleForRefund($order)) {
-      return $this->response->setJSON([
-        'success' => false,
-        'message' => 'Order tidak eligible untuk refund',
-      ])->setStatusCode(ResponseInterface::HTTP_BAD_REQUEST);
+      return $this->errorResponse('Order tidak eligible untuk refund');
     }
 
     // Check if already have active refund request
     if ($this->refundModel->hasActiveRefund($orderId)) {
-      return $this->response->setJSON([
-        'success' => false,
-        'message' => 'Order ini sudah memiliki permintaan refund yang sedang diproses',
-      ])->setStatusCode(ResponseInterface::HTTP_CONFLICT);
+      return $this->conflictResponse('Order ini sudah memiliki permintaan refund yang sedang diproses');
     }
 
     // Validasi refund amount
     $maxRefundAmount = $this->calculateMaxRefundAmount($orderId, $refundType, $selectedItems);
 
     if ($refundAmount > $maxRefundAmount) {
-      return $this->response->setJSON([
-        'success' => false,
-        'message' => 'Jumlah refund melebihi maksimal yang diperbolehkan',
-        'data' => [
-          'max_refund_amount' => $maxRefundAmount,
-          'requested_amount' => $refundAmount,
-        ],
-      ])->setStatusCode(ResponseInterface::HTTP_BAD_REQUEST);
+      return $this->successResponse([
+        'max_refund_amount' => $maxRefundAmount,
+        'requested_amount' => $refundAmount,
+      ], 'Jumlah refund melebihi maksimal yang diperbolehkan');
     }
 
     // Create refund request
@@ -276,11 +223,7 @@ class RefundApiController extends BaseApiController
     $result = $this->refundModel->createRefund($data);
 
     if (!$result['success']) {
-      return $this->response->setJSON([
-        'success' => false,
-        'message' => $result['message'],
-        'errors' => $result['errors'] ?? null,
-      ])->setStatusCode(ResponseInterface::HTTP_BAD_REQUEST);
+      return $this->errorResponse($result['message'], $result['errors'] ?? null);
     }
 
     // Update order status
@@ -291,17 +234,15 @@ class RefundApiController extends BaseApiController
     // Send notification to admin
     $this->sendNotificationToAdmin($result['refund_id']);
 
-    return $this->response->setJSON([
-      'success' => true,
-      'message' => 'Permintaan refund berhasil dikirim',
-      'data' => [
-        'order_id' => $orderId,
-        'refund_id' => $result['refund_id'],
-        'refund_type' => $refundType,
-        'refund_amount' => $refundAmount,
-        'status' => 'pending',
-      ],
-    ])->setStatusCode(ResponseInterface::HTTP_CREATED);
+    $response = [
+      'order_id' => $orderId,
+      'refund_id' => $result['refund_id'],
+      'refund_type' => $refundType,
+      'refund_amount' => $refundAmount,
+      'status' => 'pending',
+    ];
+
+    return $this->successResponse($response);
   }
 
     // =====================================================
@@ -317,16 +258,10 @@ class RefundApiController extends BaseApiController
     $refund = $this->refundModel->withAll()->find($refundId);
 
     if (!$refund) {
-      return $this->response->setJSON([
-        'success' => false,
-        'message' => 'Refund tidak ditemukan',
-      ])->setStatusCode(ResponseInterface::HTTP_NOT_FOUND);
+      return $this->notFoundResponse('Refund not found');
     }
 
-    return $this->response->setJSON([
-      'success' => true,
-      'data' => $refund,
-    ])->setStatusCode(ResponseInterface::HTTP_OK);
+    return $this->successResponse($refund);
   }
 
   /**
@@ -350,11 +285,11 @@ class RefundApiController extends BaseApiController
 
     $refunds = $builder->orderBy('order_refunds.created_at', 'DESC')->findAll();
 
-    return $this->response->setJSON([
-      'success' => true,
-      'data' => $refunds,
-      'total' => count($refunds),
-    ])->setStatusCode(ResponseInterface::HTTP_OK);
+    $response = [
+      'refunds' => $refunds,
+      'total'   => count($refunds)
+    ];
+    return $this->successResponse($response);
   }
 
   /**
@@ -377,10 +312,7 @@ class RefundApiController extends BaseApiController
     $refund = $this->refundModel->find($refundId);
 
     if (!$refund) {
-      return $this->response->setJSON([
-        'success' => false,
-        'message' => 'Refund tidak ditemukan',
-      ])->setStatusCode(ResponseInterface::HTTP_NOT_FOUND);
+      return $this->notFoundResponse('Refund not found');
     }
 
     // Jika admin adjust amount
@@ -392,10 +324,7 @@ class RefundApiController extends BaseApiController
 
     // Approve refund
     if (!$this->refundModel->markApproved($refundId, $adminId, $adminNote)) {
-      return $this->response->setJSON([
-        'success' => false,
-        'message' => 'Gagal approve refund',
-      ])->setStatusCode(ResponseInterface::HTTP_INTERNAL_SERVER_ERROR);
+      return $this->errorResponse('Approve refund failed');
     }
 
     // Update order status based on type
@@ -416,16 +345,14 @@ class RefundApiController extends BaseApiController
     // Send notification to customer
     $this->sendNotificationToCustomer($refundId, 'approved');
 
-    return $this->response->setJSON([
-      'success' => true,
-      'message' => 'Refund berhasil di-approve',
-      'data' => [
-        'refund_id' => $refundId,
-        'order_id' => $refund['order_id'],
-        'status' => 'approved',
-        'refund_amount' => $adjustedAmount ?? $refund['refund_amount'],
-      ],
-    ])->setStatusCode(ResponseInterface::HTTP_OK);
+    $response = [
+      'refund_id' => $refundId,
+      'order_id' => $refund['order_id'],
+      'status' => 'approved',
+      'refund_amount' => $adjustedAmount ?? $refund['refund_amount'],
+    ];
+
+    return $this->successResponse($response, 'Refund approve successfully');
   }
 
   /**
@@ -444,26 +371,17 @@ class RefundApiController extends BaseApiController
     $adminNote = $json->admin_note ?? null;
 
     if (empty($adminNote)) {
-      return $this->response->setJSON([
-        'success' => false,
-        'message' => 'admin_note wajib diisi untuk reject',
-      ])->setStatusCode(ResponseInterface::HTTP_BAD_REQUEST);
+      return $this->errorResponse('Note is requires!');
     }
 
     $refund = $this->refundModel->find($refundId);
 
     if (!$refund) {
-      return $this->response->setJSON([
-        'success' => false,
-        'message' => 'Refund tidak ditemukan',
-      ])->setStatusCode(ResponseInterface::HTTP_NOT_FOUND);
+      return $this->notFoundResponse('Refund not found');
     }
 
     if (!$this->refundModel->markRejected($refundId, $adminId, $adminNote)) {
-      return $this->response->setJSON([
-        'success' => false,
-        'message' => 'Gagal reject refund',
-      ])->setStatusCode(ResponseInterface::HTTP_INTERNAL_SERVER_ERROR);
+      return $this->errorResponse('reject refund failed');
     }
 
     // Update order status
@@ -480,16 +398,13 @@ class RefundApiController extends BaseApiController
     // Send notification to customer
     $this->sendNotificationToCustomer($refundId, 'rejected');
 
-    return $this->response->setJSON([
-      'success' => true,
-      'message' => 'Refund berhasil ditolak',
-      'data' => [
-        'refund_id' => $refundId,
-        'order_id' => $refund['order_id'],
-        'status' => 'rejected',
-        'admin_note' => $adminNote,
-      ],
-    ])->setStatusCode(ResponseInterface::HTTP_OK);
+    $response = [
+      'refund_id' => $refundId,
+      'order_id' => $refund['order_id'],
+      'status' => 'rejected',
+      'admin_note' => $adminNote,
+    ];
+    return $this->successResponse($response, 'Refund reject successfully');
   }
 
   // =====================================================
