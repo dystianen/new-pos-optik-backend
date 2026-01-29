@@ -99,7 +99,10 @@ $routes->group('api', ['filter' => 'cors'], function ($routes) {
   $routes->post('refund', 'Api\RefundApiController::submitRefund', ['filter' => 'authApi']);
 
   // CANCEL ORDER
-  $routes->post('cancel', 'Api\RefundApiController::submitCancel', ['filter' => 'authApi']);
+  $routes->group('cancel', ['filter' => 'authApi'], function ($routes) {
+    $routes->post('', 'Api\RefundApiController::submitCancel');
+    $routes->get('(:segment)/cancel-status', 'Api\RefundApiController::checkCancelStatus/$1');
+  });
 });
 
 

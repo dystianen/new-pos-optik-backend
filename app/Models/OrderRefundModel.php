@@ -37,20 +37,11 @@ class OrderRefundModel extends Model
     // =====================
     protected $validationRules = [
         'order_id' => 'required|min_length[36]|max_length[36]',
-        'status'   => 'required|in_list[pending,processing,approved,rejected,cancelled]',
-        'refund_amount' => 'permit_empty|decimal|greater_than[0]',
     ];
 
     protected $validationMessages = [
         'order_id' => [
             'required' => 'Order ID harus diisi',
-        ],
-        'status' => [
-            'in_list' => 'Status tidak valid',
-        ],
-        'refund_amount' => [
-            'decimal' => 'Jumlah refund harus berupa angka',
-            'greater_than' => 'Jumlah refund harus lebih dari 0',
         ],
     ];
 
@@ -76,7 +67,7 @@ class OrderRefundModel extends Model
 
     protected function generateUuid(array $data)
     {
-        $data['data']['order_id'] = service('uuid')->uuid4()->toString();
+        $data['data']['order_refund_id'] = service('uuid')->uuid4()->toString();
         return $data;
     }
 

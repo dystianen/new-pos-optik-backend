@@ -54,6 +54,9 @@
   }
 
   $currentPage = end($breadcrumbTrail)['label'];
+
+  $salesMenus = ['online-sales', 'in-store-sales', 'refund-sales'];
+  $isSalesActive = in_array($currentURI, $salesMenus);
   ?>
 
   <div class="position-fixed top-5 start-50 translate-middle p-3" style="z-index: 1100">
@@ -100,22 +103,58 @@
         <!-- Admin (1) dan Cashier (3) -->
         <?php if (in_array($roleName, ['admin', 'cashier'])) : ?>
           <li class="nav-item">
-            <a class="nav-link <?= $currentURI === 'in-store-sales' ? 'active' : '' ?>" href="/in-store-sales">
-              <div class="me-2 d-flex align-items-center justify-content-center">
-                <i class="fa-solid fa-store"></i>
+            <a
+              class="nav-link d-flex justify-content-between align-items-center <?= $isSalesActive ? '' : 'collapsed' ?>"
+              data-bs-toggle="collapse"
+              href="#salesMenu"
+              role="button"
+              aria-expanded="<?= $isSalesActive ? 'true' : 'false' ?>"
+              aria-controls="salesMenu">
+              <div class="d-flex align-items-center">
+                <div class="me-2 d-flex align-items-center justify-content-center">
+                  <i class="fa-solid fa-chart-line"></i>
+                </div>
+                <span class="nav-link-text ms-1">Sales</span>
               </div>
-              <span class="nav-link-text ms-1">In-store Sales</span>
             </a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link <?= $currentURI === 'online-sales' ? 'active' : '' ?>" href="/online-sales">
-              <div class="me-2 d-flex align-items-center justify-content-center">
-                <i class="fa-solid fa-bag-shopping"></i>
-              </div>
-              <span class="nav-link-text ms-1">Online Sales</span>
-            </a>
+
+            <div class="collapse <?= $isSalesActive ? 'show' : '' ?>" id="salesMenu">
+              <ul class="navbar-nav ms-4 flex-column">
+
+                <!-- Online Sales -->
+                <li class="nav-item">
+                  <a
+                    class="nav-link <?= $currentURI === 'online-sales' ? 'active' : '' ?>"
+                    href="/online-sales">
+                    <i class="fa-solid fa-bag-shopping me-1"></i>
+                    <span class="nav-link-text">Online Sales</span>
+                  </a>
+                </li>
+
+                <!-- Offline / In-store Sales -->
+                <li class="nav-item">
+                  <a
+                    class="nav-link <?= $currentURI === 'in-store-sales' ? 'active' : '' ?>"
+                    href="/in-store-sales">
+                    <i class="fa-solid fa-store me-1"></i>
+                    <span class="nav-link-text">Offline Sales</span>
+                  </a>
+                </li>
+
+                <!-- Refund Sales -->
+                <li class="nav-item">
+                  <a
+                    class="nav-link <?= $currentURI === 'refund-sales' ? 'active' : '' ?>"
+                    href="/refund-sales">
+                    <i class="fa-solid fa-rotate-left me-1"></i>
+                    <span class="nav-link-text">Refund Sales</span>
+                  </a>
+                </li>
+              </ul>
+            </div>
           </li>
         <?php endif; ?>
+
 
         <!-- Admin (1) dan Optometrist (2) -->
         <?php if (in_array($roleName, ['admin', 'optometrist'])) : ?>

@@ -71,6 +71,7 @@ class OnlineSalesController extends BaseController
             customers.customer_name,
             customers.customer_email,
             order_statuses.status_name,
+            order_statuses.status_code,
             COUNT(order_items.order_item_id) as total_items
         ')
             ->join('customers', 'customers.customer_id = orders.customer_id')

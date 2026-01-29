@@ -550,6 +550,7 @@ class OnlineSalesApiController extends BaseApiController
                     orders.shipping_cost,
 
                     order_statuses.status_name,
+                    order_statuses.status_code,
 
                     shipping_methods.name AS shipping_method,
                     shipping_methods.estimated_days,
@@ -646,6 +647,7 @@ class OnlineSalesApiController extends BaseApiController
                 ->select("
                     orders.*,
                     order_statuses.status_name,
+                    order_statuses.status_code,
                     shipping_methods.name AS shipping_method,
                     shipping_methods.estimated_days,
                     payment_methods.method_name AS payment_method,
@@ -764,6 +766,7 @@ class OnlineSalesApiController extends BaseApiController
                 'order_id' => $order['order_id'],
                 'order_date' => $order['created_at'],
                 'status' => $order['status_name'],
+                'status_code' => $order['status_code'],
                 'items' => $mappedItems,
                 'summary' => [
                     'shipping_cost' => (int) $order['shipping_cost'],

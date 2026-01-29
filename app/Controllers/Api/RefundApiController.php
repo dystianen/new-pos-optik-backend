@@ -2,11 +2,13 @@
 
 namespace App\Controllers\Api;
 
+use App\Models\NotificationModel;
 use App\Models\OrderRefundModel;
 use App\Models\OrderModel;
 use App\Models\OrderItemModel;
+use App\Models\OrderStatusModel;
 use App\Models\UserRefundAccountModel;
-use CodeIgniter\HTTP\ResponseInterface;
+use Config\OrderStatus;
 
 class RefundApiController extends BaseApiController
 {
@@ -14,6 +16,8 @@ class RefundApiController extends BaseApiController
   protected $orderModel;
   protected $orderItemModel;
   protected $userRefundAccountModel;
+  protected $statusModel;
+  protected $notificationModel;
 
   public function __construct()
   {
@@ -21,34 +25,68 @@ class RefundApiController extends BaseApiController
     $this->orderModel = new OrderModel();
     $this->orderItemModel = new OrderItemModel();
     $this->userRefundAccountModel = new UserRefundAccountModel();
+    $this->statusModel = new OrderStatusModel();
+    $this->notificationModel = new NotificationModel();
   }
 
-    // =====================================================
-    // CANCEL ORDER API
-    // =====================================================
+  public function checkCancelStatus(string $orderId)
+  {
+    // Auth
+    $customerId = $this->getAuthenticatedCustomerId();
 
-  /**
-   * Submit cancel order request
-   * POST /api/cancel
-   * 
-   * Request Body:
-   * {
-   *   "order_id": "xxx-xxx-xxx",
-   *   "reason": "Alasan pembatalan",
-   *   "user_refund_account_id": "yyy-yyy-yyy" (optional, required jika sudah bayar)
-   * }
-   */
+    // Validate order
+    if (strlen($orderId) !== 36) {
+      return $this->errorResponse('Invalid order ID');
+    }
+
+    // Ambil order + ownership
+    $order = $this->orderModel
+      ->where('order_id', $orderId)
+      ->where('customer_id', $customerId)
+      ->first();
+
+    if (!$order) {
+      return $this->errorResponse('Order not found');
+    }
+
+    // Cari cancel request
+    $refund = $this->refundModel
+      ->select('order_refund_id, status, refund_amount, created_at')
+      ->where('order_id', $orderId)
+      ->where('type', OrderRefundModel::TYPE_CANCEL)
+      ->orderBy('created_at', 'DESC')
+      ->first();
+
+    // === BELUM PERNAH REQUEST CANCEL ===
+    if (!$refund) {
+      return $this->successResponse([
+        'order_id' => $orderId,
+        'has_cancel_request' => false,
+        'cancel_status' => null,
+      ], 'No cancellation request found');
+    }
+
+    // === SUDAH REQUEST CANCEL ===
+    return $this->successResponse([
+      'order_id' => $orderId,
+      'has_cancel_request' => true,
+      'cancel_status' => $refund['status'], // pending / approved / rejected
+      'refund_amount' => $refund['refund_amount'],
+      'requested_at' => $refund['created_at'],
+    ], 'Cancellation request found');
+  }
+
+
+  // =====================================================
+  // CANCEL ORDER API
+  // =====================================================
   public function submitCancel()
   {
     // Check ownership
-    $this->getAuthenticatedUser();
+    $customerId = $this->getAuthenticatedCustomerId();
+    $customerName = $this->getAuthenticatedCustomerName();
 
-    $rules = [
-      'order_id' => 'required|min_length[36]|max_length[36]',
-      'reason' => 'required|min_length[10]',
-    ];
-
-    if (!$this->validate($rules)) {
+    if (!$this->validate($this->refundModel->validationRules)) {
       return $this->validationErrorResponse($this->validator->getErrors(), 'Validation failed');
     }
 
@@ -59,93 +97,67 @@ class RefundApiController extends BaseApiController
     $order = $this->orderModel->find($orderId);
 
     if (!$order) {
-      return $this->errorResponse('Order tidak ditemukan');
+      return $this->errorResponse('Order not found');
     }
 
-    // Check if can be cancelled
-    if (!$this->canBeCancelled($order)) {
-      return $this->errorResponse('Order tidak bisa dibatalkan karena sudah ' . $order['status']);
-    }
-
-    // Check if already have active cancel request
-    if ($this->refundModel->hasActiveRefund($orderId)) {
-      return $this->conflictResponse('Anda sudah mengajukan pembatalan untuk order ini');
-    }
+    $STATUS_PENDING = $this->statusModel->getIdByCode(OrderStatus::PENDING);
+    $STATUS_CANCELLED = $this->statusModel->getIdByCode(OrderStatus::CANCELLED);
 
     // === CASE 1: Belum bayar - Cancel langsung tanpa refund ===
-    if ($order['status'] !== 'pending') {
+    if ($order['status_id'] === $STATUS_PENDING) {
       $this->orderModel->update($orderId, [
-        'status' => 'cancelled',
-        'cancel_reason' => $reason,
-        'cancelled_at' => date('Y-m-d H:i:s'),
+        'status_id' => $STATUS_CANCELLED,
       ]);
 
-      return $this->successResponse([
+      return $this->messageResponse('Order has been cancelled successfully');
+    } else {
+      // === CASE 2: Sudah bayar - Perlu proses refund ===
+      $refundAccount = $this->userRefundAccountModel
+        ->select('user_refund_account_id')
+        ->where('customer_id', $customerId)
+        ->first();
+      log_message('debug', $refundAccount['user_refund_account_id']);
+
+      if (!$refundAccount) {
+        return $this->errorResponse(
+          'User refund account is required because the order has already been paid'
+        );
+      }
+
+      $data = [
         'order_id' => $orderId,
-        'status' => 'cancelled',
-        'refund_needed' => false,
-      ], 'Order berhasil dibatalkan');
-    }
+        'type' => OrderRefundModel::TYPE_CANCEL,
+        'user_refund_account_id' => $refundAccount['user_refund_account_id'],
+        'refund_amount' => $order['grand_total'],
+        'reason' => $reason,
+        'additional_note' => $additionalNote,
+        'status' => 'pending'
+      ];
 
-    // === CASE 2: Sudah bayar - Perlu proses refund ===
-    $refundAccountId = $this->userRefundAccountModel->where('order_id', $orderId)->first() ?? null;
+      $result = $this->refundModel->insert($data);
+      if (!$result) {
+        return $this->errorResponse($result['errors'] ?? null,  $result['message']);
+      }
+      $refundId = $this->refundModel->getInsertID();
 
-    if (empty($refundAccountId)) {
-      return $this->errorResponse('user_refund_account_id diperlukan karena order sudah dibayar');
-    }
-
-    $data = [
-      'order_id' => $orderId,
-      'type' => OrderRefundModel::TYPE_CANCEL,
-      'user_refund_account_id' => $refundAccountId,
-      'refund_amount' => $order['total_amount'], // Always full refund for cancellation
-      'reason' => $reason,
-      'additional_note' => $additionalNote
-    ];
-
-    $result = $this->refundModel->insert($data);
-
-    if (!$result['success']) {
-      return $this->errorResponse($result['errors'] ?? null,  $result['message']);
-    }
-
-    // Update order status to "cancellation_requested"
-    $this->orderModel->update($orderId, [
-      'status' => 'cancellation_requested',
-    ]);
-
-    // Auto approve jika masih dalam status yang bisa langsung cancel
-    if ($this->canAutoApproveCancellation($order)) {
-      $this->autoApproveCancellation($result['refund_id'], $orderId);
+      // Kirim notifikasi ke admin untuk review
+      $this->notificationModel->addNotification('cancel_order', "New cancellation request from {$customerName}", $refundId);
 
       $response = [
         'order_id' => $orderId,
-        'refund_id' => $result['refund_id'],
-        'status' => 'cancelled',
-        'refund_status' => 'approved',
-        'refund_amount' => $order['total_amount'],
-        'auto_approved' => true,
+        'refund_id' => $refundId,
+        'status' => 'cancellation_requested',
+        'refund_status' => 'pending',
+        'refund_amount' => $order['grand_total'],
+        'auto_approved' => false,
       ];
-      return $this->successResponse($response);
+      return $this->successResponse($response, 'Cancellation request submitted successfully. Our admin will review it shortly.');
     }
-
-    // Kirim notifikasi ke admin untuk review
-    $this->sendNotificationToAdmin($result['refund_id']);
-
-    $response = [
-      'order_id' => $orderId,
-      'refund_id' => $result['refund_id'],
-      'status' => 'cancellation_requested',
-      'refund_status' => 'pending',
-      'refund_amount' => $order['total_amount'],
-      'auto_approved' => false,
-    ];
-    return $this->successResponse($response, 'Permintaan pembatalan berhasil diajukan. Admin akan meninjaunya segera.');
   }
 
-    // =====================================================
-    // REFUND ORDER API
-    // =====================================================
+  // =====================================================
+  // REFUND ORDER API
+  // =====================================================
 
   /**
    * Submit refund request
@@ -193,11 +205,6 @@ class RefundApiController extends BaseApiController
     // Check if order eligible for refund
     if (!$this->isEligibleForRefund($order)) {
       return $this->errorResponse('Order tidak eligible untuk refund');
-    }
-
-    // Check if already have active refund request
-    if ($this->refundModel->hasActiveRefund($orderId)) {
-      return $this->conflictResponse('Order ini sudah memiliki permintaan refund yang sedang diproses');
     }
 
     // Validasi refund amount
@@ -409,12 +416,6 @@ class RefundApiController extends BaseApiController
   // =====================================================
   // HELPER METHODS
   // =====================================================
-
-  private function canBeCancelled($order): bool
-  {
-    $cancellableStatuses = ['pending', 'confirmed', 'processing', 'packaging'];
-    return in_array($order['status'], $cancellableStatuses);
-  }
 
   private function isEligibleForRefund($order): bool
   {

@@ -2,34 +2,41 @@
 <?= $this->section('content') ?>
 
 <?php
-function refundStatusBadge($status)
+function orderStatusBadge($status)
 {
   return match (strtolower($status)) {
-    'pending'   => 'badge bg-warning',
-    'approved'  => 'badge bg-success',
-    'rejected'  => 'badge bg-danger',
-    default     => 'badge bg-light text-dark',
+    'pending'    => 'badge bg-warning',
+    'paid'       => 'badge bg-info',
+    'processing' => 'badge bg-primary',
+    'shipped'    => 'badge bg-secondary',
+    'completed'  => 'badge bg-success',
+    'cancelled'  => 'badge bg-danger',
+    default      => 'badge bg-light text-dark',
   };
 }
 ?>
 
 <div class="container-fluid card">
   <div class="card-header mb-4 pb-0 d-flex align-items-center justify-content-between">
-    <h4>Refund Sales</h4>
+    <h4>Online Sales</h4>
 
     <div class="d-flex align-items-center gap-2">
-      <form action="<?= base_url('/refund-sales') ?>" method="get" class="d-flex align-items-center">
+      <form action="<?= base_url('/online-sales') ?>" method="get" class="d-flex align-items-center">
         <input
           type="text"
           name="q"
           class="form-control form-control-sm me-2"
-          placeholder="Search order / customer..."
+          placeholder="Search..."
           value="<?= esc($search ?? '') ?>"
-          style="min-width: 220px;">
+          style="min-width: 200px;">
         <button type="submit" class="btn btn-sm btn-secondary">
           <i class="fa-solid fa-magnifying-glass"></i>
         </button>
       </form>
+      <a href="<?= base_url('online-sales/export' . (!empty($search) ? '?q=' . $search : '')) ?>"
+        class="btn btn-success btn-sm">
+        <i class="fas fa-file-excel"></i> Export Excel
+      </a>
     </div>
   </div>
 
@@ -39,13 +46,12 @@ function refundStatusBadge($status)
         <thead class="thead-light">
           <tr>
             <th class="text-center">No</th>
-            <th>Refund ID</th>
             <th>Order ID</th>
+            <th>Order Date</th>
             <th>Customer</th>
-            <th>Refund Amount</th>
-            <th>Reason</th>
+            <th>Total Item</th>
+            <th>Grand Total</th>
             <th>Status</th>
-            <th>Requested At</th>
             <th class="sticky-action text-center">Actions</th>
           </tr>
         </thead>
@@ -53,56 +59,38 @@ function refundStatusBadge($status)
           <?php
           $startIndex = ($pager['currentPage'] - 1) * $pager['limit'] + 1;
           ?>
-
-          <?php if (empty($refunds)): ?>
-            <tr>
-              <td colspan="9" class="text-center text-muted py-4">
-                No refund data found
-              </td>
-            </tr>
-          <?php endif; ?>
-
-          <?php foreach ($refunds as $refund): ?>
+          <?php foreach ($orders as $order): ?>
             <tr>
               <td class="text-center"><?= $startIndex++ ?></td>
-
               <td>
-                <strong>#<?= esc($refund['refund_id']) ?></strong>
+                <strong>#<?= $order['order_id'] ?></strong>
               </td>
 
               <td>
-                <strong>#<?= esc($refund['order_id']) ?></strong>
+                <?= date('d M Y', strtotime($order['created_at'])) ?>
               </td>
 
               <td>
                 <div class="d-flex flex-column">
-                  <strong><?= esc($refund['customer_name']) ?></strong>
-                  <small class="text-muted"><?= esc($refund['customer_email']) ?></small>
+                  <strong><?= esc($order['customer_name']) ?></strong>
+                  <small class="text-muted"><?= esc($order['customer_email']) ?></small>
                 </div>
               </td>
 
+              <td><?= $order['total_items'] ?></td>
+
               <td>
-                <strong>Rp <?= number_format($refund['refund_amount']) ?></strong>
+                <strong>Rp <?= number_format($order['grand_total']) ?></strong>
               </td>
 
               <td>
-                <span title="<?= esc($refund['reason']) ?>">
-                  <?= esc(strlen($refund['reason']) > 30 ? substr($refund['reason'], 0, 30) . '...' : $refund['reason']) ?>
+                <span class="<?= orderStatusBadge($order['status_name']) ?>">
+                  <?= strtoupper($order['status_name']) ?>
                 </span>
-              </td>
-
-              <td>
-                <span class="<?= refundStatusBadge($refund['status']) ?>">
-                  <?= strtoupper($refund['status']) ?>
-                </span>
-              </td>
-
-              <td>
-                <?= date('d M Y', strtotime($refund['created_at'])) ?>
               </td>
 
               <td class="sticky-action text-center">
-                <a href="<?= base_url('/refund-sales/' . $refund['refund_id']) ?>"
+                <a href="<?= base_url('/online-sales/' . $order['order_id']) ?>"
                   class="btn btn-sm btn-info">
                   <i class="fa-solid fa-eye"></i>
                 </a>
@@ -111,22 +99,27 @@ function refundStatusBadge($status)
           <?php endforeach ?>
         </tbody>
       </table>
+
     </div>
 
-    <!-- Pagination -->
-    <nav aria-label="Page navigation" class="mt-4">
-      <ul class="pagination" id="pagination"></ul>
+    <nav aria-label="Page navigation example" class="mt-4">
+      <ul class="pagination" id="pagination">
+      </ul>
     </nav>
   </div>
 </div>
-
 <?= $this->endSection() ?>
 
 <?= $this->section('scripts') ?>
 <script type="text/javascript">
+  var currentURL = window.location.search;
+  var urlParams = new URLSearchParams(currentURL);
+  var pageParam = urlParams.get('page');
+
+  // PAGINATION
   function handlePagination(page) {
     window.location.href =
-      `<?= base_url('/refund-sales') ?>?page=${page}&q=<?= esc($search ?? '') ?>`;
+      `<?= base_url('/online-sales') ?>?page=${page}&q=<?= esc($search) ?>`;
   }
 
   const paginationContainer = document.getElementById('pagination');
@@ -142,6 +135,7 @@ function refundStatusBadge($status)
       a.className = 'page-link';
       a.href = 'javascript:void(0)';
       a.innerText = i;
+
       a.onclick = () => handlePagination(i);
 
       li.appendChild(a);
