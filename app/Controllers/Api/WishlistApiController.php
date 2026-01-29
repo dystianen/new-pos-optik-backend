@@ -2,15 +2,19 @@
 
 namespace App\Controllers\Api;
 
+use App\Models\OrderStatusModel;
 use App\Models\WishlistModel;
+use Config\OrderStatus;
 
 class WishlistApiController extends BaseApiController
 {
     protected $wishlistModel;
+    protected $statusModel;
 
     public function __construct()
     {
         $this->wishlistModel = new WishlistModel();
+        $this->statusModel = new OrderStatusModel();
     }
 
     // GET /api/wishlist
@@ -30,7 +34,7 @@ class WishlistApiController extends BaseApiController
         $subQuery = $this->db->table('order_items oi')
             ->select('oi.product_id, SUM(oi.quantity) AS total_sold')
             ->join('orders o', 'o.order_id = oi.order_id')
-            ->where('o.status_id', '8d434de4-ba22-4698-8438-8318ef3f6d8f')
+            ->where('o.status_id', $this->statusModel->getIdByCode(OrderStatus::COMPLETED))
             ->groupBy('oi.product_id');
 
         /**

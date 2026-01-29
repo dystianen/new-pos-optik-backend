@@ -20,11 +20,12 @@ use App\Models\ProductVariantModel;
 use App\Models\ShippingRateModel;
 use App\Models\UserRefundAccountModel;
 use CodeIgniter\API\ResponseTrait;
+use Config\OrderStatus;
 
 class OnlineSalesApiController extends BaseApiController
 {
     use ResponseTrait;
-    protected $orderModel, $orderItemModel, $InventoryTransactionModel, $productModel, $productVariantModel, $csaModel, $cartModel, $cartItemModel, $shippingRateModel, $cartItemPrescriptionModel, $orderShippingAddressModel, $orderItemPrescriptionModel, $paymentModel, $notificationModel, $userRefundAccountModel, $orderRefundModel, $r2;
+    protected $orderModel, $orderItemModel, $InventoryTransactionModel, $productModel, $productVariantModel, $csaModel, $cartModel, $cartItemModel, $shippingRateModel, $cartItemPrescriptionModel, $orderShippingAddressModel, $orderItemPrescriptionModel, $paymentModel, $notificationModel, $userRefundAccountModel, $orderRefundModel, $statusModel, $r2;
 
     public function __construct()
     {
@@ -44,6 +45,7 @@ class OnlineSalesApiController extends BaseApiController
         $this->notificationModel = new NotificationModel();
         $this->userRefundAccountModel = new UserRefundAccountModel();
         $this->orderRefundModel = new OrderRefundModel();
+        $this->statusModel = new OrderRefundModel();
         $this->r2 = new R2Storage();
     }
 
@@ -275,7 +277,7 @@ class OnlineSalesApiController extends BaseApiController
             log_message('debug', 'INSERT orders');
             $this->orderModel->insert([
                 'customer_id'         => $customerId,
-                'status_id'           => '2aa5c9be-906c-402c-a5fc-a16663125c3a',
+                'status_id'           => $this->statusModel->getIdByCode(OrderStatus::PENDING),
                 'shipping_method_id'  => '3e08ee99-750a-4437-a3a9-922437410f6e',
                 'shipping_cost'       => $summary['shipping']['cost'],
                 'coupon_discount'     => 0,
@@ -458,7 +460,7 @@ class OnlineSalesApiController extends BaseApiController
 
             // 🔁 UPDATE ORDER STATUS
             $this->orderModel->update($orderId, [
-                'status_id' => '7f39039d-d2ef-46d1-93f5-8dbc0b5211fe', // contoh: WAITING_CONFIRMATION
+                'status_id' => $this->statusModel->getIdByCode(OrderStatus::WAITING_CONFIRMATION), // contoh: WAITING_CONFIRMATION
             ]);
 
             $this->notificationModel->addNotification('new_order', "Pembayaran baru dari {$customerName}", $orderId);
@@ -507,8 +509,8 @@ class OnlineSalesApiController extends BaseApiController
         // ============================
         // STATUS ID (SESUIKAN)
         // ============================
-        $STATUS_APPROVED = 'cc46d2a8-436c-42fc-96a1-ffb537dbabed'; // PAID / APPROVED
-        $STATUS_REJECTED = 'f1a3c2b4-9e77-4e8d-9b12-2c5a7e8f91ab'; // PAYMENT REJECTED
+        $STATUS_APPROVED = $this->statusModel->getIdByCode(OrderStatus::PROCESSING); // PAID / APPROVED
+        $STATUS_REJECTED = $this->statusModel->getIdByCode(OrderStatus::REJECTED); // PAYMENT REJECTED
 
         $paymentStatus = 'pending';
         $message       = 'Payment is waiting for verification';
@@ -893,13 +895,13 @@ class OnlineSalesApiController extends BaseApiController
                 $this->errorResponse('Order tidak ditemukan');
             }
 
-            if ($order['status_id'] === 'cc46d2a8-436c-42fc-96a1-ffb537dbabed') {
+            if ($order['status_id'] === $this->statusModel->getIdByCode(OrderStatus::PROCESSING)) {
                 $this->errorResponse('Order sudah diproses');
             }
 
             // 2️⃣ Update status → PAID / PROCESSING
             $this->orderModel->update($orderId, [
-                'status_id' => 'cc46d2a8-436c-42fc-96a1-ffb537dbabed'
+                'status_id' => $this->statusModel->getIdByCode(OrderStatus::PROCESSING)
             ]);
 
             // 3️⃣ Ambil item order
@@ -981,7 +983,7 @@ class OnlineSalesApiController extends BaseApiController
     public function rejectPayment($orderId)
     {
         $this->orderModel->update($orderId, [
-            'status_id' => 'f1a3c2b4-9e77-4e8d-9b12-2c5a7e8f91ab'
+            'status_id' => $this->statusModel->getIdByCode(OrderStatus::REJECTED)
         ]);
 
         return redirect()->back()->with('success', 'Payment rejected');
@@ -991,7 +993,7 @@ class OnlineSalesApiController extends BaseApiController
     public function shipOrder($orderId)
     {
         $data = [
-            'status_id'        => '4d609622-8392-469b-acd1-c7859424633a', // SHIPPED ID STATUS
+            'status_id'        => $this->statusModel->getIdByCode(OrderStatus::SHIPPED), // SHIPPED ID STATUS
             'courier'          => $this->request->getVar('courier'),
             'tracking_number'  => $this->request->getVar('tracking_number'),
             'shipped_at'       => date('Y-m-d H:i:s'),

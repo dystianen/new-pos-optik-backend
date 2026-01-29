@@ -38,4 +38,23 @@ class OrderStatusModel extends Model
         $data['data']['status_id'] = service('uuid')->uuid4()->toString();
         return $data;
     }
+
+    private static array $statusMap = [];
+
+    public function getIdByCode(string $code): string
+    {
+        if (empty(self::$statusMap)) {
+            self::$statusMap = $this->select('status_id, status_code')
+                ->findAll();
+
+            self::$statusMap = array_column(
+                self::$statusMap,
+                'status_id',
+                'status_code'
+            );
+        }
+
+        return self::$statusMap[$code]
+            ?? throw new \Exception("Invalid order status: {$code}");
+    }
 }

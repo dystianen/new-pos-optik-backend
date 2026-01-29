@@ -3,11 +3,13 @@
 namespace App\Controllers\Api;
 
 use App\Libraries\R2Storage;
+use App\Models\OrderStatusModel;
 use App\Models\ProductAttributeModel;
 use App\Models\ProductImageModel;
 use App\Models\ProductModel;
 use App\Models\ProductVariantModel;
 use CodeIgniter\HTTP\ResponseInterface;
+use Config\OrderStatus;
 
 class ProductApiController extends BaseApiController
 {
@@ -16,6 +18,7 @@ class ProductApiController extends BaseApiController
     protected $attributeModel;
     protected $variantModel;
     protected $customerModel;
+    protected $statusModel;
     protected $r2;
 
     public function __construct()
@@ -24,6 +27,7 @@ class ProductApiController extends BaseApiController
         $this->productImageModel = new ProductImageModel();
         $this->attributeModel = new ProductAttributeModel();
         $this->variantModel = new ProductVariantModel();
+        $this->statusModel = new OrderStatusModel();
         $this->r2 = new R2Storage();
     }
 
@@ -173,7 +177,7 @@ class ProductApiController extends BaseApiController
         $subQuery = $this->db->table('order_items oi')
             ->select('oi.product_id, SUM(oi.quantity) AS total_sold')
             ->join('orders o', 'o.order_id = oi.order_id')
-            ->where('o.status_id', '8d434de4-ba22-4698-8438-8318ef3f6d8f')
+            ->where('o.status_id', $this->statusModel->getIdByCode(OrderStatus::COMPLETED))
             ->groupBy('oi.product_id');
 
         $builder = $this->db->table('products p');
@@ -278,7 +282,7 @@ class ProductApiController extends BaseApiController
             );
         }
 
-        $builder->where('o.status_id', '8d434de4-ba22-4698-8438-8318ef3f6d8f');
+        $builder->where('o.status_id', $this->statusModel->getIdByCode(OrderStatus::COMPLETED));
 
         if (!empty($search)) {
             $builder->like('p.product_name', $search);

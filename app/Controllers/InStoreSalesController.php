@@ -7,6 +7,7 @@ use Box\Spout\Writer\Common\Creator\WriterEntityFactory;
 use Box\Spout\Common\Entity\Style\Style;
 use Box\Spout\Common\Entity\Style\Color;
 use Box\Spout\Writer\Common\Creator\Style\StyleBuilder;
+use Config\OrderStatus;
 
 class InStoreSalesController extends BaseController
 {
@@ -17,6 +18,7 @@ class InStoreSalesController extends BaseController
     protected $customerModel;
     protected $orderItemModel;
     protected $notificationModel;
+    protected $statusModel;
     protected $db;
 
     public function __construct()
@@ -28,6 +30,7 @@ class InStoreSalesController extends BaseController
         $this->customerModel = new \App\Models\CustomerModel();
         $this->orderItemModel = new \App\Models\OrderItemModel();
         $this->notificationModel = new \App\Models\NotificationModel();
+        $this->statusModel = new \App\Models\OrderStatusModel();
         $this->db            = \Config\Database::connect();
     }
 
@@ -187,7 +190,7 @@ class InStoreSalesController extends BaseController
             // ======================
             $this->orderModel->insert([
                 'customer_id'     => $customerId,
-                'status_id'       => '8d434de4-ba22-4698-8438-8318ef3f6d8f', // COMPLETED ID STATUS
+                'status_id'       => $this->statusModel->getIdByCode(OrderStatus::PROCESSING),
                 'shipping_cost'   => 0,
                 'coupon_discount' => 0,
                 'grand_total'     => $grandTotal,
