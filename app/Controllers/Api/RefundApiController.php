@@ -4,6 +4,7 @@ namespace App\Controllers\Api;
 
 use App\Models\NotificationModel;
 use App\Models\OrderRefundModel;
+use App\Models\OrderRefundItemModel;
 use App\Models\OrderModel;
 use App\Models\OrderItemModel;
 use App\Models\OrderStatusModel;
@@ -18,6 +19,7 @@ class RefundApiController extends BaseApiController
   protected $userRefundAccountModel;
   protected $statusModel;
   protected $notificationModel;
+  protected $refundItemModel;
 
   public function __construct()
   {
@@ -27,6 +29,7 @@ class RefundApiController extends BaseApiController
     $this->userRefundAccountModel = new UserRefundAccountModel();
     $this->statusModel = new OrderStatusModel();
     $this->notificationModel = new NotificationModel();
+    $this->refundItemModel = new OrderRefundItemModel();
   }
 
   public function checkCancelStatus(string $orderId)
@@ -75,7 +78,6 @@ class RefundApiController extends BaseApiController
       'requested_at' => $refund['created_at'],
     ], 'Cancellation request found');
   }
-
 
   // =====================================================
   // CANCEL ORDER API
@@ -193,7 +195,10 @@ class RefundApiController extends BaseApiController
     $refundAmount = $json->refund_amount;
     $selectedItems = $json->selected_items ?? [];
 
-    $order = $this->orderModel->find($orderId);
+    $order = $this->orderModel
+      ->select('orders.*, order_statuses.status_code')
+      ->join('order_statuses', 'order_statuses.status_id = orders.status_id', 'left')
+      ->find($orderId);
 
     if (!$order) {
       return $this->notFoundResponse('Order not found');
@@ -211,16 +216,14 @@ class RefundApiController extends BaseApiController
     $maxRefundAmount = $this->calculateMaxRefundAmount($orderId, $refundType, $selectedItems);
 
     if ($refundAmount > $maxRefundAmount) {
-      return $this->successResponse([
-        'max_refund_amount' => $maxRefundAmount,
-        'requested_amount' => $refundAmount,
-      ], 'Jumlah refund melebihi maksimal yang diperbolehkan');
+      return $this->errorResponse('Jumlah refund melebihi maksimal yang diperbolehkan. Max: ' . $maxRefundAmount . ', Requested: ' . $refundAmount);
     }
 
     // Create refund request
     $data = [
       'order_id' => $orderId,
       'type' => OrderRefundModel::TYPE_REFUND,
+      'refund_type' => $refundType,
       'user_refund_account_id' => $json->user_refund_account_id,
       'refund_amount' => $refundAmount,
       'reason' => $json->reason,
@@ -232,20 +235,30 @@ class RefundApiController extends BaseApiController
       return $this->errorResponse($result['message'], $result['errors'] ?? null);
     }
 
+    $refundId = $result['refund_id'];
+
+    // Jika partial refund, insert items ke order_refund_items table
+    $itemsCreated = 0;
+    if ($refundType === 'partial' && !empty($selectedItems)) {
+      log_message('debug', 'Creating refund items - refund_id: ' . $refundId . ', items count: ' . count($selectedItems));
+      $itemsCreated = $this->createRefundItems($refundId, $selectedItems, $refundAmount);
+    } else {
+      log_message('debug', 'Skipping refund items - refund_type: ' . $refundType . ', selectedItems: ' . json_encode($selectedItems));
+    }
+
     // Update order status
     $this->orderModel->update($orderId, [
       'refund_status' => 'requested',
     ]);
 
-    // Send notification to admin
-    $this->sendNotificationToAdmin($result['refund_id']);
-
     $response = [
       'order_id' => $orderId,
-      'refund_id' => $result['refund_id'],
+      'refund_id' => $refundId,
       'refund_type' => $refundType,
       'refund_amount' => $refundAmount,
       'status' => 'pending',
+      'refund_items_created' => $itemsCreated,
+      'selected_items_count' => count($selectedItems),
     ];
 
     return $this->successResponse($response);
@@ -345,12 +358,6 @@ class RefundApiController extends BaseApiController
       ]);
     }
 
-    // Process actual refund
-    $this->processRefundTransaction($refundId);
-
-    // Send notification to customer
-    $this->sendNotificationToCustomer($refundId, 'approved');
-
     $response = [
       'refund_id' => $refundId,
       'order_id' => $refund['order_id'],
@@ -401,9 +408,6 @@ class RefundApiController extends BaseApiController
       ]);
     }
 
-    // Send notification to customer
-    $this->sendNotificationToCustomer($refundId, 'rejected');
-
     $response = [
       'refund_id' => $refundId,
       'order_id' => $refund['order_id'],
@@ -419,25 +423,21 @@ class RefundApiController extends BaseApiController
 
   private function isEligibleForRefund($order): bool
   {
-    if ($order['payment_status'] !== 'paid') {
-      return false;
-    }
-
-    $eligibleStatuses = ['delivered', 'completed'];
-    if (!in_array($order['status'], $eligibleStatuses)) {
+    $eligibleStatuses = ['shipped', 'completed'];
+    if (!in_array($order['status_code'], $eligibleStatuses)) {
       return false;
     }
 
     // Check refund period (7 days)
-    if (!empty($order['delivered_at'])) {
-      $deliveredDate = strtotime($order['delivered_at']);
-      $currentDate = time();
-      $daysDiff = ($currentDate - $deliveredDate) / (60 * 60 * 24);
+    // if (!empty($order['delivered_at'])) {
+    //   $deliveredDate = strtotime($order['delivered_at']);
+    //   $currentDate = time();
+    //   $daysDiff = ($currentDate - $deliveredDate) / (60 * 60 * 24);
 
-      if ($daysDiff > 7) {
-        return false;
-      }
-    }
+    //   if ($daysDiff > 7) {
+    //     return false;
+    //   }
+    // }
 
     return true;
   }
@@ -447,47 +447,89 @@ class RefundApiController extends BaseApiController
     $order = $this->orderModel->find($orderId);
 
     if ($refundType === 'full') {
-      return $order['total_amount'];
+      return $order['grand_total'] ?? 0;
     }
 
     if (!empty($selectedItems)) {
       $items = $this->orderItemModel->whereIn('order_item_id', $selectedItems)->findAll();
-      return array_sum(array_column($items, 'subtotal'));
+
+      // Calculate subtotal as quantity * price
+      $total = 0;
+      foreach ($items as $item) {
+        $subtotal = ($item['quantity'] ?? 0) * ($item['price'] ?? 0);
+        $total += $subtotal;
+      }
+
+      return $total;
     }
 
     return 0;
   }
 
-  private function canAutoApproveCancellation($order): bool
+  /**
+   * Create refund items for partial refunds
+   */
+  private function createRefundItems($refundId, $selectedItemIds, $totalRefundAmount)
   {
-    $autoApproveStatuses = ['pending', 'confirmed'];
-    return in_array($order['status'], $autoApproveStatuses);
-  }
+    $itemsCreated = 0;
 
-  private function autoApproveCancellation($refundId, $orderId)
-  {
-    $this->refundModel->markApproved($refundId, null, 'Auto approved - order belum diproses');
-    $this->orderModel->update($orderId, [
-      'status' => 'cancelled',
-      'cancelled_at' => date('Y-m-d H:i:s'),
-    ]);
-    $this->processRefundTransaction($refundId);
-    $this->sendNotificationToCustomer($refundId, 'approved');
-  }
+    if (empty($selectedItemIds)) {
+      log_message('debug', 'createRefundItems: selectedItemIds is empty');
+      return $itemsCreated;
+    }
 
-  private function processRefundTransaction($refundId)
-  {
-    log_message('info', "Processing refund transaction for refund_id: {$refundId}");
-    return true;
-  }
+    log_message('debug', 'createRefundItems START - refund_id: ' . $refundId . ', items: ' . json_encode($selectedItemIds));
 
-  private function sendNotificationToAdmin($refundId)
-  {
-    log_message('info', "Sending notification to admin for refund_id: {$refundId}");
-  }
+    // Fetch selected order items
+    $items = $this->orderItemModel->whereIn('order_item_id', $selectedItemIds)->findAll();
 
-  private function sendNotificationToCustomer($refundId, $status)
-  {
-    log_message('info', "Sending {$status} notification to customer for refund_id: {$refundId}");
+    if (empty($items)) {
+      log_message('warning', 'createRefundItems: No items found for ids: ' . json_encode($selectedItemIds));
+      return $itemsCreated;
+    }
+
+    log_message('debug', 'Found ' . count($items) . ' items to refund');
+
+    // Calculate refund amount per item proportionally
+    // Since order_items doesn't have subtotal field, calculate it as quantity * price
+    $totalItemAmount = 0;
+    $itemsWithSubtotal = [];
+    foreach ($items as $item) {
+      $itemSubtotal = ($item['quantity'] ?? 0) * ($item['price'] ?? 0);
+      $itemsWithSubtotal[$item['order_item_id']] = $itemSubtotal;
+      $totalItemAmount += $itemSubtotal;
+    }
+
+    if ($totalItemAmount <= 0) {
+      log_message('warning', 'createRefundItems: Total item amount is 0 or negative');
+      return $itemsCreated;
+    }
+
+    foreach ($items as $item) {
+      // Calculate refund amount for this item proportionally
+      $itemSubtotal = $itemsWithSubtotal[$item['order_item_id']];
+      $itemRefundAmount = ($itemSubtotal / $totalItemAmount) * $totalRefundAmount;
+
+      $refundItemData = [
+        'order_refund_id' => $refundId,
+        'order_item_id' => $item['order_item_id'],
+        'qty_refunded' => $item['quantity'],
+        'price_per_item' => $item['price'],
+        'subtotal_refunded' => $itemRefundAmount,
+      ];
+
+      log_message('debug', 'Inserting refund item: ' . json_encode($refundItemData));
+
+      $result = $this->refundItemModel->insert($refundItemData);
+
+      if (!$result) {
+        log_message('error', 'Failed to insert refund item: ' . json_encode($this->refundItemModel->errors()));
+      } else {
+        $itemsCreated++;
+      }
+    }
+
+    log_message('debug', 'createRefundItems DONE - refund_id: ' . $refundId . ', items created: ' . $itemsCreated);
+    return $itemsCreated;
   }
 }

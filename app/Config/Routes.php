@@ -96,7 +96,7 @@ $routes->group('api', ['filter' => 'cors'], function ($routes) {
   });
 
   // REFUND ORDER
-  $routes->post('refund', 'Api\RefundApiController::submitRefund', ['filter' => 'authApi']);
+  $routes->post('refund/submit', 'Api\RefundApiController::submitRefund', ['filter' => 'authApi']);
 
   // CANCEL ORDER
   $routes->group('cancel', ['filter' => 'authApi'], function ($routes) {
