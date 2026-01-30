@@ -34,7 +34,7 @@ class CreateOrderRefundsTable extends Migration
 
             'reason' => [
                 'type' => 'VARCHAR',
-                'contraint' => 100
+                'constraint' => 100
             ],
             'additional_note' => [
                 'type' => 'TEXT',
@@ -50,6 +50,13 @@ class CreateOrderRefundsTable extends Migration
             'type' => [
                 'type'       => 'ENUM',
                 'constraint' => ['cancel', 'refund'],
+            ],
+
+            'refund_type' => [
+                'type'       => 'ENUM',
+                'constraint' => ['full', 'partial'],
+                'null'       => true,
+                'comment'    => 'Full refund atau partial (per-item)',
             ],
 
             'admin_note' => [

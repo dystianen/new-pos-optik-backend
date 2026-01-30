@@ -17,6 +17,7 @@ class OrderRefundModel extends Model
         'order_refund_id',
         'order_id',
         'type',
+        'refund_type',
         'user_refund_account_id',
         'refund_amount',
         'reason',
@@ -88,17 +89,19 @@ class OrderRefundModel extends Model
 
     public function withProcessedBy()
     {
-        return $this->select('order_refunds.*, users.name as admin_name, users.email as admin_email')
+        return $this->select('order_refunds.*, users.user_name as admin_name, users.user_email as admin_email')
             ->join('users', 'users.user_id = order_refunds.processed_by', 'left');
     }
 
     public function withAll()
     {
-        return $this->select('order_refunds.*, 
-                             orders.order_number, orders.total_amount as order_amount,
-                             user_refund_accounts.account_name, user_refund_accounts.account_number,
-                             users.name as admin_name')
+        return $this->select('order_refunds.*,
+                     orders.order_id, orders.created_at as order_date, orders.grand_total as order_amount,
+                     customers.customer_name, customers.customer_email,
+                     user_refund_accounts.account_name, user_refund_accounts.account_number,
+                     users.user_name as admin_name, users.user_email as admin_email')
             ->join('orders', 'orders.order_id = order_refunds.order_id', 'left')
+            ->join('customers', 'customers.customer_id = orders.customer_id', 'left')
             ->join('user_refund_accounts', 'user_refund_accounts.user_refund_account_id = order_refunds.user_refund_account_id', 'left')
             ->join('users', 'users.user_id = order_refunds.processed_by', 'left');
     }

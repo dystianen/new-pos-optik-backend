@@ -103,6 +103,14 @@ $routes->group('api', ['filter' => 'cors'], function ($routes) {
     $routes->post('', 'Api\RefundApiController::submitCancel');
     $routes->get('(:segment)/cancel-status', 'Api\RefundApiController::checkCancelStatus/$1');
   });
+
+  // ADMIN REFUNDS (for dashboard actions)
+  $routes->group('admin', ['filter' => 'authApi'], function ($routes) {
+    $routes->get('refunds', 'Api\RefundApiController::getPendingRefunds');
+    $routes->get('refund/(:segment)', 'Api\RefundApiController::getRefundDetail/$1');
+    $routes->post('refund/(:segment)/approve', 'Api\RefundApiController::adminApprove/$1');
+    $routes->post('refund/(:segment)/reject', 'Api\RefundApiController::adminReject/$1');
+  });
 });
 
 
@@ -174,6 +182,11 @@ $routes->group('online-sales', ['filter' => 'authGuard'], function ($routes) {
   $routes->get('', 'OnlineSalesController::index');
   $routes->get('export', 'OnlineSalesController::export');
   $routes->get('(:segment)', 'OnlineSalesController::detail/$1');
+});
+
+$routes->group('refund-sales', ['filter' => 'authGuard'], function ($routes) {
+  $routes->get('', 'RefundSalesController::index');
+  $routes->get('(:segment)', 'RefundSalesController::detail/$1');
 });
 
 $routes->group('roles', ['filter' => 'authGuard'], function ($routes) {

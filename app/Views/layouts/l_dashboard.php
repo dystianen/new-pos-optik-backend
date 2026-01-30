@@ -56,7 +56,7 @@
   $currentPage = end($breadcrumbTrail)['label'];
 
   $salesMenus = ['online-sales', 'in-store-sales', 'refund-sales'];
-  $isSalesActive = in_array($currentURI, $salesMenus);
+  $isSalesActive = in_array($segments[0], $salesMenus);
   ?>
 
   <div class="position-fixed top-5 start-50 translate-middle p-3" style="z-index: 1100">
@@ -124,7 +124,7 @@
                 <!-- Online Sales -->
                 <li class="nav-item">
                   <a
-                    class="nav-link <?= $currentURI === 'online-sales' ? 'active' : '' ?>"
+                    class="nav-link <?= $segments[0] === 'online-sales' ? 'active' : '' ?>"
                     href="/online-sales">
                     <i class="fa-solid fa-bag-shopping me-1"></i>
                     <span class="nav-link-text">Online Sales</span>
@@ -134,7 +134,7 @@
                 <!-- Offline / In-store Sales -->
                 <li class="nav-item">
                   <a
-                    class="nav-link <?= $currentURI === 'in-store-sales' ? 'active' : '' ?>"
+                    class="nav-link <?= $segments[0] === 'in-store-sales' ? 'active' : '' ?>"
                     href="/in-store-sales">
                     <i class="fa-solid fa-store me-1"></i>
                     <span class="nav-link-text">Offline Sales</span>
@@ -144,7 +144,7 @@
                 <!-- Refund Sales -->
                 <li class="nav-item">
                   <a
-                    class="nav-link <?= $currentURI === 'refund-sales' ? 'active' : '' ?>"
+                    class="nav-link <?= $segments[0] === 'refund-sales' ? 'active' : '' ?>"
                     href="/refund-sales">
                     <i class="fa-solid fa-rotate-left me-1"></i>
                     <span class="nav-link-text">Refund Sales</span>
