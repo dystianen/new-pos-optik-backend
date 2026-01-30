@@ -611,6 +611,7 @@ class OnlineSalesApiController extends BaseApiController
                     'order_id' => $orderId,
                     'order_date' => $order['order_date'],
                     'status' => $order['status_name'],
+                    'status_code' => $order['status_code'],
                     'items' => $itemsGrouped[$orderId] ?? [],
                     'summary' => [
                         'grand_total' => (int) $order['grand_total'],
