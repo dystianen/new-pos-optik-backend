@@ -84,7 +84,7 @@ function orderStatusBadge($status)
               </td>
 
               <td>
-                <span class="<?= orderStatusBadge($order['status_name']) ?>">
+                <span class="<?= orderStatusBadge($order['status_code']) ?>">
                   <?= strtoupper($order['status_name']) ?>
                 </span>
               </td>
