@@ -63,6 +63,7 @@ $routes->group('api', ['filter' => 'cors'], function ($routes) {
     $routes->post('payment', 'Api\OnlineSalesApiController::uploadPaymentProof');
     $routes->get('check-payment-status/(:segment)', 'Api\OnlineSalesApiController::checkPaymentStatus/$1');
     $routes->post('(:segment)/status', 'Api\OnlineSalesApiController::updateStatus/$1');
+    $routes->get('(:segment)/refund-status', 'Api\RefundApiController::checkStatus/$1');
     $routes->get('(:segment)', 'Api\OnlineSalesApiController::getOrderDetail/$1');
   });
 
@@ -101,7 +102,6 @@ $routes->group('api', ['filter' => 'cors'], function ($routes) {
   // CANCEL ORDER
   $routes->group('cancel', ['filter' => 'authApi'], function ($routes) {
     $routes->post('', 'Api\RefundApiController::submitCancel');
-    $routes->get('(:segment)/cancel-status', 'Api\RefundApiController::checkCancelStatus/$1');
   });
 
   // ADMIN REFUNDS (for dashboard actions)

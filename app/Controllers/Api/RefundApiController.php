@@ -32,10 +32,18 @@ class RefundApiController extends BaseApiController
     $this->refundItemModel = new OrderRefundItemModel();
   }
 
-  public function checkCancelStatus(string $orderId)
+  // =====================================================
+  // UNIFIED STATUS CHECK (CANCEL / REFUND)
+  // =====================================================
+  public function checkStatus(string $orderId)
   {
     // Auth
     $customerId = $this->getAuthenticatedCustomerId();
+    $type = $this->request->getGet('type');
+
+    if (!in_array($type, [OrderRefundModel::TYPE_CANCEL, OrderRefundModel::TYPE_REFUND])) {
+      return $this->errorResponse('Invalid type. accessable type: cancel, refund');
+    }
 
     // Validate order
     if (strlen($orderId) !== 36) {
@@ -52,31 +60,33 @@ class RefundApiController extends BaseApiController
       return $this->errorResponse('Order not found');
     }
 
-    // Cari cancel request
+    // Cari request berdasarkan type
     $refund = $this->refundModel
-      ->select('order_refund_id, status, refund_amount, created_at')
+      ->select('order_refund_id, status, refund_amount, created_at, type')
       ->where('order_id', $orderId)
-      ->where('type', OrderRefundModel::TYPE_CANCEL)
+      ->where('type', $type) // cancel or refund
       ->orderBy('created_at', 'DESC')
       ->first();
 
-    // === BELUM PERNAH REQUEST CANCEL ===
+    // === BELUM PERNAH REQUEST ===
     if (!$refund) {
       return $this->successResponse([
         'order_id' => $orderId,
-        'has_cancel_request' => false,
-        'cancel_status' => null,
-      ], 'No cancellation request found');
+        'has_request' => false,
+        'status' => null,
+        'type' => $type
+      ], "No {$type} request found");
     }
 
-    // === SUDAH REQUEST CANCEL ===
+    // === SUDAH REQUEST ===
     return $this->successResponse([
       'order_id' => $orderId,
-      'has_cancel_request' => true,
-      'cancel_status' => $refund['status'], // pending / approved / rejected
+      'has_request' => true,
+      'status' => $refund['status'],
+      'type' => $refund['type'],
       'refund_amount' => $refund['refund_amount'],
       'requested_at' => $refund['created_at'],
-    ], 'Cancellation request found');
+    ], ucfirst($type) . ' request found');
   }
 
   // =====================================================
@@ -133,7 +143,6 @@ class RefundApiController extends BaseApiController
         'refund_amount' => $order['grand_total'],
         'reason' => $reason,
         'additional_note' => $additionalNote,
-        'status' => 'pending'
       ];
 
       $result = $this->refundModel->insert($data);
@@ -149,7 +158,7 @@ class RefundApiController extends BaseApiController
         'order_id' => $orderId,
         'refund_id' => $refundId,
         'status' => 'cancellation_requested',
-        'refund_status' => 'pending',
+        'refund_status' => 'requested',
         'refund_amount' => $order['grand_total'],
         'auto_approved' => false,
       ];
@@ -227,6 +236,7 @@ class RefundApiController extends BaseApiController
       'user_refund_account_id' => $json->user_refund_account_id,
       'refund_amount' => $refundAmount,
       'reason' => $json->reason,
+      'status' => 'requested',
     ];
 
     $result = $this->refundModel->createRefund($data);
@@ -246,17 +256,12 @@ class RefundApiController extends BaseApiController
       log_message('debug', 'Skipping refund items - refund_type: ' . $refundType . ', selectedItems: ' . json_encode($selectedItems));
     }
 
-    // Update order status
-    $this->orderModel->update($orderId, [
-      'refund_status' => 'requested',
-    ]);
-
     $response = [
       'order_id' => $orderId,
       'refund_id' => $refundId,
       'refund_type' => $refundType,
       'refund_amount' => $refundAmount,
-      'status' => 'pending',
+      'status' => 'requested',
       'refund_items_created' => $itemsCreated,
       'selected_items_count' => count($selectedItems),
     ];

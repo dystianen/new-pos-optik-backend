@@ -269,7 +269,7 @@ function badgeStatus($status)
       </div>
     </div>
 
-    <?php if (in_array($refund['status'], ['pending', 'processing'])): ?>
+    <?php if (in_array($refund['status'], ['requested', 'processing'])): ?>
       <div class="row g-3">
         <div class="col-md-6">
           <div class="card">

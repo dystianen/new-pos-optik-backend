@@ -43,8 +43,8 @@ class CreateOrderRefundsTable extends Migration
 
             'status' => [
                 'type'       => 'ENUM',
-                'constraint' => ['pending', 'processing', 'approved', 'rejected'],
-                'default'    => 'pending',
+                'constraint' => ['requested', 'request_rejected', 'return_approved', 'return_shipped', 'return_received', 'return_rejected', 'approved', 'refunded', 'expired'],
+                'default'    => 'requested',
             ],
 
             'type' => [
