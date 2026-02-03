@@ -32,7 +32,9 @@ class UserRefundAccountModel extends Model
 
     protected function generateUuid(array $data)
     {
-        $data['data']['user_refund_account_id'] = service('uuid')->uuid4()->toString();
+        if (!isset($data['data']['user_refund_account_id'])) {
+            $data['data']['user_refund_account_id'] = service('uuid')->uuid4()->toString();
+        }
         return $data;
     }
 

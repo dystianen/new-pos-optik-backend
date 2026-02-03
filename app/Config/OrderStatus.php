@@ -11,5 +11,6 @@ class OrderStatus
     public const COMPLETED             = 'completed';
     public const CANCELLED             = 'cancelled';
     public const REFUNDED              = 'refunded';
+    public const PARTIALLY_REFUNDED    = 'partially_refunded';
     public const REJECTED              = 'rejected';
 }

@@ -11,6 +11,8 @@ use App\Models\OrderStatusModel;
 use App\Models\UserRefundAccountModel;
 use Config\OrderStatus;
 
+use App\Libraries\R2Storage;
+
 class RefundApiController extends BaseApiController
 {
   protected $refundModel;
@@ -20,6 +22,7 @@ class RefundApiController extends BaseApiController
   protected $statusModel;
   protected $notificationModel;
   protected $refundItemModel;
+  protected $r2;
 
   public function __construct()
   {
@@ -30,6 +33,7 @@ class RefundApiController extends BaseApiController
     $this->statusModel = new OrderStatusModel();
     $this->notificationModel = new NotificationModel();
     $this->refundItemModel = new OrderRefundItemModel();
+    $this->r2 = new R2Storage();
   }
 
   // =====================================================
@@ -39,11 +43,6 @@ class RefundApiController extends BaseApiController
   {
     // Auth
     $customerId = $this->getAuthenticatedCustomerId();
-    $type = $this->request->getGet('type');
-
-    if (!in_array($type, [OrderRefundModel::TYPE_CANCEL, OrderRefundModel::TYPE_REFUND])) {
-      return $this->errorResponse('Invalid type. accessable type: cancel, refund');
-    }
 
     // Validate order
     if (strlen($orderId) !== 36) {
@@ -60,11 +59,9 @@ class RefundApiController extends BaseApiController
       return $this->errorResponse('Order not found');
     }
 
-    // Cari request berdasarkan type
     $refund = $this->refundModel
-      ->select('order_refund_id, status, refund_amount, created_at, type')
+      ->select('order_refund_id, status, refund_amount, created_at')
       ->where('order_id', $orderId)
-      ->where('type', $type) // cancel or refund
       ->orderBy('created_at', 'DESC')
       ->first();
 
@@ -74,19 +71,18 @@ class RefundApiController extends BaseApiController
         'order_id' => $orderId,
         'has_request' => false,
         'status' => null,
-        'type' => $type
-      ], "No {$type} request found");
+      ], "No refund request found");
     }
 
     // === SUDAH REQUEST ===
     return $this->successResponse([
       'order_id' => $orderId,
+      'refund_id' => $refund['order_refund_id'],
       'has_request' => true,
       'status' => $refund['status'],
-      'type' => $refund['type'],
       'refund_amount' => $refund['refund_amount'],
       'requested_at' => $refund['created_at'],
-    ], ucfirst($type) . ' request found');
+    ], 'Refund Request found');
   }
 
   // =====================================================
@@ -138,7 +134,6 @@ class RefundApiController extends BaseApiController
 
       $data = [
         'order_id' => $orderId,
-        'type' => OrderRefundModel::TYPE_CANCEL,
         'user_refund_account_id' => $refundAccount['user_refund_account_id'],
         'refund_amount' => $order['grand_total'],
         'reason' => $reason,
@@ -169,40 +164,40 @@ class RefundApiController extends BaseApiController
   // =====================================================
   // REFUND ORDER API
   // =====================================================
-
-  /**
-   * Submit refund request
-   * POST /api/refund
-   * 
-   * Request Body:
-   * {
-   *   "order_id": "xxx-xxx-xxx",
-   *   "refund_type": "full" or "partial",
-   *   "refund_amount": 150000,
-   *   "selected_items": ["item-id-1", "item-id-2"], // for partial
-   *   "reason": "Alasan refund",
-   *   "user_refund_account_id": "yyy-yyy-yyy"
-   * }
-   */
   public function submitRefund()
   {
+    // Rules validation
     $rules = [
       'order_id' => 'required|min_length[36]|max_length[36]',
       'refund_type' => 'required|in_list[full,partial]',
       'refund_amount' => 'required|decimal|greater_than[0]',
       'reason' => 'required|min_length[10]',
       'user_refund_account_id' => 'required',
+      'evidence' => [
+        'rules' => 'uploaded[evidence]|mime_in[evidence,image/jpg,image/jpeg,image/png,image/webp,video/mp4,video/webm,video/ogg,video/quicktime]|max_size[evidence,51200]',
+        'label' => 'Evidence (Image/Video)'
+      ]
     ];
 
     if (!$this->validate($rules)) {
       return $this->validationErrorResponse($this->validator->getErrors());
     }
 
-    $json = $this->request->getJSON();
-    $orderId = $json->order_id;
-    $refundType = $json->refund_type;
-    $refundAmount = $json->refund_amount;
-    $selectedItems = $json->selected_items ?? [];
+    // Get Post Data (FormData)
+    $orderId = $this->request->getPost('order_id');
+    $refundType = $this->request->getPost('refund_type');
+    $refundAmount = $this->request->getPost('refund_amount');
+    $reason = $this->request->getPost('reason');
+    $userRefundAccountId = $this->request->getPost('user_refund_account_id');
+    $additionalNote = $this->request->getPost('additional_note');
+    
+    // Handle selected items (parsed from JSON string if sent as string in FormData)
+    $selectedItems = $this->request->getPost('selected_items');
+    if (is_string($selectedItems)) {
+        $selectedItems = json_decode($selectedItems, true) ?? [];
+    } elseif (!is_array($selectedItems)) {
+        $selectedItems = [];
+    }
 
     $order = $this->orderModel
       ->select('orders.*, order_statuses.status_code')
@@ -228,14 +223,32 @@ class RefundApiController extends BaseApiController
       return $this->errorResponse('Jumlah refund melebihi maksimal yang diperbolehkan. Max: ' . $maxRefundAmount . ', Requested: ' . $refundAmount);
     }
 
+    // --- HANDLE FILE UPLOAD ---
+    $file = $this->request->getFile('evidence');
+    $evidenceUrl = null;
+
+    if ($file && $file->isValid() && !$file->hasMoved()) {
+        $evidenceUrl = $this->r2->uploadFile(
+            $file->getTempName(),
+            $file->getRandomName()
+        );
+
+        if (!$evidenceUrl) {
+            return $this->errorResponse('Failed to upload evidence image');
+        }
+    } else {
+        return $this->errorResponse('Evidence image is required and must be valid');
+    }
+
     // Create refund request
     $data = [
       'order_id' => $orderId,
-      'type' => OrderRefundModel::TYPE_REFUND,
       'refund_type' => $refundType,
-      'user_refund_account_id' => $json->user_refund_account_id,
+      'user_refund_account_id' => $userRefundAccountId,
       'refund_amount' => $refundAmount,
-      'reason' => $json->reason,
+      'reason' => $reason,
+      'additional_note' => $additionalNote,
+      'evidence_url' => $evidenceUrl,
       'status' => 'requested',
     ];
 
@@ -261,6 +274,7 @@ class RefundApiController extends BaseApiController
       'refund_id' => $refundId,
       'refund_type' => $refundType,
       'refund_amount' => $refundAmount,
+      'evidence_url' => $evidenceUrl,
       'status' => 'requested',
       'refund_items_created' => $itemsCreated,
       'selected_items_count' => count($selectedItems),
@@ -269,14 +283,58 @@ class RefundApiController extends BaseApiController
     return $this->successResponse($response);
   }
 
-    // =====================================================
-    // ADMIN API
-    // =====================================================
+  public function submitReturnShipping()
+  {
+    $rules = [
+        'refund_id' => 'required',
+        'courier' => 'required',
+        'tracking_number' => 'required',
+    ];
 
-  /**
-   * Get refund/cancel detail
-   * GET /api/admin/refund/{refundId}
-   */
+    if (!$this->validate($rules)) {
+        return $this->validationErrorResponse($this->validator->getErrors());
+    }
+
+    // Get input (handling both Form-Data and JSON)
+    $input = $this->request->getJSON(true);
+    $refundId = $input['refund_id'] ?? null;
+    $courier = $input['courier'] ?? null;
+    $trackingNumber = $input['tracking_number'] ?? null;
+
+    if (!$refundId) {
+        return $this->errorResponse('Refund ID is required');
+    }
+
+    $refund = $this->refundModel->find($refundId);
+    if (!$refund) {
+        return $this->notFoundResponse('Refund request not found');
+    }
+
+    // Since find() can return a list if passed an array, ensure we have the associative array
+    if (isset($refund[0]) && is_array($refund[0])) {
+        $refund = $refund[0];
+    }
+
+    // Ensure status is return_approved
+    if ($refund['status'] !== OrderRefundModel::STATUS_RETURN_APPROVED) {
+        return $this->errorResponse('Refund status is not eligible for shipping info update');
+    }
+
+    if (!$this->refundModel->markReturnShipped($refundId, $courier, $trackingNumber)) {
+        return $this->errorResponse('Failed to update shipping info');
+    }
+
+    return $this->successResponse([
+        'refund_id' => $refundId,
+        'status' => OrderRefundModel::STATUS_RETURN_SHIPPED,
+        'courier' => $courier,
+        'tracking_number' => $trackingNumber
+    ], 'Return shipping information submitted successfully');
+  }
+
+  // =====================================================
+  // ADMIN API
+  // =====================================================
   public function getRefundDetail($refundId)
   {
     $refund = $this->refundModel->withAll()->find($refundId);
@@ -288,20 +346,11 @@ class RefundApiController extends BaseApiController
     return $this->successResponse($refund);
   }
 
-  /**
-   * Get all pending refunds/cancellations
-   * GET /api/admin/refunds?type=cancel&status=pending
-   */
   public function getPendingRefunds()
   {
-    $type = $this->request->getGet('type'); // cancel or refund
     $status = $this->request->getGet('status') ?? 'pending';
 
     $builder = $this->refundModel->withAll();
-
-    if ($type) {
-      $builder->where('order_refunds.type', $type);
-    }
 
     if ($status) {
       $builder->where('order_refunds.status', $status);
@@ -316,19 +365,9 @@ class RefundApiController extends BaseApiController
     return $this->successResponse($response);
   }
 
-  /**
-   * Admin approve refund/cancel
-   * POST /api/admin/refund/{refundId}/approve
-   * 
-   * Request Body:
-   * {
-   *   "admin_note": "Optional note",
-   *   "adjusted_amount": 150000 (optional)
-   * }
-   */
   public function adminApprove($refundId)
   {
-    $adminId = $this->request->getHeaderLine('X-Admin-Id') ?? session('admin_id');
+    $adminId = session()->get('id');
     $json = $this->request->getJSON();
     $adminNote = $json->admin_note ?? null;
     $adjustedAmount = $json->adjusted_amount ?? null;
@@ -347,49 +386,28 @@ class RefundApiController extends BaseApiController
     }
 
     // Approve refund
-    if (!$this->refundModel->markApproved($refundId, $adminId, $adminNote)) {
-      return $this->errorResponse('Approve refund failed');
-    }
-
-    // Update order status based on type
-    if ($refund['type'] === OrderRefundModel::TYPE_CANCEL) {
-      $this->orderModel->update($refund['order_id'], [
-        'status' => 'cancelled',
-        'cancelled_at' => date('Y-m-d H:i:s'),
-      ]);
-    } else {
-      $this->orderModel->update($refund['order_id'], [
-        'refund_status' => 'approved',
-      ]);
+    if (!$this->refundModel->markReturnApproved($refundId, $adminId, $adminNote)) {
+      return $this->errorResponse('Return approve refund failed');
     }
 
     $response = [
       'refund_id' => $refundId,
       'order_id' => $refund['order_id'],
-      'status' => 'approved',
+      'status' => 'return_approved',
       'refund_amount' => $adjustedAmount ?? $refund['refund_amount'],
     ];
 
     return $this->successResponse($response, 'Refund approve successfully');
   }
 
-  /**
-   * Admin reject refund/cancel
-   * POST /api/admin/refund/{refundId}/reject
-   * 
-   * Request Body:
-   * {
-   *   "admin_note": "Required reason for rejection"
-   * }
-   */
   public function adminReject($refundId)
   {
-    $adminId = $this->request->getHeaderLine('X-Admin-Id') ?? session('admin_id');
+    $adminId = session()->get('id');
     $json = $this->request->getJSON();
     $adminNote = $json->admin_note ?? null;
 
     if (empty($adminNote)) {
-      return $this->errorResponse('Note is requires!');
+      return $this->errorResponse('Note is required!');
     }
 
     $refund = $this->refundModel->find($refundId);
@@ -399,18 +417,7 @@ class RefundApiController extends BaseApiController
     }
 
     if (!$this->refundModel->markRejected($refundId, $adminId, $adminNote)) {
-      return $this->errorResponse('reject refund failed');
-    }
-
-    // Update order status
-    if ($refund['type'] === OrderRefundModel::TYPE_CANCEL) {
-      $this->orderModel->update($refund['order_id'], [
-        'status' => 'processing', // Kembalikan ke status sebelumnya
-      ]);
-    } else {
-      $this->orderModel->update($refund['order_id'], [
-        'refund_status' => 'rejected',
-      ]);
+      return $this->errorResponse('Reject refund failed');
     }
 
     $response = [
@@ -420,6 +427,110 @@ class RefundApiController extends BaseApiController
       'admin_note' => $adminNote,
     ];
     return $this->successResponse($response, 'Refund reject successfully');
+  }
+
+  public function adminReceive($refundId)
+  {
+    $adminId = session()->get('id');
+    $json = $this->request->getJSON();
+    $adminNote = $json->admin_note ?? null;
+
+    $refund = $this->refundModel->find($refundId);
+    if (!$refund) {
+        return $this->notFoundResponse('Refund not found');
+    }
+
+    if (!$this->refundModel->markReturnReceived($refundId, $adminId, $adminNote)) {
+        return $this->errorResponse('Failed to mark as return received');
+    }
+
+    return $this->successResponse([
+        'refund_id' => $refundId,
+        'status' => OrderRefundModel::STATUS_RETURN_RECEIVED
+    ], 'Refund item marked as received');
+  }
+
+  public function adminFinalApprove($refundId)
+  {
+    $adminId = session()->get('id');
+    $json = $this->request->getJSON();
+    $adminNote = $json->admin_note ?? null;
+
+    $refund = $this->refundModel->find($refundId);
+    if (!$refund) {
+        return $this->notFoundResponse('Refund not found');
+    }
+
+    if (!$this->refundModel->markApproved($refundId, $adminId, $adminNote)) {
+        return $this->errorResponse('Final approval failed');
+    }
+
+    return $this->successResponse([
+        'refund_id' => $refundId,
+        'status' => OrderRefundModel::STATUS_APPROVED
+    ], 'Refund approved. You can now proceed to process the payment.');
+  }
+
+  public function adminRefund($refundId)
+  {
+    $adminId = session()->get('id');
+    $json = $this->request->getJSON();
+    $adminNote = $json->admin_note ?? null;
+
+    $refund = $this->refundModel->find($refundId);
+    if (!$refund) {
+        return $this->notFoundResponse('Refund not found');
+    }
+
+    if (!$this->refundModel->markRefunded($refundId, $adminId, $adminNote)) {
+        return $this->errorResponse('Marking as refunded failed');
+    }
+
+    // Update order status based on remaining items
+    try {
+        $orderId = $refund['order_id'];
+        
+        // 1. Get total items purchased
+        $totalItemsPurchased = $this->orderItemModel
+            ->where('order_id', $orderId)
+            ->where('deleted_at', null)
+            ->selectSum('quantity', 'total')
+            ->get()
+            ->getRow()
+            ->total ?? 0;
+
+        // 2. Get total items already refunded (including this one)
+        $totalItemsRefunded = $this->db->table('order_refund_items ori')
+            ->join('order_refunds orf', 'orf.order_refund_id = ori.order_refund_id')
+            ->where('orf.order_id', $orderId)
+            ->where('orf.status', OrderRefundModel::STATUS_REFUNDED)
+            ->selectSum('ori.qty_refunded', 'total')
+            ->get()
+            ->getRow()
+            ->total ?? 0;
+
+        // 3. Determine Status
+        $statusCode = ($totalItemsRefunded >= $totalItemsPurchased) 
+            ? OrderStatus::REFUNDED 
+            : OrderStatus::PARTIALLY_REFUNDED;
+
+        $statusId = $this->statusModel->getIdByCode($statusCode);
+        $this->orderModel->update($orderId, [
+            'status_id' => $statusId,
+        ]);
+
+        $statusLabel = ($statusCode === OrderStatus::REFUNDED) ? 'Fully Refunded' : 'Partially Refunded';
+
+    } catch (\Exception $e) {
+        log_message('error', 'Failed to update order status during refund: ' . $e->getMessage());
+        $statusLabel = 'Refunded (Status update failed)';
+    }
+
+    return $this->successResponse([
+        'refund_id' => $refundId,
+        'status' => OrderRefundModel::STATUS_REFUNDED,
+        'order_status' => $statusCode ?? null
+    ], 'Refund marked as completed and order status updated to ' . $statusLabel);
   }
 
   // =====================================================
@@ -471,9 +582,6 @@ class RefundApiController extends BaseApiController
     return 0;
   }
 
-  /**
-   * Create refund items for partial refunds
-   */
   private function createRefundItems($refundId, $selectedItemIds, $totalRefundAmount)
   {
     $itemsCreated = 0;

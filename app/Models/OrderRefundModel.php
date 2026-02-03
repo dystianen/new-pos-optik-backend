@@ -16,16 +16,19 @@ class OrderRefundModel extends Model
     protected $allowedFields = [
         'order_refund_id',
         'order_id',
-        'type',
         'refund_type',
         'user_refund_account_id',
         'refund_amount',
         'reason',
         'additional_note',
         'status',
+        'evidence_url',
         'admin_note',
         'processed_by',
         'completed_at',
+        'return_courier',
+        'return_tracking_number',
+        'return_shipped_at',
     ];
 
     protected $useTimestamps = true;
@@ -34,31 +37,17 @@ class OrderRefundModel extends Model
     protected $deletedField  = 'deleted_at';
 
     // =====================
-    // VALIDATION RULES
-    // =====================
-    protected $validationRules = [
-        'order_id' => 'required|min_length[36]|max_length[36]',
-    ];
-
-    protected $validationMessages = [
-        'order_id' => [
-            'required' => 'Order ID harus diisi',
-        ],
-    ];
-
-    // =====================
     // STATUS CONSTANTS
     // =====================
-    public const STATUS_PENDING    = 'pending';
-    public const STATUS_PROCESSING = 'processing';
-    public const STATUS_APPROVED   = 'approved';
-    public const STATUS_REJECTED   = 'rejected';
-
-    // =====================
-    // TYPE CONSTANTS
-    // =====================
-    public const TYPE_CANCEL = 'cancel';
-    public const TYPE_REFUND = 'refund';
+    public const STATUS_REQUESTED        = 'requested';
+    public const STATUS_REQUEST_REJECTED = 'request_rejected';
+    public const STATUS_RETURN_APPROVED  = 'return_approved';
+    public const STATUS_RETURN_SHIPPED   = 'return_shipped';
+    public const STATUS_RETURN_RECEIVED  = 'return_received';
+    public const STATUS_RETURN_REJECTED  = 'return_rejected';
+    public const STATUS_APPROVED         = 'approved';
+    public const STATUS_REFUNDED         = 'refunded';
+    public const STATUS_EXPIRED          = 'expired';
 
     // =====================
     // CALLBACKS
@@ -119,24 +108,9 @@ class OrderRefundModel extends Model
         return $this->where('status', $status)->findAll();
     }
 
-    public function getByType(string $type)
-    {
-        return $this->where('type', $type)->findAll();
-    }
-
-    public function getCancellations()
-    {
-        return $this->where('type', self::TYPE_CANCEL)->findAll();
-    }
-
-    public function getRefunds()
-    {
-        return $this->where('type', self::TYPE_REFUND)->findAll();
-    }
-
     public function getPendingRefunds()
     {
-        return $this->where('status', self::STATUS_PENDING)
+        return $this->where('status', self::STATUS_REQUESTED)
             ->orderBy('created_at', 'ASC')
             ->findAll();
     }
@@ -144,31 +118,26 @@ class OrderRefundModel extends Model
     public function hasActiveRefund(string $orderId): bool
     {
         return $this->where('order_id', $orderId)
-            ->whereIn('status', [self::STATUS_PENDING, self::STATUS_PROCESSING])
+            ->whereIn('status', [
+                self::STATUS_REQUESTED, 
+                self::STATUS_RETURN_APPROVED, 
+                self::STATUS_RETURN_SHIPPED,
+                self::STATUS_RETURN_RECEIVED
+            ])
             ->countAllResults() > 0;
     }
 
     // =====================
     // STATUS UPDATE METHODS
     // =====================
-    public function markProcessing(string $id, string $adminId = null)
+    // =====================
+    // STATUS UPDATE METHODS
+    // =====================
+    // 'Processing' concept might be 'return_approved' (waiting for return)
+    public function markReturnApproved(string $id, string $adminId = null, string $note = null)
     {
         $data = [
-            'status' => self::STATUS_PROCESSING,
-        ];
-
-        if ($adminId) {
-            $data['processed_by'] = $adminId;
-        }
-
-        return $this->update($id, $data);
-    }
-
-    public function markApproved(string $id, string $adminId = null, string $note = null)
-    {
-        $data = [
-            'status' => self::STATUS_APPROVED,
-            'completed_at' => date('Y-m-d H:i:s'),
+            'status' => self::STATUS_RETURN_APPROVED,
         ];
 
         if ($adminId) {
@@ -182,10 +151,73 @@ class OrderRefundModel extends Model
         return $this->update($id, $data);
     }
 
-    public function markRejected(string $id, string $adminId = null, string $note = null)
+    public function markReturnShipped(string $id, string $courier, string $trackingNumber)
     {
         $data = [
-            'status' => self::STATUS_REJECTED,
+            'status' => self::STATUS_RETURN_SHIPPED,
+            'return_courier' => $courier,
+            'return_tracking_number' => $trackingNumber,
+            'return_shipped_at' => date('Y-m-d H:i:s'),
+        ];
+
+        return $this->update($id, $data);
+    }
+
+    public function markReturnReceived(string $id, string $adminId = null, string $note = null)
+    {
+        $data = [
+            'status' => self::STATUS_RETURN_RECEIVED,
+        ];
+
+        if ($adminId) {
+            $data['processed_by'] = $adminId;
+        }
+
+        if ($note) {
+            $data['admin_note'] = $note;
+        }
+
+        return $this->update($id, $data);
+    }
+
+    public function markApproved(string $id, string $adminId = null, string $note = null)
+    {
+        $data = [
+            'status' => self::STATUS_APPROVED, // Final approval after return received
+            'completed_at' => date('Y-m-d H:i:s'),
+        ];
+
+        if ($adminId) {
+            $data['processed_by'] = $adminId;
+        }
+
+        if ($note) {
+            $data['admin_note'] = $note;
+        }
+
+        return $this->update($id, $data);
+    }
+    public function markRefunded(string $id, string $adminId = null, string $note = null)
+    {
+        $data = [
+            'status' => self::STATUS_REFUNDED,
+        ];
+
+        if ($adminId) {
+            $data['processed_by'] = $adminId;
+        }
+
+        if ($note) {
+            $data['admin_note'] = $note;
+        }
+
+        return $this->update($id, $data);
+    }
+    public function markRejected(string $id, string $adminId = null, string $note = null)
+    {
+        // Usually rejects the initial request
+        $data = [
+            'status' => self::STATUS_REQUEST_REJECTED,
             'completed_at' => date('Y-m-d H:i:s'),
         ];
 
@@ -216,12 +248,17 @@ class OrderRefundModel extends Model
         }
 
         return [
-            'total' => $builder->countAllResults(false),
-            'pending' => $builder->where('status', self::STATUS_PENDING)->countAllResults(false),
-            'processing' => $builder->where('status', self::STATUS_PROCESSING)->countAllResults(false),
-            'approved' => $builder->where('status', self::STATUS_APPROVED)->countAllResults(false),
-            'rejected' => $builder->where('status', self::STATUS_REJECTED)->countAllResults(false),
-            'total_amount' => $builder->selectSum('refund_amount')->get()->getRow()->refund_amount ?? 0,
+            'total'             => $builder->countAllResults(false),
+            'requested'         => $builder->where('status', self::STATUS_REQUESTED)->countAllResults(false),
+            'request_rejected'  => $builder->where('status', self::STATUS_REQUEST_REJECTED)->countAllResults(false),
+            'return_approved'   => $builder->where('status', self::STATUS_RETURN_APPROVED)->countAllResults(false),
+            'return_shipped'    => $builder->where('status', self::STATUS_RETURN_SHIPPED)->countAllResults(false),
+            'return_received'   => $builder->where('status', self::STATUS_RETURN_RECEIVED)->countAllResults(false),
+            'return_rejected'   => $builder->where('status', self::STATUS_RETURN_REJECTED)->countAllResults(false),
+            'approved'          => $builder->where('status', self::STATUS_APPROVED)->countAllResults(false),
+            'refunded'          => $builder->where('status', self::STATUS_REFUNDED)->countAllResults(false),
+            'expired'           => $builder->where('status', self::STATUS_EXPIRED)->countAllResults(false),
+            'total_amount'      => $builder->selectSum('refund_amount')->get()->getRow()->refund_amount ?? 0,
         ];
     }
 
@@ -238,11 +275,8 @@ class OrderRefundModel extends Model
             ];
         }
 
-        // Set default status & type
-        $data['status'] = self::STATUS_PENDING;
-        if (!isset($data['type'])) {
-            $data['type'] = self::TYPE_REFUND;
-        }
+        // Set default status
+        $data['status'] = self::STATUS_REQUESTED;
 
         if ($this->insert($data)) {
             return [

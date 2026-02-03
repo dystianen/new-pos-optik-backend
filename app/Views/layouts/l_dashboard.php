@@ -55,7 +55,7 @@
 
   $currentPage = end($breadcrumbTrail)['label'];
 
-  $salesMenus = ['online-sales', 'in-store-sales', 'refund-sales'];
+  $salesMenus = ['online-sales', 'in-store-sales', 'refund-sales', 'cancellation-sales'];
   $isSalesActive = in_array($segments[0], $salesMenus);
   ?>
 
@@ -148,6 +148,16 @@
                     href="/refund-sales">
                     <i class="fa-solid fa-rotate-left me-1"></i>
                     <span class="nav-link-text">Refund Sales</span>
+                  </a>
+                </li>
+
+                 <!-- Cancelled Sales -->
+                <li class="nav-item">
+                  <a
+                    class="nav-link <?= $segments[0] === 'cancellation-sales' ? 'active' : '' ?>"
+                    href="/cancellation-sales">
+                    <i class="fa-solid fa-ban me-1"></i>
+                    <span class="nav-link-text">Cancellation Sales</span>
                   </a>
                 </li>
               </ul>

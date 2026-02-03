@@ -5,12 +5,21 @@
 function badgeStatus($status)
 {
   return match (strtolower($status)) {
-    'pending'    => 'badge bg-warning',
-    'processing' => 'badge bg-primary',
-    'shipped'    => 'badge bg-secondary',
-    'completed'  => 'badge bg-success',
-    'cancelled'  => 'badge bg-danger',
-    default      => 'badge bg-light text-dark'
+    'requested'         => 'badge bg-info',
+    'request_rejected'  => 'badge bg-danger',
+    'return_approved'   => 'badge bg-primary',
+    'return_shipped'    => 'badge bg-secondary',
+    'return_received'   => 'badge bg-warning',
+    'return_rejected'   => 'badge bg-danger',
+    'approved'          => 'badge bg-success',
+    'refunded'          => 'badge bg-success',
+    'expired'           => 'badge bg-dark',
+    'pending'           => 'badge bg-warning',
+    'processing'        => 'badge bg-primary',
+    'shipped'           => 'badge bg-secondary',
+    'completed'         => 'badge bg-success',
+    'cancelled'         => 'badge bg-danger',
+    default             => 'badge bg-light text-dark'
   };
 }
 ?>
@@ -240,9 +249,6 @@ function badgeStatus($status)
             <p class="mb-1 text-muted">Refund ID</p>
             <p class="fw-semibold"><?= esc($refund['order_refund_id']) ?></p>
 
-            <p class="mb-1 text-muted">Type</p>
-            <p class="fw-semibold"><?= ucfirst($refund['type']) ?></p>
-
             <p class="mb-1 text-muted">Amount</p>
             <p class="fw-semibold">Rp <?= number_format($refund['refund_amount'] ?? 0) ?></p>
 
@@ -250,7 +256,23 @@ function badgeStatus($status)
             <p class="small text-muted"><?= esc($refund['reason'] ?? '-') ?></p>
 
             <p class="mb-1 text-muted">Status</p>
-            <p><span class="badge <?= ($refund['status'] === 'pending') ? 'bg-warning' : (($refund['status'] === 'processing') ? 'bg-primary' : (($refund['status'] === 'approved') ? 'bg-success' : 'bg-danger')) ?>"><?= strtoupper($refund['status']) ?></span></p>
+            <p><span class="<?= badgeStatus($refund['status']) ?>"><?= strtoupper($refund['status']) ?></span></p>
+
+            <?php if (!empty($refund['evidence_url'])): ?>
+              <p class="mb-1 text-muted">Evidence</p>
+              <?php
+              $ext = pathinfo($refund['evidence_url'], PATHINFO_EXTENSION);
+              $isVideo = in_array(strtolower($ext), ['mp4', 'webm', 'ogg', 'mov']);
+              ?>
+              
+              <?php if ($isVideo): ?>
+                <video src="<?= esc($refund['evidence_url']) ?>" controls class="img-fluid rounded" style="max-height: 300px;"></video>
+              <?php else: ?>
+                <a href="<?= esc($refund['evidence_url']) ?>" target="_blank">
+                  <img src="<?= esc($refund['evidence_url']) ?>" class="img-thumbnail" style="max-height: 200px;" alt="Evidence">
+                </a>
+              <?php endif; ?>
+            <?php endif; ?>
           </div>
         </div>
       </div>
@@ -264,87 +286,292 @@ function badgeStatus($status)
             <?php if (!empty($refund['processed_by'])): ?>
               <p class="small text-muted">Processed by: <?= esc($refund['admin_name'] ?? $refund['admin_email'] ?? '-') ?></p>
             <?php endif ?>
+
+            <?php if (!empty($refund['return_courier'])): ?>
+              <hr>
+              <h6>Return Shipping Info</h6>
+              <dl class="row mb-0 small">
+                <dt class="col-5 text-muted">Courier</dt>
+                <dd class="col-7 fw-semibold"><?= esc($refund['return_courier']) ?></dd>
+
+                <dt class="col-5 text-muted">Tracking No</dt>
+                <dd class="col-7 fw-semibold"><?= esc($refund['return_tracking_number']) ?></dd>
+
+                <dt class="col-5 text-muted">Shipped At</dt>
+                <dd class="col-7"><?= !empty($refund['return_shipped_at']) ? date('d M Y H:i', strtotime($refund['return_shipped_at'])) : '-' ?></dd>
+              </dl>
+            <?php endif ?>
           </div>
         </div>
       </div>
     </div>
 
-    <?php if (in_array($refund['status'], ['requested', 'processing'])): ?>
+    <?php if (in_array($refund['status'], ['requested', 'return_approved', 'return_shipped', 'return_received', 'approved'])): ?>
       <div class="row g-3">
         <div class="col-md-6">
-          <div class="card">
+          <div class="card border-success">
             <div class="card-body">
-              <h6>Approve Refund</h6>
-              <div class="mb-2">
-                <label class="form-label">Adjusted Amount (optional)</label>
-                <input id="approve_amount" type="number" class="form-control" placeholder="Leave empty to keep requested amount">
-              </div>
-              <div class="mb-2">
-                <label class="form-label">Admin Note (optional)</label>
-                <textarea id="approve_note" class="form-control" rows="2"></textarea>
-              </div>
-              <button id="btnApprove" class="btn btn-success">Approve Refund</button>
+              <?php if ($refund['status'] === 'requested'): ?>
+                <h6 class="text-success">Approve Return Request</h6>
+                <p class="small text-muted">Approve the request and wait for customer to ship return items.</p>
+                <div class="mb-2">
+                  <label class="form-label">Adjusted Amount (optional)</label>
+                  <input id="approve_amount" type="number" class="form-control" placeholder="Leave empty to keep requested amount" value="<?= $refund['refund_amount'] ?>">
+                </div>
+                <div class="mb-2">
+                  <label class="form-label">Admin Note (optional)</label>
+                  <textarea id="approve_note" class="form-control" rows="2"></textarea>
+                </div>
+                <button id="btnApprove" class="btn btn-success w-100">Approve Request</button>
+
+              <?php elseif ($refund['status'] === 'return_shipped'): ?>
+                <h6 class="text-success">Mark as Received</h6>
+                <p class="small text-muted">The items have been received at our warehouse.</p>
+                <div class="mb-2">
+                  <label class="form-label">Admin Note (optional)</label>
+                  <textarea id="receive_note" class="form-control" rows="2"></textarea>
+                </div>
+                <button id="btnReceive" class="btn btn-primary w-100">Confirm Received</button>
+
+              <?php elseif ($refund['status'] === 'return_received'): ?>
+                <h6 class="text-success">Final Approve Refund</h6>
+                <p class="small text-muted">Final approval of the refund amount to customer.</p>
+                <div class="mb-2">
+                  <label class="form-label">Admin Note (optional)</label>
+                  <textarea id="final_approve_note" class="form-control" rows="2"></textarea>
+                </div>
+                <button id="btnFinalApprove" class="btn btn-success w-100">Final Approve</button>
+
+              <?php elseif ($refund['status'] === 'approved'): ?>
+                <h6 class="text-success">Mark as Refunded</h6>
+                <p class="small text-muted">Only click this after you have successfully transferred the funds to the customer.</p>
+                <div class="mb-2">
+                  <label class="form-label">Admin Note (optional)</label>
+                  <textarea id="refund_note" class="form-control" rows="2"></textarea>
+                </div>
+                <button id="btnRefund" class="btn btn-success w-100">Confirm Funds Sent</button>
+
+              <?php else: ?>
+                <p class="small text-muted">Waiting for customer action.</p>
+              <?php endif ?>
             </div>
           </div>
         </div>
 
         <div class="col-md-6">
-          <div class="card">
-            <div class="card-body">
-              <h6>Reject Refund</h6>
-              <div class="mb-2">
-                <label class="form-label">Admin Note (required)</label>
-                <textarea id="reject_note" class="form-control" rows="2" required></textarea>
+          <?php if (in_array($refund['status'], ['requested', 'return_received'])): ?>
+            <div class="card border-danger">
+              <div class="card-body">
+                <h6>Reject Refund</h6>
+                <div class="mb-2">
+                  <label class="form-label">Admin Note (required)</label>
+                  <textarea id="reject_note" class="form-control" rows="2" required></textarea>
+                </div>
+                <button id="btnReject" class="btn btn-danger w-100">Reject Refund</button>
               </div>
-              <button id="btnReject" class="btn btn-danger">Reject Refund</button>
             </div>
-          </div>
+          <?php endif; ?>
         </div>
       </div>
     <?php else: ?>
-      <div class="alert alert-secondary">No actions available for this refund</div>
+      <div class="alert alert-secondary">No actions available for this status: <strong><?= strtoupper($refund['status']) ?></strong></div>
     <?php endif ?>
   </div>
 </div>
 </div>
-<?= $this->endSection() ?>
 
 <script>
-  const refundId = '<?= esc($refund['order_refund_id']) ?>';
+  document.addEventListener('DOMContentLoaded', () => {
+    const refundId = '<?= esc($refund['order_refund_id']) ?>';
+    console.log('Refund Detail Loaded. ID:', refundId);
 
-  async function postJson(url, body) {
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(body)
+    async function postJson(url, body) {
+      console.log('Attempting POST to:', url, 'Body:', body);
+      try {
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        console.log('Response:', data);
+        return data;
+      } catch (err) {
+        console.error('Fetch error:', err);
+        return { success: false, message: 'Network error or server failed: ' + err.message };
+      }
+    }
+
+    document.getElementById('btnApprove')?.addEventListener('click', async () => {
+      const confirm = await Swal.fire({
+        title: 'Approve refund?',
+        text: 'Are you sure you want to approve this refund request?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#28a745',
+        confirmButtonText: 'Yes, Approve'
+      });
+
+      if (!confirm.isConfirmed) return;
+      
+      const adjusted = document.getElementById('approve_amount').value || null;
+      const note = document.getElementById('approve_note').value || null;
+      const url = `<?= base_url('api/admin/refund') ?>/${refundId}/approve`;
+      
+      const payload = {};
+      if (adjusted) payload.adjusted_amount = parseFloat(adjusted);
+      if (note) payload.admin_note = note;
+      
+      Swal.fire({
+        title: 'Approving...',
+        allowOutsideClick: false,
+        didOpen: () => Swal.showLoading()
+      });
+
+      const resp = await postJson(url, payload);
+      
+      if (resp.success !== false) {
+        Swal.fire({
+          icon: 'success',
+          title: 'Approved',
+          text: resp.message || 'Refund approved successfully',
+          timer: 1500,
+          showConfirmButton: false
+        }).then(() => location.reload());
+      } else {
+        Swal.fire({
+          icon: 'error',
+          title: 'Failed',
+          text: resp.message || 'Failed to approve refund'
+        });
+      }
     });
-    return res.json();
-  }
 
-  document.getElementById('btnApprove')?.addEventListener('click', async () => {
-    if (!confirm('Approve this refund?')) return;
-    const adjusted = document.getElementById('approve_amount').value || null;
-    const note = document.getElementById('approve_note').value || null;
-    const url = `<?= base_url('/api/admin/refund/') ?>${refundId}/approve`;
-    const payload = {};
-    if (adjusted) payload.adjusted_amount = parseFloat(adjusted);
-    if (note) payload.admin_note = note;
-    const resp = await postJson(url, payload);
-    alert(resp.message || JSON.stringify(resp));
-    if (resp.success !== false) location.reload();
-  });
+    document.getElementById('btnReject')?.addEventListener('click', async () => {
+      const note = document.getElementById('reject_note').value || '';
+      if (!note) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Note required',
+          text: 'Admin note is required for rejection'
+        });
+        return;
+      }
 
-  document.getElementById('btnReject')?.addEventListener('click', async () => {
-    if (!confirm('Reject this refund?')) return;
-    const note = document.getElementById('reject_note').value || '';
-    if (!note) return alert('Admin note is required for rejection');
-    const url = `<?= base_url('/api/admin/refund/') ?>${refundId}/reject`;
-    const resp = await postJson(url, {
-      admin_note: note
+      const confirm = await Swal.fire({
+        title: 'Reject refund?',
+        text: 'Are you sure you want to reject this refund request?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc3545',
+        confirmButtonText: 'Yes, Reject'
+      });
+
+      if (!confirm.isConfirmed) return;
+      
+      const url = `<?= base_url('api/admin/refund') ?>/${refundId}/reject`;
+      
+      Swal.fire({
+        title: 'Rejecting...',
+        allowOutsideClick: false,
+        didOpen: () => Swal.showLoading()
+      });
+
+      const resp = await postJson(url, { admin_note: note });
+      
+      if (resp.success !== false) {
+        Swal.fire({
+          icon: 'success',
+          title: 'Rejected',
+          text: resp.message || 'Refund rejected successfully',
+          timer: 1500,
+          showConfirmButton: false
+        }).then(() => location.reload());
+      } else {
+        Swal.fire({
+          icon: 'error',
+          title: 'Failed',
+          text: resp.message || 'Failed to reject refund'
+        });
+      }
     });
-    alert(resp.message || JSON.stringify(resp));
-    if (resp.success !== false) location.reload();
+
+    document.getElementById('btnReceive')?.addEventListener('click', async () => {
+      const confirm = await Swal.fire({
+        title: 'Mark as Received?',
+        text: 'Confirm that items have been received at warehouse',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, Received'
+      });
+
+      if (!confirm.isConfirmed) return;
+
+      const note = document.getElementById('receive_note').value || null;
+      const url = `<?= base_url('api/admin/refund') ?>/${refundId}/receive`;
+      
+      Swal.fire({ title: 'Processing...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+      const resp = await postJson(url, { admin_note: note });
+      if (resp.success !== false) {
+        Swal.fire({ icon: 'success', title: 'Received', text: resp.message, timer: 1500, showConfirmButton: false }).then(() => location.reload());
+      } else {
+        Swal.fire({ icon: 'error', title: 'Failed', text: resp.message });
+      }
+    });
+
+    document.getElementById('btnFinalApprove')?.addEventListener('click', async () => {
+      const confirm = await Swal.fire({
+        title: 'Final Approve Refund?',
+        text: 'This will approve the refund and update order status to REFUNDED',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#28a745',
+        confirmButtonText: 'Yes, Final Approve'
+      });
+
+      if (!confirm.isConfirmed) return;
+
+      const note = document.getElementById('final_approve_note').value || null;
+      const url = `<?= base_url('api/admin/refund') ?>/${refundId}/final-approve`;
+      
+      Swal.fire({ title: 'Processing...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+      const resp = await postJson(url, { admin_note: note });
+      if (resp.success !== false) {
+        Swal.fire({ icon: 'success', title: 'Success', text: resp.message, timer: 1500, showConfirmButton: false }).then(() => location.reload());
+      } else {
+        Swal.fire({ icon: 'error', title: 'Failed', text: resp.message });
+      }
+    });
+
+    document.getElementById('btnRefund')?.addEventListener('click', async () => {
+      const confirm = await Swal.fire({
+        title: 'Confirm Funds Sent?',
+        text: 'This will mark the refund as completed and update order status to REFUNDED',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#28a745',
+        confirmButtonText: 'Yes, Mark as Refunded'
+      });
+
+      if (!confirm.isConfirmed) return;
+
+      const note = document.getElementById('refund_note').value || null;
+      const url = `<?= base_url('api/admin/refund') ?>/${refundId}/refund`;
+      
+      Swal.fire({ title: 'Processing...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+      const resp = await postJson(url, { admin_note: note });
+      if (resp.success !== false) {
+        Swal.fire({ icon: 'success', title: 'Refunded', text: resp.message, timer: 1500, showConfirmButton: false }).then(() => location.reload());
+      } else {
+        Swal.fire({ icon: 'error', title: 'Failed', text: resp.message });
+      }
+    });
   });
 </script>
+
+<?= $this->endSection() ?>

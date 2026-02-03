@@ -47,11 +47,6 @@ class CreateOrderRefundsTable extends Migration
                 'default'    => 'requested',
             ],
 
-            'type' => [
-                'type'       => 'ENUM',
-                'constraint' => ['cancel', 'refund'],
-            ],
-
             'refund_type' => [
                 'type'       => 'ENUM',
                 'constraint' => ['full', 'partial'],
@@ -62,6 +57,12 @@ class CreateOrderRefundsTable extends Migration
             'admin_note' => [
                 'type' => 'TEXT',
                 'null' => true,
+            ],
+
+            'evidence_url' => [
+                'type' => 'VARCHAR',
+                'constraint' => 1024,
+                'null' => false,
             ],
 
             'processed_by' => [

@@ -19,8 +19,9 @@ use App\Models\ProductModel;
 use App\Models\ProductVariantModel;
 use App\Models\ShippingRateModel;
 use App\Models\UserRefundAccountModel;
-use CodeIgniter\API\ResponseTrait;
+use App\Models\OrderStatusModel;
 use Config\OrderStatus;
+use CodeIgniter\API\ResponseTrait;
 
 class OnlineSalesApiController extends BaseApiController
 {
@@ -45,7 +46,7 @@ class OnlineSalesApiController extends BaseApiController
         $this->notificationModel = new NotificationModel();
         $this->userRefundAccountModel = new UserRefundAccountModel();
         $this->orderRefundModel = new OrderRefundModel();
-        $this->statusModel = new OrderRefundModel();
+        $this->statusModel = new OrderStatusModel();
         $this->r2 = new R2Storage();
     }
 
@@ -439,15 +440,8 @@ class OnlineSalesApiController extends BaseApiController
                     'bank_name'              => $bankName,
                     'account_number'         => $accountNumber,
                 ]);
-            } else {
-                // ✅ PAKAI YANG SUDAH ADA
-                $userRefundAccountId = $refundAccount['user_refund_account_id'];
             }
 
-            $this->orderRefundModel->insert([
-                'order_id'               => $orderId,
-                'user_refund_account_id' => $userRefundAccountId,
-            ]);
 
             // 💳 INSERT PAYMENT (TANPA STATUS)
             $this->paymentModel->insert([
@@ -578,8 +572,16 @@ class OnlineSalesApiController extends BaseApiController
                 ->where('orders.customer_id', $customerId)
                 ->where('orders.deleted_at', null);
 
-            if ($statusId) {
-                $builder->where('orders.status_id', $statusId);
+            if ($statusId && $statusId !== 'all') {
+                $refundedId = $this->statusModel->getIdByCode(OrderStatus::REFUNDED);
+                $completedId = $this->statusModel->getIdByCode(OrderStatus::COMPLETED);
+                $partialRefundId = $this->statusModel->getIdByCode(OrderStatus::PARTIALLY_REFUNDED);
+
+                if ($statusId === $refundedId || $statusId === $completedId) {
+                    $builder->whereIn('orders.status_id', [$statusId, $partialRefundId]);
+                } else {
+                    $builder->where('orders.status_id', $statusId);
+                }
             }
 
             $orders = $builder
@@ -604,19 +606,48 @@ class OnlineSalesApiController extends BaseApiController
             $addressesGrouped = $this->getShippingAddressesGrouped($orderIds);
 
             // Map orders dengan items
-            $mappedOrders = array_map(function ($order) use ($itemsGrouped, $addressesGrouped) {
+            $mappedOrders = array_map(function ($order) use ($itemsGrouped, $addressesGrouped, $statusId) {
                 $orderId = $order['order_id'];
+                $activeItems = $itemsGrouped[$orderId] ?? [];
+                
+                $refundedId = $this->statusModel->getIdByCode(OrderStatus::REFUNDED);
+                
+                // 🔥 CONTEXT-AWARE FILTERING
+                if ($statusId === $refundedId) {
+                    // TAB REFUNDED: Show only refunded items
+                    $displayItems = array_filter($activeItems, fn($item) => $item['qty_refunded'] > 0);
+                    $displayItems = array_map(function($item) {
+                        $item['quantity'] = (int) $item['qty_refunded'];
+                        $item['subtotal'] = (int) ($item['price'] * $item['quantity']);
+                        return $item;
+                    }, $displayItems);
+                } else {
+                    // TAB LAIN: Show only active items
+                    $displayItems = array_filter($activeItems, fn($item) => $item['qty_active'] > 0);
+                    $displayItems = array_map(function($item) {
+                        $item['quantity'] = (int) $item['qty_active'];
+                        $item['subtotal'] = (int) ($item['price'] * $item['quantity']);
+                        return $item;
+                    }, $displayItems);
+                }
+
+                $displayItems = array_values($displayItems); // Reset keys
+
+                // Recalculate subtotal from display items
+                $activeSubtotal = array_reduce($displayItems, function($carry, $item) {
+                    return $carry + ($item['price'] * $item['quantity']);
+                }, 0);
 
                 return [
                     'order_id' => $orderId,
                     'order_date' => $order['order_date'],
                     'status' => $order['status_name'],
                     'status_code' => $order['status_code'],
-                    'items' => $itemsGrouped[$orderId] ?? [],
+                    'items' => $displayItems,
                     'summary' => [
-                        'grand_total' => (int) $order['grand_total'],
+                        'grand_total' => (int) ($activeSubtotal + $order['shipping_cost']),
                         'shipping_cost' => (int) $order['shipping_cost'],
-                        'total_items' => count($itemsGrouped[$orderId] ?? [])
+                        'total_items' => count($displayItems)
                     ],
                     'shipping' => [
                         'method' => $order['shipping_method'],
@@ -676,18 +707,24 @@ class OnlineSalesApiController extends BaseApiController
             $items = $this->orderItemModel
                 ->select("
                     order_items.order_item_id,
-                    order_items.product_id,
-                    order_items.variant_id,
-                    order_items.quantity,
-                    order_items.price,
+                    ANY_VALUE(order_items.product_id) AS product_id,
+                    ANY_VALUE(order_items.variant_id) AS variant_id,
+                    ANY_VALUE(order_items.quantity) AS qty_purchased,
+                    COALESCE(SUM(ori.qty_refunded), 0) AS qty_refunded,
+                    (ANY_VALUE(order_items.quantity) - COALESCE(SUM(ori.qty_refunded), 0)) AS qty_active,
+                    ANY_VALUE(order_items.price) AS price,
                     
-                    products.product_name,
-                    product_variants.variant_name,
+                    ANY_VALUE(products.product_name) AS product_name,
+                    ANY_VALUE(product_variants.variant_name) AS variant_name,
                     
-                    COALESCE(pvi_img.url, pi_img.url) AS image
+                    ANY_VALUE(COALESCE(pvi_img.url, pi_img.url)) AS image
                 ")
                 ->join('products', 'products.product_id = order_items.product_id')
                 ->join('product_variants', 'product_variants.variant_id = order_items.variant_id', 'left')
+
+                // 🔥 JOIN REFUND ITEMS
+                ->join('order_refund_items ori', 'ori.order_item_id = order_items.order_item_id', 'left')
+                ->join('order_refunds orf', 'orf.order_refund_id = ori.order_refund_id AND orf.status = "refunded"', 'left')
 
                 // 🔥 VARIANT IMAGE
                 ->join(
@@ -711,6 +748,7 @@ class OnlineSalesApiController extends BaseApiController
                 )
                 ->where('order_items.order_id', $orderId)
                 ->where('order_items.deleted_at', null)
+                ->groupBy('order_items.order_item_id')
                 ->findAll();
 
             // 👓 GET PRESCRIPTIONS
@@ -742,26 +780,51 @@ class OnlineSalesApiController extends BaseApiController
                 }
             }
 
+            $refundedId = $this->statusModel->getIdByCode(OrderStatus::REFUNDED);
+            $isFullyRefunded = ($order['status_id'] === $refundedId);
+
             // Map items dengan prescription
-            $mappedItems = array_map(function ($item) use ($prescriptions) {
+            $mappedItems = array_map(function ($item) use ($prescriptions, $isFullyRefunded) {
+                $qty_purchased = (int) $item['qty_purchased'];
+                $qty_refunded = (int) $item['qty_refunded'];
+                $qty_active = (int) $item['qty_active'];
+
+                // 🔥 LOGIC: 
+                // Jika order FULL REFUND, tampilkan qty_refunded sebagai quantity utama
+                // Jika order BIASA/PARTIAL, tampilkan qty_active sebagai quantity utama
+                $displayQty = $isFullyRefunded ? $qty_refunded : $qty_active;
+
                 return [
-                    'order_item_id' => $item['order_item_id'],
-                    'product_id' => $item['product_id'],
-                    'variant_id' => $item['variant_id'],
-                    'product_name' => $item['product_name'],
-                    'variant_name' => $item['variant_name'],
-                    'image' => $item['image'],
-                    'price' => (int) $item['price'],
-                    'quantity' => (int) $item['quantity'],
-                    'subtotal' => (int) ($item['price'] * $item['quantity']),
-                    'prescription' => $prescriptions[$item['order_item_id']] ?? null
+                    'order_item_id'  => $item['order_item_id'],
+                    'product_id'     => $item['product_id'],
+                    'variant_id'     => $item['variant_id'],
+                    'product_name'   => $item['product_name'],
+                    'variant_name'   => $item['variant_name'],
+                    'image'          => $item['image'],
+                    'price'          => (int) $item['price'],
+                    'qty_purchased'  => $qty_purchased,
+                    'qty_refunded'   => $qty_refunded,
+                    'qty_active'     => $qty_active,
+                    'quantity'       => $displayQty,
+                    'subtotal'       => (int) ($item['price'] * $displayQty),
+                    'is_refunded'    => ($qty_refunded > 0),
+                    'prescription'   => $prescriptions[$item['order_item_id']] ?? null
                 ];
             }, $items);
+
+            // Filter items: tampilkan semua yang punya qty (active atau refunded)
+            $mappedItems = array_filter($mappedItems, fn($item) => $item['quantity'] > 0 || $item['qty_refunded'] > 0);
+            $mappedItems = array_values($mappedItems);
 
             // 📍 Get shipping address
             $shippingAddress = $this->orderShippingAddressModel
                 ->where('order_id', $orderId)
                 ->first();
+
+            // Recalculate subtotal from active items
+            $activeSubtotal = array_reduce($mappedItems, function($carry, $item) {
+                return $carry + $item['subtotal'];
+            }, 0);
 
             $responseData = [
                 'order_id' => $order['order_id'],
@@ -771,7 +834,7 @@ class OnlineSalesApiController extends BaseApiController
                 'items' => $mappedItems,
                 'summary' => [
                     'shipping_cost' => (int) $order['shipping_cost'],
-                    'grand_total' => (int) $order['grand_total']
+                    'grand_total' => (int) ($activeSubtotal + $order['shipping_cost'])
                 ],
                 'shipping' => [
                     'method' => $order['shipping_method'],
@@ -808,18 +871,25 @@ class OnlineSalesApiController extends BaseApiController
             ->select("
                 order_items.order_id,
                 order_items.order_item_id,
-                order_items.product_id,
-                order_items.variant_id,
-                order_items.quantity,
-                order_items.price,
+                ANY_VALUE(order_items.product_id) AS product_id,
+                ANY_VALUE(order_items.variant_id) AS variant_id,
+                ANY_VALUE(order_items.quantity) AS qty_purchased,
+                COALESCE(SUM(ori.qty_refunded), 0) AS qty_refunded,
+                (ANY_VALUE(order_items.quantity) - COALESCE(SUM(ori.qty_refunded), 0)) AS qty_active,
+                ANY_VALUE(order_items.price) AS price,
                 
-                products.product_name,
-                product_variants.variant_name,
+                ANY_VALUE(products.product_name) AS product_name,
+                ANY_VALUE(product_variants.variant_name) AS variant_name,
                 
-                COALESCE(pvi_img.url, pi_img.url) AS image
+                ANY_VALUE(COALESCE(pvi_img.url, pi_img.url)) AS image
             ")
             ->join('products', 'products.product_id = order_items.product_id')
             ->join('product_variants', 'product_variants.variant_id = order_items.variant_id', 'left')
+            
+            // JOIN REFUNDS
+            ->join('order_refund_items ori', 'ori.order_item_id = order_items.order_item_id', 'left')
+            ->join('order_refunds orf', 'orf.order_refund_id = ori.order_refund_id AND orf.status = "refunded"', 'left')
+
             ->join(
                 'product_variant_images pvi',
                 'pvi.variant_id = order_items.variant_id AND pvi.deleted_at IS NULL',
@@ -839,6 +909,7 @@ class OnlineSalesApiController extends BaseApiController
             )
             ->whereIn('order_items.order_id', $orderIds)
             ->where('order_items.deleted_at', null)
+            ->groupBy('order_items.order_item_id')
             ->findAll();
 
         $grouped = [];
@@ -855,8 +926,9 @@ class OnlineSalesApiController extends BaseApiController
                 'variant_name' => $item['variant_name'],
                 'image' => $item['image'],
                 'price' => (int) $item['price'],
-                'quantity' => (int) $item['quantity'],
-                'subtotal' => (int) ($item['price'] * $item['quantity'])
+                'qty_purchased' => (int) $item['qty_purchased'],
+                'qty_refunded' => (int) $item['qty_refunded'],
+                'qty_active' => (int) $item['qty_active'],
             ];
         }
 
