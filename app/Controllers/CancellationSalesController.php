@@ -52,7 +52,7 @@ class CancellationSalesController extends BaseController
     public function detail($cancellationId)
     {
         $cancellation = $this->cancellationModel
-            ->select('order_cancellations.*, users.name as admin_name')
+            ->select('order_cancellations.*, users.user_name as admin_name')
             ->join('users', 'users.user_id = order_cancellations.processed_by', 'left')
             ->where('order_cancellation_id', $cancellationId)
             ->first();

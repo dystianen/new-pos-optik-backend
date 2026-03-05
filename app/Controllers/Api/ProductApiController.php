@@ -162,7 +162,7 @@ class ProductApiController extends BaseApiController
 
         $currentPage = $this->productModel->pager->getCurrentPage('products');
 
-        return $this->paginatedResponse($products, $totalItems, $currentPage, $limit);
+        return $this->successResponse($products);
     }
 
     // GET /api/products/new-eyewear

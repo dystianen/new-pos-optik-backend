@@ -51,7 +51,7 @@ $routes->group('api', ['filter' => 'cors'], function ($routes) {
   $routes->group('cart', ['filter' => 'authApi'], function ($routes) {
     $routes->get('', 'Api\CartApiController::listCart');
     $routes->post('add-to-cart', 'Api\CartApiController::addToCart');
-    $routes->get('total-cart', 'Api\CartApiController::getTotalCart');
+    $routes->get('count', 'Api\CartApiController::getTotalCart');
     $routes->delete('delete/(:any)', 'Api\CartApiController::deleteCartItem/$1');
   });
 

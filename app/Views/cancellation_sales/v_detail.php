@@ -166,9 +166,9 @@ function badgeStatus($status)
     <?php endif ?>
   </div>
 </div>
-
 <?= $this->endSection() ?>
 
+<?= $this->section('scripts') ?>
 <script>
   const cancellationId = '<?= esc($cancellation['order_cancellation_id']) ?>';
 
@@ -185,7 +185,7 @@ function badgeStatus($status)
 
   document.getElementById('btnApprove')?.addEventListener('click', async () => {
     if (!confirm('Approve this cancellation? This will cancel the order.')) return;
-    const url = `<?= base_url('/api/admin/cancellation/') ?>${cancellationId}/approve`;
+    const url = `<?= base_url('/api/admin/cancel/') ?>${cancellationId}/approve`;
     const resp = await postJson(url, {});
     
     if (resp.status !== 200 && resp.status !== 201 && !resp.success) { // Handle CI4 API response wrapper variation if any
@@ -201,7 +201,7 @@ function badgeStatus($status)
     const note = document.getElementById('reject_note').value || '';
     if (!note) return alert('Admin note is required for rejection');
     
-    const url = `<?= base_url('/api/admin/cancellation/') ?>${cancellationId}/reject`;
+    const url = `<?= base_url('/api/admin/cancel/') ?>${cancellationId}/reject`;
     const resp = await postJson(url, {
       admin_note: note
     });
@@ -214,3 +214,4 @@ function badgeStatus($status)
     }
   });
 </script>
+<?= $this->endSection() ?>
