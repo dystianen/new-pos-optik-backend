@@ -78,16 +78,11 @@ class WishlistApiController extends BaseApiController
                 ->groupEnd();
         }
 
-        /**
-         * 📄 PAGINATION
-         */
         $wishlist = $builder
             ->orderBy('wishlists.created_at', 'DESC')
             ->paginate($limit, 'wishlist', $page);
 
-        $total = $this->wishlistModel->pager->getTotal('wishlist');
-        $totalPages  = $this->wishlistModel->pager->getPageCount('wishlist');
-        return $this->paginatedResponse($wishlist, $total, $totalPages, $limit);
+        return $this->successResponse($wishlist);
     }
 
 

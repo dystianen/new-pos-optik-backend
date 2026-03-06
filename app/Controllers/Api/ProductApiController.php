@@ -64,6 +64,7 @@ class ProductApiController extends BaseApiController
 
         $builder->where('p.deleted_at', null);
         $builder->like('p.product_name', $keyword);
+        $builder->orLike('p.product_brand', $keyword);
         $builder->orderBy('p.product_name', 'ASC');
         $builder->limit(20);
 
@@ -149,9 +150,6 @@ class ProductApiController extends BaseApiController
                 ->groupEnd();
         }
 
-        // IMPORTANT: hitung total sebelum paginate
-        $totalItems = $builder->countAllResults(false);
-
         $products = $builder
             ->orderBy('products.created_at', 'DESC')
             ->paginate($limit, 'products', $page);
@@ -174,12 +172,6 @@ class ProductApiController extends BaseApiController
         $search = $this->request->getVar('search');
         $newLimitDate = date('Y-m-d H:i:s', strtotime('-30 days'));
 
-        $subQuery = $this->db->table('order_items oi')
-            ->select('oi.product_id, SUM(oi.quantity) AS total_sold')
-            ->join('orders o', 'o.order_id = oi.order_id')
-            ->where('o.status_id', $this->statusModel->getIdByCode(OrderStatus::COMPLETED))
-            ->groupBy('oi.product_id');
-
         $builder = $this->db->table('products p');
 
         $builder->select('
@@ -189,15 +181,8 @@ class ProductApiController extends BaseApiController
             p.product_stock,
             p.product_brand,
             pi.url AS product_image_url,
-            COALESCE(ts.total_sold, 0) AS total_sold,
             IF(w.wishlist_id IS NULL, 0, 1) AS is_wishlist
         ');
-
-        $builder->join(
-            "({$subQuery->getCompiledSelect()}) ts",
-            'ts.product_id = p.product_id',
-            'left'
-        );
 
         $builder->join(
             'product_images pi',
@@ -233,6 +218,32 @@ class ProductApiController extends BaseApiController
 
         $products = $builder->get()->getResultArray();
 
+        if (empty($products)) {
+            return $this->successResponse($products);
+        }
+
+        // Ambil ID produk yang ditarik untuk query aggregate total_sold yang lebih efisien
+        $productIds = array_column($products, 'product_id');
+
+        $soldQuery = $this->db->table('order_items oi')
+            ->select('oi.product_id, SUM(oi.quantity) AS total_sold')
+            ->join('orders o', 'o.order_id = oi.order_id')
+            ->whereIn('oi.product_id', $productIds)
+            ->where('o.status_id', $this->statusModel->getIdByCode(OrderStatus::COMPLETED))
+            ->groupBy('oi.product_id')
+            ->get()
+            ->getResultArray();
+
+        $soldMap = [];
+        foreach ($soldQuery as $row) {
+            $soldMap[$row['product_id']] = (int) $row['total_sold'];
+        }
+
+        foreach ($products as &$product) {
+            $product['total_sold'] = $soldMap[$product['product_id']] ?? 0;
+        }
+        unset($product);
+
         return $this->successResponse($products);
     }
 
@@ -244,22 +255,48 @@ class ProductApiController extends BaseApiController
 
         $search = $this->request->getVar('search');
 
-        $builder = $this->db->table('order_items oi');
+        // Pertama, cari 10 product ID dengan total penjualan terbanyak
+        $bestSellerBuilder = $this->db->table('order_items oi');
+        $bestSellerBuilder->select('oi.product_id, SUM(oi.quantity) AS total_sold')
+            ->join('orders o', 'o.order_id = oi.order_id')
+            ->join('products p', 'p.product_id = oi.product_id')
+            ->where('o.status_id', $this->statusModel->getIdByCode(OrderStatus::COMPLETED))
+            ->where('p.deleted_at', null);
 
-        $builder->select('
+        if (!empty($search)) {
+            $bestSellerBuilder->like('p.product_name', $search);
+        }
+
+        $bestSellersRaw = $bestSellerBuilder
+            ->groupBy('oi.product_id')
+            ->orderBy('total_sold', 'DESC')
+            ->limit(10)
+            ->get()
+            ->getResultArray();
+
+        if (empty($bestSellersRaw)) {
+            return $this->successResponse([]);
+        }
+
+        $productIds = array_column($bestSellersRaw, 'product_id');
+        
+        $totalsMap = [];
+        foreach ($bestSellersRaw as $bs) {
+            $totalsMap[$bs['product_id']] = (int) $bs['total_sold'];
+        }
+
+        // Kedua, ambil detail relasinya secara paralel hanya untuk 10 ID tersebut
+        $pBuilder = $this->db->table('products p');
+        $pBuilder->select('
             p.product_id,
             p.product_name,
             p.product_price,
             p.product_stock,
             p.product_brand,
             pi.url AS product_image_url,
-            SUM(oi.quantity) AS total_sold,
             IF(w.wishlist_id IS NULL, 0, 1) AS is_wishlist
         ');
-
-        $builder->join('orders o', 'o.order_id = oi.order_id');
-        $builder->join('products p', 'p.product_id = oi.product_id');
-        $builder->join(
+        $pBuilder->join(
             'product_images pi',
             'pi.product_id = p.product_id AND pi.is_primary = 1',
             'left'
@@ -267,7 +304,7 @@ class ProductApiController extends BaseApiController
 
         if ($customerId) {
             $escapedCustomerId = $this->db->escape($customerId);
-            $builder->join(
+            $pBuilder->join(
                 'wishlists w',
                 "w.product_id = p.product_id 
                 AND w.customer_id = {$escapedCustomerId} 
@@ -275,33 +312,32 @@ class ProductApiController extends BaseApiController
                 'left'
             );
         } else {
-            $builder->join(
+            $pBuilder->join(
                 'wishlists w',
                 '1 = 0',
                 'left'
             );
         }
 
-        $builder->where('o.status_id', $this->statusModel->getIdByCode(OrderStatus::COMPLETED));
+        $pBuilder->whereIn('p.product_id', $productIds);
+        $productsData = $pBuilder->get()->getResultArray();
 
-        if (!empty($search)) {
-            $builder->like('p.product_name', $search);
+        // Index the fetched products by product_id
+        $productsById = [];
+        foreach ($productsData as $pd) {
+            $productsById[$pd['product_id']] = $pd;
         }
 
-        $builder->groupBy([
-            'p.product_id',
-            'p.product_name',
-            'p.product_price',
-            'p.product_stock',
-            'p.product_brand',
-            'pi.url',
-            'w.wishlist_id'
-        ]);
-
-        $builder->orderBy('total_sold', 'DESC');
-        $builder->limit(10);
-
-        $bestSeller = $builder->get()->getResultArray();
+        // Map data keeping the correct DESC numerical sort order
+        $bestSeller = [];
+        foreach ($bestSellersRaw as $bs) {
+            $pid = $bs['product_id'];
+            if (isset($productsById[$pid])) {
+                $item = $productsById[$pid];
+                $item['total_sold'] = $totalsMap[$pid];
+                $bestSeller[] = $item;
+            }
+        }
 
         return $this->successResponse($bestSeller);
     }
