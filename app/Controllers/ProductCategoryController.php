@@ -57,8 +57,10 @@ class ProductCategoryController extends BaseController
         ];
 
         if (!$this->validate($rules)) {
-            return redirect()->back()->withInput()->with('failed', 'Please check your input.');
-        };
+            $errors = $this->validator->getErrors();
+            $errorMessage = implode('<br>', $errors);
+            return redirect()->back()->withInput()->with('failed', $errorMessage);
+        }
 
         $data = [
             'category_name' => $this->request->getPost('category_name'),

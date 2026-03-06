@@ -220,11 +220,13 @@ class ProductController extends BaseController
 
             // Mapping ke PAV
             $pvValues = $this->pvValueModel
-                ->where('variant_id', $variantId)
-                ->where('deleted_at', null)
+                ->select('product_attribute_values.attribute_id, product_attribute_values.value')
+                ->join('product_attribute_values', 'product_attribute_values.pav_id = product_variant_values.pav_id')
+                ->where('product_variant_values.variant_id', $variantId)
+                ->where('product_variant_values.deleted_at', null)
                 ->findAll();
 
-            $v['pav_mapping'] = array_column($pvValues, 'pav_id');
+            $v['pav_mapping'] = $pvValues;
 
             // Variant Image
             $variantImage = $this->variantImageModel
@@ -548,6 +550,7 @@ class ProductController extends BaseController
 
                                     // ✅ LOOKUP PAV_ID dari attribute_id + value
                                     $pav = $this->pavModel
+                                        ->where('product_id', $productId)
                                         ->where('attribute_id', $attributeId)
                                         ->where('value', $value)
                                         ->first();
