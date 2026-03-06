@@ -611,24 +611,38 @@ class OnlineSalesApiController extends BaseApiController
                 $activeItems = $itemsGrouped[$orderId] ?? [];
                 
                 $refundedId = $this->statusModel->getIdByCode(OrderStatus::REFUNDED);
+
+                $totalPurchased = array_reduce($activeItems, fn($carry, $item) => $carry + (int)$item['qty_purchased'], 0);
+                $totalRefunded = array_reduce($activeItems, fn($carry, $item) => $carry + (int)$item['qty_refunded'], 0);
                 
+                $isOrderRefunded = ($order['status_code'] === OrderStatus::REFUNDED);
+                $isFullyRefundedInList = ($totalPurchased > 0 && $totalPurchased === $totalRefunded) || $isOrderRefunded;
+
                 // 🔥 CONTEXT-AWARE FILTERING
-                if ($statusId === $refundedId) {
-                    // TAB REFUNDED: Show only refunded items
-                    $displayItems = array_filter($activeItems, fn($item) => $item['qty_refunded'] > 0);
-                    $displayItems = array_map(function($item) {
-                        $item['quantity'] = (int) $item['qty_refunded'];
+                if ($statusId === $refundedId || $isFullyRefundedInList) {
+                    // TAB REFUNDED or fully refunded: Show items that are refunded
+                    $displayItems = array_map(function($item) use ($isOrderRefunded) {
+                        // For full refunds, if qty_refunded is 0 (not in table), use qty_purchased
+                        $qty = (int) $item['qty_refunded'];
+                        if ($isOrderRefunded && $qty === 0) {
+                            $qty = (int) $item['qty_purchased'];
+                        }
+                        
+                        $item['quantity'] = $qty;
                         $item['subtotal'] = (int) ($item['price'] * $item['quantity']);
                         return $item;
-                    }, $displayItems);
+                    }, $activeItems);
+                    
+                    $displayItems = array_filter($displayItems, fn($item) => $item['quantity'] > 0);
                 } else {
                     // TAB LAIN: Show only active items
-                    $displayItems = array_filter($activeItems, fn($item) => $item['qty_active'] > 0);
                     $displayItems = array_map(function($item) {
                         $item['quantity'] = (int) $item['qty_active'];
                         $item['subtotal'] = (int) ($item['price'] * $item['quantity']);
                         return $item;
-                    }, $displayItems);
+                    }, $activeItems);
+                    
+                    $displayItems = array_filter($displayItems, fn($item) => $item['quantity'] > 0);
                 }
 
                 $displayItems = array_values($displayItems); // Reset keys
@@ -780,8 +794,19 @@ class OnlineSalesApiController extends BaseApiController
                 }
             }
 
+            // $refundedId = $this->statusModel->getIdByCode(OrderStatus::REFUNDED);
+            // $isFullyRefunded = ($order['status_id'] === $refundedId);
+
+            $totalPurchased = 0;
+            $totalRefunded = 0;
+
+            foreach ($items as $item) {
+                $totalPurchased += (int) $item['qty_purchased'];
+                $totalRefunded += (int) $item['qty_refunded'];
+            }
+
             $refundedId = $this->statusModel->getIdByCode(OrderStatus::REFUNDED);
-            $isFullyRefunded = ($order['status_id'] === $refundedId);
+            $isFullyRefunded = ($order['status_id'] === $refundedId) || ($totalPurchased > 0 && $totalPurchased === $totalRefunded);
 
             // Map items dengan prescription
             $mappedItems = array_map(function ($item) use ($prescriptions, $isFullyRefunded) {
@@ -791,8 +816,13 @@ class OnlineSalesApiController extends BaseApiController
 
                 // 🔥 LOGIC: 
                 // Jika order FULL REFUND, tampilkan qty_refunded sebagai quantity utama
-                // Jika order BIASA/PARTIAL, tampilkan qty_active sebagai quantity utama
-                $displayQty = $isFullyRefunded ? $qty_refunded : $qty_active;
+                // Namun jika full refund tapi record order_refund_items kosong (full refund case), gunakan qty_purchased
+                $displayQty = $qty_refunded;
+                if ($isFullyRefunded && $qty_refunded === 0) {
+                    $displayQty = $qty_purchased;
+                } elseif (!$isFullyRefunded) {
+                    $displayQty = $qty_active;
+                }
 
                 return [
                     'order_item_id'  => $item['order_item_id'],
@@ -807,7 +837,7 @@ class OnlineSalesApiController extends BaseApiController
                     'qty_active'     => $qty_active,
                     'quantity'       => $displayQty,
                     'subtotal'       => (int) ($item['price'] * $displayQty),
-                    'is_refunded'    => ($qty_refunded > 0),
+                    'is_refunded'    => ($qty_refunded > 0 || $isFullyRefunded),
                     'prescription'   => $prescriptions[$item['order_item_id']] ?? null
                 ];
             }, $items);

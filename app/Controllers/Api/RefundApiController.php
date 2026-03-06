@@ -510,9 +510,13 @@ class RefundApiController extends BaseApiController
             ->total ?? 0;
 
         // 3. Determine Status
-        $statusCode = ($totalItemsRefunded >= $totalItemsPurchased) 
-            ? OrderStatus::REFUNDED 
-            : OrderStatus::PARTIALLY_REFUNDED;
+        if ($refund['refund_type'] === 'full') {
+            $statusCode = OrderStatus::REFUNDED;
+        } else {
+            $statusCode = ($totalItemsRefunded >= $totalItemsPurchased) 
+                ? OrderStatus::REFUNDED 
+                : OrderStatus::PARTIALLY_REFUNDED;
+        }
 
         $statusId = $this->statusModel->getIdByCode($statusCode);
         $this->orderModel->update($orderId, [

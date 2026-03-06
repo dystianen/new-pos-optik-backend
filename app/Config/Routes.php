@@ -88,6 +88,13 @@ $routes->group('api', ['filter' => 'cors'], function ($routes) {
     $routes->get('count', 'Api\WishlistApiController::count');
   });
 
+  // REVIEWS
+  $routes->group('reviews', function ($routes) {
+    $routes->get('', 'Api\ReviewApiController::index');
+    $routes->get('product/(:segment)', 'Api\ReviewApiController::getByProduct/$1');
+    $routes->post('', 'Api\ReviewApiController::create', ['filter' => 'authApi']);
+  });
+
   $routes->group('refund', ['filter' => 'authApi'], function ($routes) {
     // REFUND ACCOUNTS
     $routes->get('accounts', 'Api\UserRefundAccountApiController::findOne');
