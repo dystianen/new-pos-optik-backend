@@ -677,6 +677,10 @@
         return `/online-sales/${notif.related_id}`;
       } else if (['low_stock', 'stock_empty'].includes(notif.type)) {
         return `/products/form?id=${notif.related_id}`;
+      } else if (notif.type === 'cancel_order') {
+        return `/cancellation-sales/${notif.related_id}`;
+      } else if (notif.type === 'refund_order') {
+        return `/refund-sales/${notif.related_id}`;
       }
       return '#';
     }

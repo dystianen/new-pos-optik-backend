@@ -50,7 +50,7 @@ $routes->group('api', ['filter' => 'cors'], function ($routes) {
   // CART
   $routes->group('cart', ['filter' => 'authApi'], function ($routes) {
     $routes->get('', 'Api\CartApiController::listCart');
-    $routes->post('add-to-cart', 'Api\CartApiController::addToCart');
+    $routes->post('add', 'Api\CartApiController::addToCart');
     $routes->get('count', 'Api\CartApiController::getTotalCart');
     $routes->delete('delete/(:any)', 'Api\CartApiController::deleteCartItem/$1');
   });
@@ -75,7 +75,7 @@ $routes->group('api', ['filter' => 'cors'], function ($routes) {
   });
 
   // SHIPPING ADDRESS
-  $routes->group('shipping', ['filter' => 'authApi'], function ($routes) {
+  $routes->group('shipping-address', ['filter' => 'authApi'], function ($routes) {
     $routes->get('', 'Api\CustomerShippingAddressApiController::getAllShippingAddress');
     $routes->get('(:segment)', 'Api\CustomerShippingAddressApiController::getById/$1');
     $routes->post('save', 'Api\CustomerShippingAddressApiController::save');
