@@ -384,6 +384,7 @@ class ProductApiController extends BaseApiController
             p.product_name,
             p.product_brand,
             p.product_price,
+            p.product_stock,
             pi.url AS product_image_url
         ')
             ->join(
